@@ -1,0 +1,51 @@
+common:
+  msg_source: 1
+  send_packet_ros: false
+  send_point_cloud_ros: true
+
+lidar:
+  - driver:
+      lidar_type: RSHELIOS
+      group_address: 224.10.10.201
+      host_address: 10.21.31.192
+      msop_port: 6691
+      difop_port: 7781
+      imu_port: 0
+      min_distance: 0.2
+      max_distance: 100
+      use_lidar_clock: true
+      dense_points: false
+      wait_for_difop: false
+      ts_first_point: true
+      start_angle: 0
+      end_angle: 360
+    ros:
+      ros_frame_id: m20_front_lidar
+      ros_recv_packet_topic: /m20/front/rslidar_packets
+      ros_send_packet_topic: /m20/front/rslidar_packets
+      ros_send_imu_data_topic: /m20/front/rslidar_imu
+      ros_send_point_cloud_topic: /m20/front/points
+      ros_queue_length: 20
+
+  - driver:
+      lidar_type: RSHELIOS
+      group_address: 224.10.10.202
+      host_address: 10.21.31.192
+      msop_port: 6692
+      difop_port: 7782
+      imu_port: 0
+      min_distance: 0.2
+      max_distance: 100
+      use_lidar_clock: true
+      dense_points: false
+      wait_for_difop: false
+      ts_first_point: true
+      start_angle: 0
+      end_angle: 360
+    ros:
+      ros_frame_id: m20_rear_lidar
+      ros_recv_packet_topic: /m20/rear/rslidar_packets
+      ros_send_packet_topic: /m20/rear/rslidar_packets
+      ros_send_imu_data_topic: /m20/rear/rslidar_imu
+      ros_send_point_cloud_topic: /m20/rear/points
+      ros_queue_length: 20

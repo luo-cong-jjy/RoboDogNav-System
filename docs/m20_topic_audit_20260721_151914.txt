@@ -1,0 +1,2530 @@
+================ BASIC ================
+1784618355.913869916 2026-07-21 15:19:15 CST +0800
+M20piper
+m20
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+enp1s0           DOWN           
+enp2s0           UP             10.21.31.192/24 fe80::8c1d:2a8:b6c3:4c35/64 
+can0             DOWN           
+wlx6c1ff78bc632  UP             192.168.112.146/21 fe80::ec5b:481f:b615:de62/64 
+default via 192.168.113.1 dev wlx6c1ff78bc632 proto dhcp metric 600 
+10.21.31.0/24 dev enp2s0 proto kernel scope link src 10.21.31.192 metric 100 
+169.254.0.0/16 dev enp2s0 scope link metric 1000 
+192.168.112.0/21 dev wlx6c1ff78bc632 proto kernel scope link src 192.168.112.146 metric 600 
+
+================ ROS ENV ================
+ROS_DOMAIN_ID=0
+RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+ROS_VERSION=2
+ROS_PYTHON_VERSION=3
+ROS_DOMAIN_ID=0
+ROS_LOCALHOST_ONLY=0
+ROS_DISTRO=foxy
+RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+================ TOPIC LIST ================
+/accumulate_cloud/status_code
+/BATTERY_CHARGE_ENABLE
+/BATTERY_DATA
+/CHARGE_CMD
+/CHARGE_STATUS
+/clicked_point
+/CPU_103
+/CPU_104
+/CPU_106
+/EXCEPTION_NOTIFICATION
+/FAULT_STATUS
+/FIBOCOM/net_rtk/gngga
+/FIBOCOM/net_rtk/heading
+/fibo_fusion_pose
+/fibo_fusion_state
+/GAIT
+/GLOBAL_PLANNER_STATUS
+/goal_pose
+/GPS
+/GPS_CFGSYS
+/GPS_SYS_MODE
+/GRID_MAP
+/GRIDS_ID
+/HANDLE_STEER
+/HEIGHT_IMAGE
+/HEIGHT_MAP_STATUS
+/HES_STATUS
+/IMU
+/initialpose
+/JOINTS_CMD
+/JOINTS_DATA
+/JOINTS_DATA_10HZ
+/LED/STATUS
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/STATUS
+/LOCATION_STATUS
+/LOCATION_STATUS/MATCHING_ERROR
+/MOTION_INFO
+/MOTION_STATE
+/MOTION_STATUS
+/NAV_CMD
+/NAV_STATUS
+/ODOM
+/OOA_STATUS
+/parameter_events
+/PASSABLE_AREA_ENABLE
+/passable_status_code
+/PLANNER_STATUS
+/REAL_STEER
+/rosout
+/rslidar_points_front
+/rslidar_points_rear
+/STEER
+/TERRAIN_CLASSIFIER_STATUS
+/tf
+/tf_static
+/TRACK_PATH
+/UWB_ENABLE
+/UWB_ODOM_LOST
+/UWB_ONLINE
+
+================ TOPIC TYPE + INFO ================
+
+===== /accumulate_cloud/status_code =====
+std_msgs/msg/Int32
+Type: std_msgs/msg/Int32
+Publisher count: 0
+Subscription count: 1
+Type: std_msgs/msg/Int32
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: std_msgs/msg/Int32
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.61.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /BATTERY_CHARGE_ENABLE =====
+drdds/msg/StdMsgInt32
+Type: drdds/msg/StdMsgInt32
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/StdMsgInt32
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdMsgInt32
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.0d.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /BATTERY_DATA =====
+drdds/msg/BatteryData
+Type: drdds/msg/BatteryData
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/BatteryData
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/BatteryData
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.0a.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/BatteryData
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.43.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /CHARGE_CMD =====
+drdds/msg/Steer
+Type: drdds/msg/Steer
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/Steer
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.54.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /CHARGE_STATUS =====
+drdds/msg/StdStatus
+Type: drdds/msg/StdStatus
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/StdStatus
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.4b.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /clicked_point =====
+geometry_msgs/msg/PointStamped
+Type: geometry_msgs/msg/PointStamped
+Publisher count: 1
+Subscription count: 0
+Type: geometry_msgs/msg/PointStamped
+
+Publisher count: 1
+
+Node name: rviz
+Node namespace: /rviz2
+Topic type: geometry_msgs/msg/PointStamped
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e5.b8.ac.06.01.00.00.00.00.00.1b.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /CPU_103 =====
+drdds/msg/CpuData
+Type: drdds/msg/CpuData
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/CpuData
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/CpuData
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.47.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /CPU_104 =====
+drdds/msg/CpuData
+Type: drdds/msg/CpuData
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/CpuData
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/CpuData
+Endpoint type: PUBLISHER
+GID: 01.0f.f7.73.b6.06.a7.cc.01.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/CpuData
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.48.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /CPU_106 =====
+drdds/msg/CpuData
+Type: drdds/msg/CpuData
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/CpuData
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/CpuData
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.14.0a.76.83.01.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/CpuData
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.49.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /EXCEPTION_NOTIFICATION =====
+drdds/msg/Exception
+Type: drdds/msg/Exception
+Publisher count: 1
+Subscription count: 0
+Type: drdds/msg/Exception
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Exception
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.41.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /FAULT_STATUS =====
+drdds/msg/FaultStatus
+Type: drdds/msg/FaultStatus
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/FaultStatus
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/FaultStatus
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.12.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/FaultStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.4a.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /FIBOCOM/net_rtk/gngga =====
+fibocom_msgs/msg/FibocomRtkgngga
+Type: fibocom_msgs/msg/FibocomRtkgngga
+Publisher count: 0
+Subscription count: 2
+Type: fibocom_msgs/msg/FibocomRtkgngga
+
+Publisher count: 0
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: fibocom_msgs/msg/FibocomRtkgngga
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.4f.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: fibocom_msgs/msg/FibocomRtkgngga
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.09.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /FIBOCOM/net_rtk/heading =====
+fibocom_msgs/msg/FibocomRtkheading
+Type: fibocom_msgs/msg/FibocomRtkheading
+Publisher count: 0
+Subscription count: 2
+Type: fibocom_msgs/msg/FibocomRtkheading
+
+Publisher count: 0
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: fibocom_msgs/msg/FibocomRtkheading
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.50.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: fibocom_msgs/msg/FibocomRtkheading
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.0a.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /fibo_fusion_pose =====
+nav_msgs/msg/Odometry
+Type: nav_msgs/msg/Odometry
+Publisher count: 0
+Subscription count: 1
+Type: nav_msgs/msg/Odometry
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: nav_msgs/msg/Odometry
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.07.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /fibo_fusion_state =====
+fibocom_msgs/msg/FiboFusionState
+Type: fibocom_msgs/msg/FiboFusionState
+Publisher count: 0
+Subscription count: 2
+Type: fibocom_msgs/msg/FiboFusionState
+
+Publisher count: 0
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: fibocom_msgs/msg/FiboFusionState
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.4e.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: fibocom_msgs/msg/FiboFusionState
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.08.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /GAIT =====
+drdds/msg/Gait
+Type: drdds/msg/Gait
+Publisher count: 1
+Subscription count: 2
+Type: drdds/msg/Gait
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Gait
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.1e.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Gait
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.02.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Gait
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.07.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /GLOBAL_PLANNER_STATUS =====
+drdds/msg/PlannerStatus
+Type: drdds/msg/PlannerStatus
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/PlannerStatus
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/PlannerStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.5d.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /goal_pose =====
+geometry_msgs/msg/PoseStamped
+Type: geometry_msgs/msg/PoseStamped
+Publisher count: 1
+Subscription count: 0
+Type: geometry_msgs/msg/PoseStamped
+
+Publisher count: 1
+
+Node name: rviz
+Node namespace: /rviz2
+Topic type: geometry_msgs/msg/PoseStamped
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e5.b8.ac.06.01.00.00.00.00.00.1a.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /GPS =====
+drdds/msg/NavSat
+Type: drdds/msg/NavSat
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/NavSat
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/NavSat
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.4d.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /GPS_CFGSYS =====
+drdds/msg/StdMsgInt32
+Type: drdds/msg/StdMsgInt32
+Publisher count: 1
+Subscription count: 0
+Type: drdds/msg/StdMsgInt32
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdMsgInt32
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.42.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /GPS_SYS_MODE =====
+drdds/msg/StdMsgInt32
+Type: drdds/msg/StdMsgInt32
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/StdMsgInt32
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdMsgInt32
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.66.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /GRID_MAP =====
+nav_msgs/msg/OccupancyGrid
+Type: nav_msgs/msg/OccupancyGrid
+Publisher count: 1
+Subscription count: 0
+Type: nav_msgs/msg/OccupancyGrid
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: nav_msgs/msg/OccupancyGrid
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.1b.0b.f5.6f.01.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /GRIDS_ID =====
+drdds/msg/GridsID
+Type: drdds/msg/GridsID
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/GridsID
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/GridsID
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.1b.0b.f5.6f.01.00.00.00.00.00.04.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/GridsID
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.63.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /HANDLE_STEER =====
+drdds/msg/Steer
+Type: drdds/msg/Steer
+Publisher count: 1
+Subscription count: 0
+Type: drdds/msg/Steer
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.23.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /HEIGHT_IMAGE =====
+sensor_msgs/msg/Image
+Type: sensor_msgs/msg/Image
+Publisher count: 0
+Subscription count: 1
+Type: sensor_msgs/msg/Image
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/Image
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.11.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /HEIGHT_MAP_STATUS =====
+drdds/msg/StdStatus
+Type: drdds/msg/StdStatus
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/StdStatus
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.5b.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /HES_STATUS =====
+drdds/msg/StdMsgInt32
+Type: drdds/msg/StdMsgInt32
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/StdMsgInt32
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdMsgInt32
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.0b.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdMsgInt32
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.4c.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /IMU =====
+sensor_msgs/msg/Imu
+Type: sensor_msgs/msg/Imu
+Publisher count: 1
+Subscription count: 1
+Type: sensor_msgs/msg/Imu
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/Imu
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.27.0a.cc.6f.01.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/Imu
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.05.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /initialpose =====
+geometry_msgs/msg/PoseWithCovarianceStamped
+Type: geometry_msgs/msg/PoseWithCovarianceStamped
+Publisher count: 2
+Subscription count: 1
+Type: geometry_msgs/msg/PoseWithCovarianceStamped
+
+Publisher count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: geometry_msgs/msg/PoseWithCovarianceStamped
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.38.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: rviz
+Node namespace: /rviz2
+Topic type: geometry_msgs/msg/PoseWithCovarianceStamped
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e5.b8.ac.06.01.00.00.00.00.00.18.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: geometry_msgs/msg/PoseWithCovarianceStamped
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.06.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /JOINTS_CMD =====
+drdds/msg/JointsDataCmd
+Type: drdds/msg/JointsDataCmd
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/JointsDataCmd
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/JointsDataCmd
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.10.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/JointsDataCmd
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.15.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /JOINTS_DATA =====
+drdds/msg/JointsData
+Type: drdds/msg/JointsData
+Publisher count: 1
+Subscription count: 0
+Type: drdds/msg/JointsData
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/JointsData
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.09.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /JOINTS_DATA_10HZ =====
+drdds/msg/JointsData
+Type: drdds/msg/JointsData
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/JointsData
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/JointsData
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.08.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/JointsData
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.46.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /LED/STATUS =====
+drdds/msg/LedStatusLight
+Type: drdds/msg/LedStatusLight
+Publisher count: 1
+Subscription count: 0
+Type: drdds/msg/LedStatusLight
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/LedStatusLight
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /LIDAR/IMU201 =====
+sensor_msgs/msg/Imu
+Type: sensor_msgs/msg/Imu
+Publisher count: 2
+Subscription count: 0
+Type: sensor_msgs/msg/Imu
+
+Publisher count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/Imu
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.60.0c.f9.60.01.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/Imu
+Endpoint type: PUBLISHER
+GID: 01.0f.f7.73.d2.06.c7.9b.01.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /LIDAR/IMU202 =====
+sensor_msgs/msg/Imu
+Type: sensor_msgs/msg/Imu
+Publisher count: 2
+Subscription count: 0
+Type: sensor_msgs/msg/Imu
+
+Publisher count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/Imu
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.60.0c.f9.60.01.00.00.00.00.00.02.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/Imu
+Endpoint type: PUBLISHER
+GID: 01.0f.f7.73.d2.06.c7.9b.01.00.00.00.00.00.02.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /LIDAR/STATUS =====
+drdds/msg/AiryLidarStatus
+Type: drdds/msg/AiryLidarStatus
+Publisher count: 0
+Subscription count: 2
+Type: drdds/msg/AiryLidarStatus
+
+Publisher count: 0
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/AiryLidarStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.14.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/AiryLidarStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.62.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /LOCATION_STATUS =====
+drdds/msg/LocationStatus
+Type: drdds/msg/LocationStatus
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/LocationStatus
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/LocationStatus
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.02.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/LocationStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.5e.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /LOCATION_STATUS/MATCHING_ERROR =====
+std_msgs/msg/Float64MultiArray
+Type: std_msgs/msg/Float64MultiArray
+Publisher count: 1
+Subscription count: 0
+Type: std_msgs/msg/Float64MultiArray
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: std_msgs/msg/Float64MultiArray
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /MOTION_INFO =====
+drdds/msg/MotionInfo
+Type: drdds/msg/MotionInfo
+Publisher count: 1
+Subscription count: 2
+Type: drdds/msg/MotionInfo
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/MotionInfo
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.14.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/MotionInfo
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.0c.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/MotionInfo
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.45.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /MOTION_STATE =====
+drdds/msg/MotionState
+Type: drdds/msg/MotionState
+Publisher count: 1
+Subscription count: 2
+Type: drdds/msg/MotionState
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/MotionState
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.1d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/MotionState
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.01.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/MotionState
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.06.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /MOTION_STATUS =====
+drdds/msg/MotionStatus
+Type: drdds/msg/MotionStatus
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/MotionStatus
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/MotionStatus
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.13.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/MotionStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.44.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /NAV_CMD =====
+drdds/msg/NavCmd
+Type: drdds/msg/NavCmd
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/NavCmd
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/NavCmd
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.51.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /NAV_STATUS =====
+drdds/msg/StdMsgInt32
+Type: drdds/msg/StdMsgInt32
+Publisher count: 1
+Subscription count: 0
+Type: drdds/msg/StdMsgInt32
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdMsgInt32
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.3e.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /ODOM =====
+nav_msgs/msg/Odometry
+Type: nav_msgs/msg/Odometry
+Publisher count: 1
+Subscription count: 1
+Type: nav_msgs/msg/Odometry
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: nav_msgs/msg/Odometry
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: nav_msgs/msg/Odometry
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.5f.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /OOA_STATUS =====
+drdds/msg/StdStatus
+Type: drdds/msg/StdStatus
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/StdStatus
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.59.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /parameter_events =====
+rcl_interfaces/msg/ParameterEvent
+Type: rcl_interfaces/msg/ParameterEvent
+Publisher count: 6
+Subscription count: 5
+Type: rcl_interfaces/msg/ParameterEvent
+
+Publisher count: 6
+
+Node name: _ros2cli_daemon_0
+Node namespace: /
+Topic type: rcl_interfaces/msg/ParameterEvent
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.b6.8f.10.ed.01.00.00.00.00.00.04.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: param_handle
+Node namespace: /rslidar_sdk
+Topic type: rcl_interfaces/msg/ParameterEvent
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.10.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: rslidar_points_destination_0
+Node namespace: /rslidar_sdk
+Topic type: rcl_interfaces/msg/ParameterEvent
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.1f.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: rslidar_points_destination_1
+Node namespace: /rslidar_sdk
+Topic type: rcl_interfaces/msg/ParameterEvent
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.2f.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: rviz
+Node namespace: /rviz2
+Topic type: rcl_interfaces/msg/ParameterEvent
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e5.b8.ac.06.01.00.00.00.00.00.10.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _ros2cli_daemon_0
+Node namespace: /
+Topic type: rcl_interfaces/msg/ParameterEvent
+Endpoint type: PUBLISHER
+GID: 01.0f.f7.73.f0.15.b1.d0.01.00.00.00.00.00.04.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 5
+
+Node name: param_handle
+Node namespace: /rslidar_sdk
+Topic type: rcl_interfaces/msg/ParameterEvent
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.11.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: rslidar_points_destination_0
+Node namespace: /rslidar_sdk
+Topic type: rcl_interfaces/msg/ParameterEvent
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.20.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: rslidar_points_destination_1
+Node namespace: /rslidar_sdk
+Topic type: rcl_interfaces/msg/ParameterEvent
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.30.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+
+===== /PASSABLE_AREA_ENABLE =====
+std_msgs/msg/Int32
+Type: std_msgs/msg/Int32
+Publisher count: 1
+Subscription count: 0
+Type: std_msgs/msg/Int32
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: std_msgs/msg/Int32
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.3f.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /passable_status_code =====
+std_msgs/msg/Int32
+Type: std_msgs/msg/Int32
+Publisher count: 0
+Subscription count: 1
+Type: std_msgs/msg/Int32
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: std_msgs/msg/Int32
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.60.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /PLANNER_STATUS =====
+drdds/msg/PlannerStatus
+Type: drdds/msg/PlannerStatus
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/PlannerStatus
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/PlannerStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.5c.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /REAL_STEER =====
+drdds/msg/Steer
+Type: drdds/msg/Steer
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/Steer
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.22.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.04.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /rosout =====
+rcl_interfaces/msg/Log
+Type: rcl_interfaces/msg/Log
+Publisher count: 7
+Subscription count: 0
+Type: rcl_interfaces/msg/Log
+
+Publisher count: 7
+
+Node name: _ros2cli_daemon_0
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.b6.8f.10.ed.01.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: param_handle
+Node namespace: /rslidar_sdk
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: rslidar_points_destination_0
+Node namespace: /rslidar_sdk
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.12.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: rslidar_points_destination_1
+Node namespace: /rslidar_sdk
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.22.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: rviz
+Node namespace: /rviz2
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e5.b8.ac.06.01.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: transform_listener_impl_5634750abf20
+Node namespace: /rviz2
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e5.b8.ac.06.01.00.00.00.00.00.1c.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _ros2cli_daemon_0
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.f7.73.f0.15.b1.d0.01.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /rslidar_points_front =====
+sensor_msgs/msg/PointCloud2
+Type: sensor_msgs/msg/PointCloud2
+Publisher count: 1
+Subscription count: 0
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 1
+
+Node name: rslidar_points_destination_0
+Node namespace: /rslidar_sdk
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.21.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /rslidar_points_rear =====
+sensor_msgs/msg/PointCloud2
+Type: sensor_msgs/msg/PointCloud2
+Publisher count: 1
+Subscription count: 1
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 1
+
+Node name: rslidar_points_destination_1
+Node namespace: /rslidar_sdk
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.e3.b8.fb.2a.01.00.00.00.00.00.31.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: rviz
+Node namespace: /rviz2
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.77.d1.e5.b8.ac.06.01.00.00.00.00.00.21.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /STEER =====
+drdds/msg/Steer
+Type: drdds/msg/Steer
+Publisher count: 1
+Subscription count: 2
+Type: drdds/msg/Steer
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.21.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.03.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.05.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /TERRAIN_CLASSIFIER_STATUS =====
+drdds/msg/StdStatus
+Type: drdds/msg/StdStatus
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/StdStatus
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdStatus
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.5a.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /tf =====
+tf2_msgs/msg/TFMessage
+Type: tf2_msgs/msg/TFMessage
+Publisher count: 1
+Subscription count: 1
+Type: tf2_msgs/msg/TFMessage
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: tf2_msgs/msg/TFMessage
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.1c.0b.50.24.01.00.00.00.00.00.04.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: transform_listener_impl_5634750abf20
+Node namespace: /rviz2
+Topic type: tf2_msgs/msg/TFMessage
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.77.d1.e5.b8.ac.06.01.00.00.00.00.00.1e.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /tf_static =====
+tf2_msgs/msg/TFMessage
+Type: tf2_msgs/msg/TFMessage
+Publisher count: 0
+Subscription count: 1
+Type: tf2_msgs/msg/TFMessage
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: transform_listener_impl_5634750abf20
+Node namespace: /rviz2
+Topic type: tf2_msgs/msg/TFMessage
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.77.d1.e5.b8.ac.06.01.00.00.00.00.00.1f.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /TRACK_PATH =====
+nav_msgs/msg/Path
+Type: nav_msgs/msg/Path
+Publisher count: 1
+Subscription count: 0
+Type: nav_msgs/msg/Path
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: nav_msgs/msg/Path
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.39.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /UWB_ENABLE =====
+drdds/msg/StdMsgInt32
+Type: drdds/msg/StdMsgInt32
+Publisher count: 1
+Subscription count: 0
+Type: drdds/msg/StdMsgInt32
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdMsgInt32
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.40.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== /UWB_ODOM_LOST =====
+drdds/msg/StdMsgInt32
+Type: drdds/msg/StdMsgInt32
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/StdMsgInt32
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdMsgInt32
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.65.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== /UWB_ONLINE =====
+drdds/msg/StdMsgInt32
+Type: drdds/msg/StdMsgInt32
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/StdMsgInt32
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/StdMsgInt32
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.64.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+================ HZ IMPORTANT TOPICS ================
+
+===== HZ /IMU =====
+sensor_msgs/msg/Imu
+
+===== HZ /ODOM =====
+nav_msgs/msg/Odometry
+
+===== HZ /tf =====
+tf2_msgs/msg/TFMessage
+
+===== HZ /tf_static =====
+tf2_msgs/msg/TFMessage
+
+===== HZ /BATTERY_DATA =====
+drdds/msg/BatteryData
+
+===== HZ /JOINTS_DATA =====
+drdds/msg/JointsData
+
+===== HZ /JOINTS_DATA_10HZ =====
+drdds/msg/JointsData
+
+===== HZ /MOTION_INFO =====
+drdds/msg/MotionInfo
+
+===== HZ /MOTION_STATE =====
+drdds/msg/MotionState
+
+===== HZ /MOTION_STATUS =====
+drdds/msg/MotionStatus
+
+===== HZ /NAV_STATUS =====
+drdds/msg/StdMsgInt32
+
+===== HZ /PLANNER_STATUS =====
+drdds/msg/PlannerStatus
+
+===== HZ /GLOBAL_PLANNER_STATUS =====
+drdds/msg/PlannerStatus
+
+===== HZ /FAULT_STATUS =====
+drdds/msg/FaultStatus
+
+===== HZ /EXCEPTION_NOTIFICATION =====
+drdds/msg/Exception
+
+===== HZ /LOCATION_STATUS =====
+drdds/msg/LocationStatus
+
+===== HZ /LOCATION_STATUS/MATCHING_ERROR =====
+std_msgs/msg/Float64MultiArray
+
+===== HZ /LIDAR/STATUS =====
+drdds/msg/AiryLidarStatus
+
+===== HZ /LIDAR/IMU201 =====
+sensor_msgs/msg/Imu
+
+===== HZ /LIDAR/IMU202 =====
+sensor_msgs/msg/Imu
+
+===== HZ /rslidar_points =====
+
+===== HZ /rslidar_points_front =====
+sensor_msgs/msg/PointCloud2
+
+===== HZ /rslidar_points_rear =====
+sensor_msgs/msg/PointCloud2
+
+===== HZ /accumulate_cloud/status_code =====
+std_msgs/msg/Int32
+
+===== HZ /passable_status_code =====
+std_msgs/msg/Int32
+[/IMU] frame= stamp=1784618813.985038040
+[/rslidar_points_front] frame=rslidar_front stamp=1784618813.800019026 size=1x15901 point_step=16 fields=x,y,z,intensity dense=True
+[/ODOM] frame=map child= pos=(18187.686,-12604.661,-18987.991)
+[/tf map->base_link]
+[/rslidar_points_rear] frame=rslidar_rear stamp=1784618813.799955845 size=1x18599 point_step=16 fields=x,y,z,intensity dense=True
+
+================ CONTROL TOPIC DRY CHECK ================
+
+===== CONTROL /cmd_vel =====
+
+===== CONTROL /m20_inspection/cmd_vel_nav =====
+
+===== CONTROL /m20_inspection/cmd_vel_manual =====
+
+===== CONTROL /m20_inspection/cmd_vel_safe =====
+
+===== CONTROL /m20_inspection/e_stop =====
+
+===== CONTROL /JOINTS_CMD =====
+drdds/msg/JointsDataCmd
+Type: drdds/msg/JointsDataCmd
+Publisher count: 1
+Subscription count: 1
+Type: drdds/msg/JointsDataCmd
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/JointsDataCmd
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.10.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/JointsDataCmd
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.15.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== CONTROL /NAV_CMD =====
+drdds/msg/NavCmd
+Type: drdds/msg/NavCmd
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/NavCmd
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/NavCmd
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.51.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== CONTROL /CHARGE_CMD =====
+drdds/msg/Steer
+Type: drdds/msg/Steer
+Publisher count: 0
+Subscription count: 1
+Type: drdds/msg/Steer
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.54.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== CONTROL /GAIT =====
+drdds/msg/Gait
+Type: drdds/msg/Gait
+Publisher count: 1
+Subscription count: 2
+Type: drdds/msg/Gait
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Gait
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.1e.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Gait
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.02.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Gait
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.07.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== CONTROL /STEER =====
+drdds/msg/Steer
+Type: drdds/msg/Steer
+Publisher count: 1
+Subscription count: 2
+Type: drdds/msg/Steer
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.21.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.03.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.8a.08.69.6c.01.00.00.00.00.00.05.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+
+===== CONTROL /HANDLE_STEER =====
+drdds/msg/Steer
+Type: drdds/msg/Steer
+Publisher count: 1
+Subscription count: 0
+Type: drdds/msg/Steer
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: drdds/msg/Steer
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.23.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+===== CONTROL /PASSABLE_AREA_ENABLE =====
+std_msgs/msg/Int32
+Type: std_msgs/msg/Int32
+Publisher count: 1
+Subscription count: 0
+Type: std_msgs/msg/Int32
+
+Publisher count: 1
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: std_msgs/msg/Int32
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.9e.08.1e.8a.01.00.00.00.00.00.3f.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+
+审计完成: /home/m20/m20_topic_audit_20260721_151914.txt

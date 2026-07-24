@@ -1,0 +1,6 @@
+numpy>=1.21
+mujoco>=3.0
+torch>=2.0
+onnx>=1.14
+tqdm>=4.64
+

@@ -1,0 +1,400 @@
+#!/usr/bin/python3
+
+from __future__ import annotations
+
+import time
+from pathlib import Path
+
+import mujoco
+import mujoco.viewer
+import numpy as np
+import rclpy
+from ament_index_python.packages import get_package_share_directory
+from builtin_interfaces.msg import Time
+from geometry_msgs.msg import TransformStamped
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
+from tf2_ros import TransformBroadcaster
+
+try:
+    from drdds.msg import (
+        ImuData,
+        ImuDataValue,
+        JointData,
+        JointsData,
+        JointsDataCmd,
+        JointsDataValue,
+        MetaType,
+    )
+    DRDDS_AVAILABLE = True
+except ImportError:
+    DRDDS_AVAILABLE = False
+
+
+MODEL_NAME = "M20"
+DT = 0.001
+FLOAT32_SAFE_LIMIT = np.finfo(np.float32).max * 0.5
+
+JOINT_DIR = np.array(
+    [1, 1, -1, 1, 1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, -1],
+    dtype=np.float32,
+)
+POS_OFFSET_DEG = np.array(
+    [-25, 229, 160, 0, 25, -131, -200, 0, -25, -229, -160, 0, 25, 131, 200, 0],
+    dtype=np.float32,
+)
+POS_OFFSET_RAD = POS_OFFSET_DEG / 180.0 * np.pi
+JOINT_VEL_LIMIT = np.array([45.0, 22.4, 22.4, 100.0] * 4, dtype=np.float64)
+WHEEL_INDICES = np.array([3, 7, 11, 15], dtype=np.int64)
+
+JOINT_INIT = {
+    "M20": np.array(
+        [
+            -0.438, -1.16, 2.76, 0,
+            0.438, -1.16, 2.76, 0,
+            -0.438, 1.16, -2.76, 0,
+            0.438, 1.16, -2.76, 0,
+        ],
+        dtype=np.float32,
+    ),
+}
+
+
+class M20FactorySimulationNode(Node):
+    def __init__(self):
+        super().__init__("m20_factory_simulation")
+
+        package_share = Path(get_package_share_directory("m20_industrial_inspection_mujoco"))
+        default_xml = package_share / "models" / "mjcf" / "m20_factory_scene.xml"
+
+        xml_path = self.declare_parameter("xml_path", str(default_xml)).value
+        self.use_viewer = self.declare_parameter("use_viewer", True).value
+        self.initial_x = self.declare_parameter("initial_x", 0.0).value
+        self.initial_y = self.declare_parameter("initial_y", 0.0).value
+        self.initial_z = self.declare_parameter("initial_z", 0.2).value
+        self.initial_yaw = self.declare_parameter("initial_yaw", 0.0).value
+        self.render_interval = int(self.declare_parameter("render_interval", 50).value)
+        self.enable_drdds_bridge = self.declare_parameter("enable_drdds_bridge", True).value
+        self.publish_ground_truth_odom = self.declare_parameter(
+            "publish_ground_truth_odom", True).value
+        self.publish_tf = self.declare_parameter("publish_tf", True).value
+        self.use_ros_time_stamp = self.declare_parameter("use_ros_time_stamp", True).value
+        self.odom_topic = self.declare_parameter("odom_topic", "/odom").value
+        self.odom_frame_id = self.declare_parameter("odom_frame_id", "odom").value
+        self.base_frame_id = self.declare_parameter("base_frame_id", "base_link").value
+
+        if not Path(xml_path).is_file():
+            raise FileNotFoundError(f"找不到 MJCF 场景文件: {xml_path}")
+
+        self.model = mujoco.MjModel.from_xml_path(xml_path)
+        self.model.opt.timestep = DT
+        self.data = mujoco.MjData(self.model)
+
+        self.actuator_ids = [a for a in range(self.model.nu)]
+        self.dof_num = len(self.actuator_ids)
+        if self.dof_num != 16:
+            raise RuntimeError(f"M20 仿真期望 16 个自由度，实际为 {self.dof_num}")
+
+        ctrl_range = self.model.actuator_ctrlrange[self.actuator_ids]
+        self.ctrl_low = ctrl_range[:, 0].reshape(-1, 1).astype(np.float64)
+        self.ctrl_high = ctrl_range[:, 1].reshape(-1, 1).astype(np.float64)
+        self._last_torque_clip_warn_time = 0.0
+        self._last_velocity_clip_warn_time = 0.0
+
+        self._set_initial_pose(MODEL_NAME)
+
+        self.kp_cmd = np.zeros((self.dof_num, 1), np.float32)
+        self.kd_cmd = np.zeros_like(self.kp_cmd)
+        self.pos_cmd = np.zeros_like(self.kp_cmd)
+        self.vel_cmd = np.zeros_like(self.kp_cmd)
+        self.tau_ff = np.zeros_like(self.kp_cmd)
+        self.input_tq = np.zeros_like(self.kp_cmd)
+        self.timestamp = 0.0
+        self.odom_pub = None
+        self.tf_broadcaster = None
+
+        if self.publish_ground_truth_odom:
+            self.odom_pub = self.create_publisher(Odometry, self.odom_topic, 50)
+        if self.publish_tf:
+            self.tf_broadcaster = TransformBroadcaster(self)
+
+        if self.enable_drdds_bridge and not DRDDS_AVAILABLE:
+            self.get_logger().warn("未找到 drdds 消息包，低层控制桥接已关闭。")
+            self.enable_drdds_bridge = False
+
+        if self.enable_drdds_bridge:
+            self.imu_pub = self.create_publisher(ImuData, "/IMU_DATA", 200)
+            self.joints_pub = self.create_publisher(JointsData, "/JOINTS_DATA", 200)
+            self.cmd_sub = self.create_subscription(
+                JointsDataCmd,
+                "/JOINTS_CMD",
+                self._cmd_callback,
+                50,
+            )
+        else:
+            self.imu_pub = None
+            self.joints_pub = None
+            self.cmd_sub = None
+
+        self.viewer = None
+        if self.use_viewer:
+            self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
+
+        self.get_logger().info(
+            f"项目 MuJoCo 仿真已启动：xml={xml_path} "
+            f"初始位置=({self.initial_x:.2f}, {self.initial_y:.2f}, {self.initial_z:.2f}) "
+            f"yaw={self.initial_yaw:.2f} drdds_bridge={self.enable_drdds_bridge} "
+            f"odom={self.publish_ground_truth_odom} tf={self.publish_tf} "
+            f"ros_time_stamp={self.use_ros_time_stamp}"
+        )
+
+    def _set_initial_pose(self, key: str):
+        qpos0 = self.data.qpos.copy()
+        qpos0[7:7 + self.dof_num] = JOINT_INIT[key]
+        qpos0[:3] = np.array([self.initial_x, self.initial_y, self.initial_z])
+        qpos0[3:7] = self._yaw_to_quaternion(self.initial_yaw)
+        self.data.qpos[:] = qpos0
+        mujoco.mj_forward(self.model, self.data)
+
+    @staticmethod
+    def _yaw_to_quaternion(yaw: float):
+        half_yaw = yaw * 0.5
+        return np.array([np.cos(half_yaw), 0.0, 0.0, np.sin(half_yaw)])
+
+    def _cmd_callback(self, msg: JointsDataCmd):
+        if len(msg.data.joints_data) != 16:
+            self.get_logger().warn("收到的 JointsDataCmd 关节数量不是 16。")
+            return
+
+        pub_pos = np.zeros(self.dof_num, dtype=np.float32)
+        pub_vel = np.zeros(self.dof_num, dtype=np.float32)
+        for i in range(self.dof_num):
+            joint_cmd = msg.data.joints_data[i]
+            self.kp_cmd[i] = joint_cmd.kp
+            self.kd_cmd[i] = joint_cmd.kd
+            pub_pos[i] = joint_cmd.position
+            pub_vel[i] = joint_cmd.velocity
+            self.tau_ff[i] = joint_cmd.torque
+
+        self.pos_cmd.flat = pub_pos * JOINT_DIR + POS_OFFSET_RAD
+        self.vel_cmd.flat = pub_vel * JOINT_DIR
+
+    def start(self):
+        step = 0
+        last_time = time.time()
+        while rclpy.ok():
+            if time.time() - last_time >= DT:
+                last_time = time.time()
+                step += 1
+                self._apply_joint_torque()
+                mujoco.mj_step(self.model, self.data)
+                self._limit_joint_velocity()
+                self.timestamp = step * DT
+
+                if step % 5 == 0:
+                    stamp = self._make_stamp()
+                    if self.publish_ground_truth_odom:
+                        self._publish_ground_truth_odom(stamp)
+                    if self.publish_tf:
+                        self._publish_base_tf(stamp)
+                    if self.enable_drdds_bridge:
+                        self._publish_robot_state(stamp)
+
+                if self.viewer and step % self.render_interval == 0:
+                    self.viewer.sync()
+
+            rclpy.spin_once(self, timeout_sec=0.0)
+
+    def _apply_joint_torque(self):
+        q = self.data.qpos[7:7 + self.dof_num].reshape(-1, 1)
+        dq = self.data.qvel[6:6 + self.dof_num].reshape(-1, 1)
+        raw_tq = (
+            self.kp_cmd * (self.pos_cmd - q)
+            + self.kd_cmd * (self.vel_cmd - dq)
+            + self.tau_ff
+        )
+
+        raw_tq = np.asarray(raw_tq, dtype=np.float64)
+        finite_tq = np.where(np.isfinite(raw_tq), raw_tq, 0.0)
+        clipped_tq = np.clip(finite_tq, self.ctrl_low, self.ctrl_high)
+        if np.any(np.abs(finite_tq - clipped_tq) > 1e-4):
+            now = time.time()
+            if now - self._last_torque_clip_warn_time > 1.0:
+                max_raw = float(np.max(np.abs(finite_tq)))
+                max_clip = float(np.max(np.abs(clipped_tq)))
+                self.get_logger().warn(
+                    "关节力矩命令已按 MuJoCo ctrlrange 限幅："
+                    f"max_raw={max_raw:.3g}, max_clipped={max_clip:.3g}"
+                )
+                self._last_torque_clip_warn_time = now
+
+        self.input_tq = clipped_tq.astype(np.float32)
+        self.data.ctrl[:] = self.input_tq.flatten()
+
+    @staticmethod
+    def _safe_msg_array(values):
+        values = np.asarray(values, dtype=np.float64)
+        values = np.nan_to_num(
+            values,
+            nan=0.0,
+            posinf=FLOAT32_SAFE_LIMIT,
+            neginf=-FLOAT32_SAFE_LIMIT,
+        )
+        return np.clip(values, -FLOAT32_SAFE_LIMIT, FLOAT32_SAFE_LIMIT)
+
+    @staticmethod
+    def _safe_quaternion(q):
+        q = np.asarray(q, dtype=np.float64)
+        if not np.all(np.isfinite(q)):
+            return np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
+        norm = np.linalg.norm(q)
+        if norm < 1.0e-8:
+            return np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
+        return q / norm
+
+    def _limit_joint_velocity(self):
+        dq = self.data.qvel[6:6 + self.dof_num]
+        clipped_dq = np.clip(dq, -JOINT_VEL_LIMIT, JOINT_VEL_LIMIT)
+        if np.any(np.abs(dq - clipped_dq) > 1e-4):
+            now = time.time()
+            if now - self._last_velocity_clip_warn_time > 1.0:
+                max_raw = float(np.max(np.abs(dq)))
+                max_clip = float(np.max(np.abs(clipped_dq)))
+                self.get_logger().warn(
+                    "关节速度已限幅以保持仿真稳定："
+                    f"max_raw={max_raw:.3g}, max_limited={max_clip:.3g}"
+                )
+                self._last_velocity_clip_warn_time = now
+            self.data.qvel[6:6 + self.dof_num] = clipped_dq
+
+    @staticmethod
+    def quaternion_to_euler(q):
+        q = M20FactorySimulationNode._safe_quaternion(q)
+        w, x, y, z = q
+        roll = np.arctan2(2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y))
+        pitch = np.arcsin(np.clip(2.0 * (w * y - z * x), -1.0, 1.0))
+        yaw = np.arctan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+        return np.array([roll, pitch, yaw], dtype=np.float32)
+
+    def _make_stamp(self):
+        if self.use_ros_time_stamp:
+            return self.get_clock().now().to_msg()
+
+        stamp = Time()
+        sec = int(self.timestamp)
+        stamp.sec = sec
+        stamp.nanosec = int((self.timestamp - sec) * 1e9)
+        return stamp
+
+    def _publish_ground_truth_odom(self, stamp):
+        odom_msg = Odometry()
+        odom_msg.header.stamp = stamp
+        odom_msg.header.frame_id = self.odom_frame_id
+        odom_msg.child_frame_id = self.base_frame_id
+
+        base_pos = self._safe_msg_array(self.data.qpos[:3])
+        base_quat = self._safe_quaternion(self.data.qpos[3:7])
+        base_lin_vel = self._safe_msg_array(self.data.qvel[:3])
+        base_ang_vel = self._safe_msg_array(self.data.qvel[3:6])
+
+        odom_msg.pose.pose.position.x = float(base_pos[0])
+        odom_msg.pose.pose.position.y = float(base_pos[1])
+        odom_msg.pose.pose.position.z = float(base_pos[2])
+        odom_msg.pose.pose.orientation.w = float(base_quat[0])
+        odom_msg.pose.pose.orientation.x = float(base_quat[1])
+        odom_msg.pose.pose.orientation.y = float(base_quat[2])
+        odom_msg.pose.pose.orientation.z = float(base_quat[3])
+
+        odom_msg.twist.twist.linear.x = float(base_lin_vel[0])
+        odom_msg.twist.twist.linear.y = float(base_lin_vel[1])
+        odom_msg.twist.twist.linear.z = float(base_lin_vel[2])
+        odom_msg.twist.twist.angular.x = float(base_ang_vel[0])
+        odom_msg.twist.twist.angular.y = float(base_ang_vel[1])
+        odom_msg.twist.twist.angular.z = float(base_ang_vel[2])
+
+        self.odom_pub.publish(odom_msg)
+
+    def _publish_base_tf(self, stamp):
+        transform = TransformStamped()
+        transform.header.stamp = stamp
+        transform.header.frame_id = self.odom_frame_id
+        transform.child_frame_id = self.base_frame_id
+
+        base_pos = self._safe_msg_array(self.data.qpos[:3])
+        base_quat = self._safe_quaternion(self.data.qpos[3:7])
+        transform.transform.translation.x = float(base_pos[0])
+        transform.transform.translation.y = float(base_pos[1])
+        transform.transform.translation.z = float(base_pos[2])
+        transform.transform.rotation.w = float(base_quat[0])
+        transform.transform.rotation.x = float(base_quat[1])
+        transform.transform.rotation.y = float(base_quat[2])
+        transform.transform.rotation.z = float(base_quat[3])
+
+        self.tf_broadcaster.sendTransform(transform)
+
+    def _publish_robot_state(self, stamp):
+        q_world = self.data.sensordata[:4]
+        rpy_rad = self.quaternion_to_euler(q_world)
+        rpy_deg = [angle * (180.0 / np.pi) for angle in rpy_rad]
+
+        rpy_deg = self._safe_msg_array(rpy_deg)
+        body_acc = self._safe_msg_array(self.data.sensordata[4:7])
+        angvel_b = self._safe_msg_array(self.data.sensordata[7:10])
+
+        imu_msg = ImuData()
+        imu_msg.header = MetaType()
+        imu_msg.header.frame_id = 0
+        imu_msg.header.stamp = stamp
+        imu_msg.data = ImuDataValue()
+        imu_msg.data.roll = float(rpy_deg[0])
+        imu_msg.data.pitch = float(rpy_deg[1])
+        imu_msg.data.yaw = float(rpy_deg[2])
+        imu_msg.data.omega_x = float(angvel_b[0])
+        imu_msg.data.omega_y = float(angvel_b[1])
+        imu_msg.data.omega_z = float(angvel_b[2])
+        imu_msg.data.acc_x = float(body_acc[0])
+        imu_msg.data.acc_y = float(body_acc[1])
+        imu_msg.data.acc_z = float(body_acc[2])
+        self.imu_pub.publish(imu_msg)
+
+        q = self.data.qpos[7:7 + self.dof_num]
+        dq = self.data.qvel[6:6 + self.dof_num]
+        tau = self.input_tq.flatten()
+        pub_pos = (q - POS_OFFSET_RAD) * JOINT_DIR
+        pub_pos[WHEEL_INDICES] = (pub_pos[WHEEL_INDICES] + np.pi) % (2.0 * np.pi) - np.pi
+        pub_vel = np.clip(dq * JOINT_DIR, -JOINT_VEL_LIMIT, JOINT_VEL_LIMIT)
+        pub_tau = tau * JOINT_DIR
+        pub_pos = self._safe_msg_array(pub_pos)
+        pub_vel = self._safe_msg_array(pub_vel)
+        pub_tau = self._safe_msg_array(pub_tau)
+
+        joints_msg = JointsData()
+        joints_msg.header = MetaType()
+        joints_msg.header.frame_id = 0
+        joints_msg.header.stamp = stamp
+        joints_msg.data = JointsDataValue()
+        joints_msg.data.joints_data = [JointData() for _ in range(self.dof_num)]
+        for i in range(self.dof_num):
+            joint = joints_msg.data.joints_data[i]
+            joint.name = [32, 32, 32, 32]
+            joint.data_id = 0
+            joint.status_word = 1
+            joint.position = float(pub_pos[i])
+            joint.torque = float(pub_tau[i])
+            joint.velocity = float(pub_vel[i])
+            joint.motion_temp = 40.0
+            joint.driver_temp = 45.0
+        self.joints_pub.publish(joints_msg)
+
+
+def main():
+    np.set_printoptions(precision=4, suppress=True)
+    rclpy.init()
+    sim_node = M20FactorySimulationNode()
+    sim_node.start()
+    sim_node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

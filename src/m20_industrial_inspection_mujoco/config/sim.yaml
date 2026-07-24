@@ -1,0 +1,8 @@
+# MuJoCo + 官方 sdk_deploy 的运动适配配置。
+motion_adapter_node:
+  ros__parameters:
+    backend_type: sdk_deploy_cmd_vel
+    input_topic: /m20_control/cmd_vel_safe
+    output_topic: /cmd_vel
+    command_timeout_sec: 0.6
+    publish_zero_on_timeout: true
