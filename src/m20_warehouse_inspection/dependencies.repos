@@ -1,0 +1,9 @@
+repositories:
+  src/vendor/SCAN-Planner:
+    type: git
+    url: https://github.com/wuyi2121/SCAN-Planner.git
+    version: d0b921c9b05a6d291d144d60882b2e0e88d2c0e0
+  src/vendor/deep_robotics_model:
+    type: git
+    url: https://github.com/DeepRoboticsLab/deep_robotics_model.git
+    version: 6113c62da96295e8d53abbc079af5296bf4649f8

@@ -1,0 +1,8 @@
+# Commit a new active floor map only if the caller still owns the expected generation.
+string target_floor
+uint64 expected_current_generation
+---
+bool success
+string active_floor
+uint64 generation
+string message

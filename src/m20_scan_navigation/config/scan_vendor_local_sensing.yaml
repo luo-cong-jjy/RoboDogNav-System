@@ -1,0 +1,52 @@
+/**:
+  ros__parameters:
+    use_sim_time: false
+
+    # Values below mirror SCAN-Planner's simulator.yaml. Only the body-pose
+    # input and map-reload switch are integration seams for M20/multi-floor.
+    quadrotor_name: quad_0
+    sensor_type: lidar
+    body_pose_topic: /m20/sim/body_pose
+    map.resolution: 0.1
+    map.x_size: 100.0
+    map.y_size: 40.0
+    map.z_size: 5.0
+    sensing_horizon: 40.0
+    sensing_rate: 10.0
+    estimation_rate: 10.0
+    # CPU RViz simulation profile: 0.5 degree keeps 360-degree/40 m sensing
+    # while reducing the native polar grid from about 882k to 141k cells.
+    polar_resolution: 0.5
+    yaw_fov: 360.0
+    vertical_fov: 90.0
+    min_raylength: 1.0
+    downsample_res: 0.1
+    lidar_pitch: 45.0
+    is_360lidar: 1
+    use_minicf_pattern: 1
+    # The generated warehouse PCD already samples every obstacle surface at
+    # 0.10 m. Re-interpolating every plane ray is redundant and can delay one
+    # CPU frame for tens of seconds; nearest-ray occlusion remains unchanged.
+    plane_interline: 0
+    use_avia_pattern: 0
+    use_vlp32_pattern: 0
+    use_os64_pattern: 0
+    use_os128_pattern: 0
+    cam_width: 640
+    cam_height: 480
+    cam_fx: 387.229248046875
+    cam_fy: 387.229248046875
+    cam_cx: 321.04638671875
+    cam_cy: 243.44969177246094
+    dynamic.enable: 0
+    dynamic.object_size: 0.0
+    dynamic.object_count: 0
+    dynamic.mode: 0
+    dynamic.velocity: 0.0
+    collision_check.enable: 0
+    collision_check.range: 0.3
+    allow_global_map_updates: true
+    # The local CycloneDDS simulation profile is loopback-only. Reliable
+    # delivery prevents silent loss of native clouds during a floor reload;
+    # the vendor default remains best-effort when this parameter is omitted.
+    reliable_cloud_transport: true

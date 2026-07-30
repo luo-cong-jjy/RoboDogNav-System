@@ -4,10 +4,17 @@
 
 原始三方 ROS 2 移植包在 `src/third_party/SCAN-Planner`，其说明文档见 [../third_party/SCAN-Planner/README.md](../third_party/SCAN-Planner/README.md)。当前工作空间已经登记并可直接启动的包名是 `m20_scan_planner`，所以不要用 `ros2 launch scan_planner ...` 启动这个包。
 
+在仓库集成系统中，本包是唯一被编译和启动的 SCAN 核心；`m20_scan_navigation`
+只负责 typed gateway、可选栅格路线和 bringup，不保存另一份 planner/controller。
+仓库入口默认把 RViz 目标直接送到 `/m20/navigation/scan_goal`，因而保留原生 SCAN
+的局部点云、搜索过程和 B 样条轨迹显示。`/m20/navigation/reset` 是为切层和任务取消
+增加的受控清理接口，不改变正常规划算法。
+
 ## 和原版相比改了什么
 
 - 包名从 `scan_planner` 改为 `m20_scan_planner`，避免和三方源码包混淆，也方便在主工程里单独维护。
-- 机器人描述从 `go2_description` 切换为 `m20_description`，启动时由 `robot_state_publisher` 发布 M20 的 `robot_description`。
+- 机器人描述从 `go2_description` 切换为 M20；当前 `run.launch.py` 直接使用
+  `m20_official_description/urdf/m20_official.urdf`。
 - 原来的 `go2_kinematic_sim` 和 `go2_gait_publisher` 改成了 `m20_kinematic_sim` 和 `m20_gait_publisher`。
 - M20 步态可视化适配了 16 个关节名，包含四个轮关节：`fl/fr/hl/hr_*_joint`。
 - 闭环控制器仍订阅 `planning/bspline` 和 `body_pose`，但输出执行速度到 M20 的 `cmd_vel` 路线；仿真时接 `/quad_0/cmd_vel`，实机时接 `/cmd_vel`。
@@ -15,7 +22,10 @@
 - `run.launch.py` 集成了 M20 模型、规划主节点、闭环/开环控制器、轻量运动学仿真、步态 JointState 发布、Mockamap/PCD 地图和局部传感器仿真。
 - 实机模式默认对接外部 LIO 和传感器话题：`/LIO/odom_vehicle`、`/LIO/odom_imu`、`/LIO/clouds_lidar` 以及 RealSense 对齐深度图话题。
 - RViz 配置、关键点记录脚本和测试入口都按 `m20_scan_planner` 包名做了适配。
-- Gazebo/RViz 使用的 M20 URDF 和 mesh 已隔离到 `models/m20`，不再从其他功能包读取模型文件；Gazebo 执行插件仍由对应插件包提供。
+- 仓库 RViz 基线使用 `m20_official_description` 中由官方
+  `src/third_party/deep_robotics_model/M20` 逐项校验的 URDF/mesh，不添加雷达或 IMU。
+  本包 `models/m20` 下的文件仅服务于旧的独立 Gazebo 实验入口，不进入仓库 RViz
+  模型链路；Gazebo 执行插件仍由对应插件包提供。
 - Building Gazebo 入口临时默认使用 `m20_gazebo_legged_no_lidar.urdf`：它不挂载雷达，不用轮子驱动底盘，而是通过 `/cmd_vel` 做四足步态动画和地形跟随位姿更新，便于先复现楼梯/多楼层导航链路。轮足模式选择后续按 [WHEEL_LEG_MODE_DESIGN.md](WHEEL_LEG_MODE_DESIGN.md) 继续完善。
 
 ## 目录说明

@@ -1,0 +1,17 @@
+/**:
+  ros__parameters:
+    global_cloud_topic: /m20/map/active_global_cloud
+    floor_state_topic: /m20/map/state
+    body_pose_topic: /m20/sim/body_pose
+    local_cloud_topic: /m20/sensing/local_cloud
+    sensor_cloud_topic: /m20/sensing/sensor_cloud
+    lidar_pose_topic: /m20/sensing/lidar_pose
+    sensing_radius: 20.0
+    # 3500 x 16-byte points stays below the 65.5 kB local DDS datagram limit.
+    # Rotating slices cover the complete local map over successive frames.
+    max_points_per_cloud: 3500
+    publish_rate_hz: 10.0
+    lidar_offset_x: 0.18
+    lidar_offset_z: 0.12
+    output_frame: map
+    lidar_frame: lidar_link

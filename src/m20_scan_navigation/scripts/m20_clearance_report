@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+# Copyright 2026 Virdyn Robotics
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Print deterministic M20 straight-passage clearance limits."""
+
+import argparse
+from pathlib import Path
+
+from ament_index_python.packages import get_package_share_directory
+
+from m20_scan_navigation.clearance import (
+    load_clearance_profile,
+    passage_table,
+)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description='Report M20 straight-passage clearance limits.'
+    )
+    parser.add_argument(
+        '--profile',
+        choices=('vendor', 'tight', 'balanced', 'conservative'),
+        default='balanced',
+    )
+    parser.add_argument(
+        '--width',
+        action='append',
+        type=float,
+        dest='widths',
+        help='passage width in metres; repeat as needed',
+    )
+    parser.add_argument('--use-grid-route', action='store_true')
+    parser.add_argument(
+        '--map-resolution',
+        type=float,
+        default=0.05,
+        help='occupancy resolution in metres; default is benchmark 0.05',
+    )
+    options = parser.parse_args()
+    share = Path(
+        get_package_share_directory('m20_scan_navigation')
+    )
+    profile = load_clearance_profile(
+        share / 'config' / f'clearance_{options.profile}.yaml'
+    )
+    widths = options.widths or (0.60, 0.65, 0.70, 0.75, 0.80, 0.90)
+    print(f'profile={profile.name}')
+    print(
+        f'physical_body={profile.physical_minimum_width:.2f}m '
+        f'native_hard={profile.native_hard_width:.2f}m '
+        f'native_nominal={profile.native_nominal_width:.2f}m '
+        f'grid_route={profile.grid_route_width:.2f}m '
+        f'grid_guard_requires>'
+        f'{profile.raster_guard_exclusive_width(options.map_resolution):.2f}m'
+    )
+    for width, status in passage_table(
+        profile,
+        widths,
+        options.use_grid_route,
+        map_resolution=options.map_resolution,
+    ):
+        print(f'{width:.2f}m {status}')
+    print(
+        'NOMINAL_CANDIDATE is a parameter-level result; use the controlled '
+        'MuJoCo corridor test before approving a real-site width.'
+    )
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -1,0 +1,14 @@
+m20_grid_route_planner:
+  ros__parameters:
+    occupancy_topic: /m20/map/active_occupancy
+    odom_topic: /m20/sim/body_pose
+    goal_topic: /m20/navigation/goal_pose
+    route_topic: /m20/navigation/global_route
+    scan_goal_topic: /m20/navigation/scan_goal
+    route_state_topic: /m20/navigation/global_route_state
+    inflation_radius: 0.60
+    nearest_free_radius: 1.50
+    waypoint_spacing: 0.90
+    subgoal_acceptance_radius: 0.30
+    final_acceptance_radius: 0.15
+    occupied_threshold: 50

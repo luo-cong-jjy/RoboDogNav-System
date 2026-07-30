@@ -1,0 +1,28 @@
+m20_collision_guard:
+  ros__parameters:
+    occupancy_topic: /m20/map/active_occupancy
+    odom_topic: /m20/sim/body_pose
+    command_topic: /m20/navigation/cmd_vel_candidate
+    stop_topic: /m20/control/collision_stop
+    state_topic: /m20/control/collision_guard_state
+    diagnostic_topic: /m20/control/collision_guard_diagnostic
+    recovery_available_topic: /m20/control/collision_recovery_available
+    recovery_command_topic: /m20/control/collision_recovery_cmd
+    map_ready_topic: /m20/map/ready
+    occupied_threshold: 50
+
+    # Production native-SCAN footprint validated with the official M20.
+    # The 0.70 s horizon previews 0.315 m at 0.45 m/s, over twice the
+    # measured 0.156 m worst stop travel, without the old corner deadlock.
+    # The robust grid-route profile still overrides this with a 0.50 m
+    # envelope through collision_guard.yaml.
+    footprint_radius: 0.25
+    footprint_offset: 0.18
+    safety_margin: 0.05
+    lookahead_sec: 0.70
+    sample_period_sec: 0.05
+    command_timeout_sec: 0.50
+    publish_rate_hz: 20.0
+    max_linear_x: 0.45
+    max_linear_y: 0.20
+    max_angular_z: 0.65

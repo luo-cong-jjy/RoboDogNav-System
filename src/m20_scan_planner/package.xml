@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>m20_scan_planner</name>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <description>M20-adapted SCAN-Planner ROS 2 nodes, controllers, launch and configuration.</description>
   <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
   <license>Apache-2.0</license>
@@ -12,6 +12,7 @@
   <depend>bspline_opt</depend>
   <depend>eigen</depend>
   <depend>geometry_msgs</depend>
+  <depend>m20_warehouse_interfaces</depend>
   <depend>nav_msgs</depend>
   <depend>path_searching</depend>
   <depend>plan_env</depend>
@@ -26,9 +27,7 @@
   <depend>traj_utils</depend>
   <depend>visualization_msgs</depend>
 
-  <exec_depend>m20_industrial_inspection_gazebo</exec_depend>
-  <exec_depend>m20_description</exec_depend>
-  <exec_depend>m20_sdk_deploy</exec_depend>
+  <exec_depend>m20_official_description</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>local_sensing_node</exec_depend>

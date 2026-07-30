@@ -1,0 +1,29 @@
+m20_safety_supervisor:
+  ros__parameters:
+    # Safety gates the same rolling candidate used by collision prediction
+    # and the final backend, not SCAN's pre-adaptation holonomic command.
+    navigation_topic: /m20/navigation/cmd_vel_candidate
+    manual_topic: /m20/control/cmd_vel_manual
+    safe_topic: /m20/control/cmd_vel_safe
+    e_stop_topic: /m20/control/e_stop
+    floor_hold_topic: /m20/control/floor_switch_hold
+    mission_hold_topic: /m20/control/mission_hold
+    collision_stop_topic: /m20/control/collision_stop
+    collision_recovery_available_topic: /m20/control/collision_recovery_available
+    collision_recovery_command_topic: /m20/control/collision_recovery_cmd
+    collision_recovery_timeout_sec: 0.15
+    execution_hold_topic: /m20/control/execution_hold
+    map_ready_topic: /m20/map/ready
+    odom_topic: /m20/sim/body_pose
+    publish_rate_hz: 100.0
+    command_timeout_sec: 0.5
+    odom_timeout_sec: 0.5
+
+    # Preserve the original SCAN controller command envelope in RViz
+    # simulation. Real-hardware limits remain in the hardware profile.
+    max_linear_x: 0.75
+    max_linear_y: 0.35
+    max_angular_z: 1.0
+    max_linear_accel: 50.0
+    max_angular_accel: 50.0
+    manual_priority: true

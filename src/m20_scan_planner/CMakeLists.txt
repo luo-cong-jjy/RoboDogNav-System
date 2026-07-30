@@ -11,6 +11,7 @@ find_package(ament_index_cpp REQUIRED)
 find_package(bspline_opt REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(m20_warehouse_interfaces REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(path_searching REQUIRED)
 find_package(plan_env REQUIRED)
@@ -25,7 +26,7 @@ find_package(traj_utils REQUIRED)
 find_package(visualization_msgs REQUIRED)
 
 set(scan_planner_dependencies
-  ament_index_cpp bspline_opt geometry_msgs nav_msgs path_searching plan_env
+  ament_index_cpp bspline_opt geometry_msgs m20_warehouse_interfaces nav_msgs path_searching plan_env
   rclcpp scan_planner_msgs sensor_msgs std_msgs tf2 tf2_geometry_msgs tf2_ros
   traj_utils visualization_msgs)
 

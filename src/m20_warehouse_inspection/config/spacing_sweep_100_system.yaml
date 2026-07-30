@@ -1,0 +1,342 @@
+schema_version: 1
+system:
+  project_id: m20_warehouse_spacing_100
+  robot_model: deep_robotics_m20
+  default_profile: rviz_spacing_100
+  logical_floor_count: 2
+frames:
+  overview: warehouse_overview
+  active_map: map
+  odom: odom
+  robot_base: base_link
+  lidar: lidar_link
+simulation:
+  layout_mode: flat_connected_regions
+  ground_z: 0.0
+  floor_size_x: 40.0
+  floor_size_y: 40.0
+  inter_region_gap: 0.0
+  prohibit_direct_region_crossing: false
+  teleport_on_floor_switch: false
+  elevator_transition_delay_sec: 0.0
+map_generation:
+  deterministic: true
+  obstacle_count_per_floor: 252
+  obstacle_height: 2.0
+  surface_resolution: 0.1
+  boundary_clearance: 1.0
+  reserved_zone_clearance: 1.0
+  minimum_obstacle_spacing: 1.0
+floors:
+  F1:
+    display_name: spacing_100_scene_1
+    source_seed: 127
+    simulation_offset:
+    - -20.0
+    - 0.0
+    - 0.0
+    overview_z: 0.0
+    pcd_file: maps/spacing_sweep/spacing_100/scene_1/scene_1.pcd
+    occupancy_file: maps/spacing_sweep/spacing_100/scene_1/scene_1.yaml
+    metadata_file: maps/spacing_sweep/spacing_100/scene_1/scene_1.json
+    initial_pose:
+    - -37.0
+    - 0.0
+    - 0.0
+    elevator_lobby_pose:
+    - 0.0
+    - 0.0
+    - 0.0
+    elevator_cabin_pose:
+    - 0.0
+    - 0.0
+    - 0.0
+    transition_gateway:
+      edge: max_x
+      center_y: 0.0
+      width: 4.0
+    reserved_zones:
+    - name: mission_start_zone
+      center:
+      - -37.0
+      - 0.0
+      size:
+      - 3.0
+      - 3.0
+    - name: shared_gateway_zone
+      center:
+      - -1.5
+      - 0.0
+      size:
+      - 3.0
+      - 4.0
+    fixed_obstacles:
+    - name: inbound_left_pallet
+      center:
+      - -38.35
+      - -7.7
+      size:
+      - 0.8
+      - 1.1
+    - name: left_descent_case
+      center:
+      - -36.5
+      - -7.7
+      size:
+      - 0.8
+      - 1.1
+    - name: bottom_west_crate
+      center:
+      - -28.5
+      - -16.0
+      size:
+      - 1.2
+      - 0.8
+    - name: bottom_east_rack
+      center:
+      - -15.8
+      - -16.0
+      size:
+      - 0.8
+      - 1.3
+    - name: right_lower_pallet
+      center:
+      - -4.0
+      - -8.5
+      size:
+      - 0.8
+      - 1.2
+    - name: right_upper_case
+      center:
+      - -4.0
+      - 5.5
+      size:
+      - 1.1
+      - 0.8
+    - name: top_east_crate
+      center:
+      - -12.5
+      - 16.0
+      size:
+      - 1.3
+      - 0.8
+    - name: top_west_rack
+      center:
+      - -25.0
+      - 16.0
+      size:
+      - 0.8
+      - 1.1
+    - name: outbound_diagonal_west
+      center:
+      - -23.4
+      - 10.4
+      size:
+      - 1.0
+      - 1.0
+    - name: outbound_diagonal_east
+      center:
+      - -10.8
+      - 4.8
+      size:
+      - 1.2
+      - 0.8
+    - name: home_aisle_east
+      center:
+      - -9.0
+      - 0.0
+      size:
+      - 1.3
+      - 0.8
+    - name: home_aisle_west
+      center:
+      - -23.0
+      - 0.0
+      size:
+      - 0.9
+      - 1.2
+    inspection_points:
+    - name: F1_LOWER_LEFT
+      pose:
+      - -36.0
+      - -16.0
+      - 0.0
+      dwell_sec: 1.0
+    - name: F1_LOWER_RIGHT
+      pose:
+      - -4.0
+      - -16.0
+      - 0.0
+      dwell_sec: 1.0
+    - name: F1_UPPER_RIGHT
+      pose:
+      - -4.0
+      - 16.0
+      - 0.0
+      dwell_sec: 1.0
+    - name: F1_UPPER_LEFT
+      pose:
+      - -36.0
+      - 16.0
+      - 0.0
+      dwell_sec: 1.0
+  F2:
+    display_name: spacing_100_scene_2
+    replica_of: F1
+    source_seed: 127
+    simulation_offset:
+    - 20.0
+    - 0.0
+    - 0.0
+    overview_z: 0.0
+    pcd_file: maps/spacing_sweep/spacing_100/scene_2/scene_2.pcd
+    occupancy_file: maps/spacing_sweep/spacing_100/scene_2/scene_2.yaml
+    metadata_file: maps/spacing_sweep/spacing_100/scene_2/scene_2.json
+    initial_pose:
+    - 3.0
+    - 0.0
+    - 0.0
+    elevator_lobby_pose:
+    - 0.0
+    - 0.0
+    - 0.0
+    elevator_cabin_pose:
+    - 0.0
+    - 0.0
+    - 0.0
+    transition_gateway:
+      edge: min_x
+      center_y: 0.0
+      width: 4.0
+    reserved_zones:
+    - name: shared_gateway_zone
+      center:
+      - 1.5
+      - 0.0
+      size:
+      - 3.0
+      - 4.0
+    inspection_points:
+    - name: F2_LOWER_LEFT
+      pose:
+      - 4.0
+      - -16.0
+      - 0.0
+      dwell_sec: 1.0
+    - name: F2_LOWER_RIGHT
+      pose:
+      - 36.0
+      - -16.0
+      - 0.0
+      dwell_sec: 1.0
+    - name: F2_UPPER_RIGHT
+      pose:
+      - 36.0
+      - 16.0
+      - 0.0
+      dwell_sec: 1.0
+    - name: F2_UPPER_LEFT
+      pose:
+      - 4.0
+      - 16.0
+      - 0.0
+      dwell_sec: 1.0
+elevators:
+  E1:
+    simulation_mode: continuous_origin_map_switch
+    source_floor: F1
+    target_floor: F2
+    source_trigger_pose:
+    - 0.0
+    - 0.0
+    - 0.0
+    target_release_pose:
+    - 0.0
+    - 0.0
+    - 0.0
+    trigger_tolerance_xy: 0.35
+    trigger_tolerance_yaw: 3.141592653589793
+    reverse_transition_enabled: true
+map_switch_transaction:
+  require_robot_stopped: true
+  stop_linear_threshold: 0.03
+  stop_angular_threshold: 0.05
+  cancel_navigation_timeout_sec: 2.0
+  reset_navigation_timeout_sec: 2.0
+  load_map_timeout_sec: 5.0
+  relocate_timeout_sec: 2.0
+  readiness_timeout_sec: 12.0
+  minimum_fresh_local_cloud_count: 3
+  failure_state: FAULT_HOLD
+navigation:
+  global_route_backend: scan_native
+  automatic_mission_route_backend: scan_native
+  optional_global_route_backend: grid_astar
+  local_planner_backend: scan_planner
+  scan_navigation_mode: 1
+  local_cloud_topic: /quad_0/cloud
+  sensor_cloud_topic: /quad_0/sensor_cloud
+  goal_topic: /move_base_simple/goal
+  routed_goal_topic: /m20/navigation/goal_pose
+  global_route_topic: /m20/navigation/global_route
+  scan_subgoal_topic: /move_base_simple/goal
+  raw_cmd_vel_topic: /m20/navigation/cmd_vel_raw
+  goal_position_tolerance: 0.2
+  goal_yaw_tolerance: 0.35
+safety:
+  manual_priority: true
+  immediate_zero_on_emergency_stop: true
+  immediate_zero_on_floor_switch_hold: true
+  navigation_command_timeout_sec: 0.5
+  max_linear_x: 0.45
+  max_linear_y: 0.2
+  max_angular_z: 0.65
+  max_linear_accel: 1.0
+  max_angular_accel: 1.2
+mission:
+  id: spacing_sweep_four_corner_patrol
+  loop: false
+  sequence:
+  - type: inspection
+    floor: F1
+    point: F1_LOWER_LEFT
+  - type: inspection
+    floor: F1
+    point: F1_LOWER_RIGHT
+  - type: inspection
+    floor: F1
+    point: F1_UPPER_RIGHT
+  - type: inspection
+    floor: F1
+    point: F1_UPPER_LEFT
+  - type: elevator_transfer
+    elevator: E1
+    from: F1
+    to: F2
+  - type: inspection
+    floor: F2
+    point: F2_LOWER_LEFT
+  - type: inspection
+    floor: F2
+    point: F2_LOWER_RIGHT
+  - type: inspection
+    floor: F2
+    point: F2_UPPER_RIGHT
+  - type: inspection
+    floor: F2
+    point: F2_UPPER_LEFT
+  - type: elevator_transfer
+    elevator: E1
+    from: F2
+    to: F1
+  - type: terminal
+    floor: F1
+    location: initial_pose
+    name: MISSION_START_RETURN
+experiment:
+  kind: obstacle_spacing_sweep
+  controlled_variable: minimum_obstacle_spacing
+  value_m: 1.0
+  baseline: route_challenge_system.yaml
+  constant_obstacle_count_per_floor: 252
+  constant_source_seed: 127

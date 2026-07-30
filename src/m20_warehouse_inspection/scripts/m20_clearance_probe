@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+# Copyright 2026 Virdyn Robotics
+
+"""Run the installed M20 dynamic-clearance probe."""
+
+from m20_warehouse_inspection.clearance_dynamics_probe import main
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

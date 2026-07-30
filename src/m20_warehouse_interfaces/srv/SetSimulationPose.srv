@@ -1,0 +1,9 @@
+# Teleport only the RViz kinematic simulation backend; a hardware backend must reject it.
+float64 x
+float64 y
+float64 yaw
+string floor_id
+uint64 generation
+---
+bool success
+string message

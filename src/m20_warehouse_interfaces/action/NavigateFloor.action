@@ -1,0 +1,32 @@
+# Goal
+string goal_id
+string floor_id
+uint64 map_generation
+geometry_msgs/PoseStamped target_pose
+float32 timeout_sec
+---
+# Result
+uint8 ERROR_NONE=0
+uint8 ERROR_INVALID_REQUEST=1
+uint8 ERROR_FLOOR_MISMATCH=2
+uint8 ERROR_MAP_NOT_READY=3
+uint8 ERROR_NO_ROUTE=4
+uint8 ERROR_TIMEOUT=5
+uint8 ERROR_CANCELLED=6
+uint8 ERROR_FLOOR_SWITCH=7
+uint8 ERROR_RESET_FAILED=8
+uint8 ERROR_INTERNAL=255
+
+bool success
+string goal_id
+string floor_id
+uint64 map_generation
+float32 final_distance
+uint8 error_code
+string message
+---
+# Feedback
+string state
+float32 distance_remaining
+uint32 route_update_count
+string message

@@ -1,0 +1,32 @@
+diff --git a/src/simulator/local_sensing/CMakeLists.txt b/src/simulator/local_sensing/CMakeLists.txt
+index 66bc7ce..edb5a10 100644
+--- a/src/simulator/local_sensing/CMakeLists.txt
++++ b/src/simulator/local_sensing/CMakeLists.txt
+@@ -12,7 +12,6 @@ find_package(Boost REQUIRED COMPONENTS filesystem iostreams program_options syst
+ find_package(cv_bridge REQUIRED)
+ find_package(Eigen3 REQUIRED)
+ find_package(geometry_msgs REQUIRED)
+-find_package(glm REQUIRED)
+ find_package(nav_msgs REQUIRED)
+ find_package(OpenCV REQUIRED)
+ find_package(OpenMP REQUIRED)
+@@ -40,6 +39,7 @@ target_link_libraries(pcl_render_node
+ 
+ set(renderer_targets pcl_render_node)
+ if(USE_GPU)
++  find_package(glm REQUIRED)
+   find_package(GLEW REQUIRED)
+   find_package(OpenGL REQUIRED)
+   find_package(glfw3 REQUIRED)
+diff --git a/src/simulator/local_sensing/package.xml b/src/simulator/local_sensing/package.xml
+index 3dc6861..4744e8d 100644
+--- a/src/simulator/local_sensing/package.xml
++++ b/src/simulator/local_sensing/package.xml
+@@ -11,7 +11,6 @@
+   <depend>cv_bridge</depend>
+   <depend>eigen</depend>
+   <depend>geometry_msgs</depend>
+-  <depend>libglm-dev</depend>
+   <depend>nav_msgs</depend>
+   <depend>pcl_conversions</depend>
+   <depend>rclcpp</depend>

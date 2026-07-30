@@ -1,0 +1,6 @@
+m20_scan_navigation contains source derived from SCAN-Planner:
+https://github.com/ZJU-FAST-Lab/SCAN-Planner
+
+Upstream and local M20 adaptations are distributed under Apache License 2.0.
+The copied files were modified for the Deep Robotics M20 ground-navigation
+interface, ROS 2 topic isolation, and the warehouse integration package.

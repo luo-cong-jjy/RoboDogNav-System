@@ -26,7 +26,8 @@ namespace scan_planner
     have_odom_ = false;
     have_new_target_ = false;
     rviz_height_ready_ = false;
-    m20_execution_frozen_ = false;
+    go2_execution_frozen_ = false;
+    reset_start_state_after_hold_ = false;
     flag_escape_emergency_ = true;
     need_hover_stop_ = false;
     replan_fail_count_ = 0;
@@ -36,6 +37,8 @@ namespace scan_planner
     navi_mode_ = load_parameter<int>(node_, "fsm.navi_mode", -1);
     replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_replan", -1.0);
     no_replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_no_replan", -1.0);
+    target_reached_tolerance_ =
+        load_parameter<double>(node_, "fsm.target_reached_tolerance", 0.2);
     planning_horizon_ = load_parameter<double>(node_, "fsm.planning_horizon", -1.0);
     emergency_time_ = load_parameter<double>(node_, "fsm.emergency_time", 1.0);
     enable_fail_safe_ = load_parameter<bool>(node_, "fsm.fail_safe", true);
@@ -74,9 +77,17 @@ namespace scan_planner
     odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
         "body_pose", rclcpp::SensorDataQoS(),
         std::bind(&SCANReplanFSM::odometryCallback, this, std::placeholders::_1));
-    m20_execution_frozen_sub_ = node_->create_subscription<std_msgs::msg::Bool>(
-        "planning/m20_execution_frozen", 10,
-        std::bind(&SCANReplanFSM::m20ExecutionFrozenCallback, this, std::placeholders::_1));
+    go2_execution_frozen_sub_ = node_->create_subscription<std_msgs::msg::Bool>(
+        "planning/go2_execution_frozen", 10,
+        std::bind(&SCANReplanFSM::go2ExecutionFrozenCallback, this, std::placeholders::_1));
+    reset_navigation_service_ =
+        node_->create_service<m20_warehouse_interfaces::srv::ResetNavigation>(
+            "reset",
+            std::bind(
+                &SCANReplanFSM::resetNavigationCallback,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2));
 
     bspline_pub_ = node_->create_publisher<scan_planner_msgs::msg::Bspline>("planning/bspline", 10);
     data_disp_pub_ = node_->create_publisher<scan_planner_msgs::msg::DataDisp>("planning/data_display", 100);
@@ -413,9 +424,65 @@ namespace scan_planner
     }
   }
 
-  void SCANReplanFSM::m20ExecutionFrozenCallback(const std_msgs::msg::Bool::ConstSharedPtr &msg)
+  void SCANReplanFSM::go2ExecutionFrozenCallback(const std_msgs::msg::Bool::ConstSharedPtr &msg)
   {
-    m20_execution_frozen_ = msg->data;
+    if (msg->data && !go2_execution_frozen_)
+    {
+      // The old B-spline derivatives describe motion that the backend did
+      // not execute. The first recovery plan must start from measured odom.
+      reset_start_state_after_hold_ = true;
+    }
+    go2_execution_frozen_ = msg->data;
+  }
+
+  void SCANReplanFSM::resetNavigationCallback(
+      const std::shared_ptr<
+          m20_warehouse_interfaces::srv::ResetNavigation::Request> request,
+      std::shared_ptr<
+          m20_warehouse_interfaces::srv::ResetNavigation::Response> response)
+  {
+    // Floor replacement invalidates the map, target, and every trajectory
+    // derived from the previous PCD. Publish a stationary trajectory first.
+    if (have_odom_)
+      callEmergencyStop(odom_pos_);
+
+    if (planner_manager_ && planner_manager_->grid_map_)
+      planner_manager_->grid_map_->resetBuffer();
+
+    active_waypoints_.clear();
+    current_wp_ = 0;
+    trigger_ = false;
+    have_target_ = false;
+    have_new_target_ = false;
+    replan_fail_count_ = 0;
+    need_hover_stop_ = false;
+    flag_escape_emergency_ = true;
+    continuously_called_times_ = 0;
+
+    if (planner_manager_)
+    {
+      auto &local = planner_manager_->local_data_;
+      local.duration_ = 0.0;
+      local.start_time_ = rclcpp::Time(
+          0, 0, node_->get_clock()->get_clock_type());
+
+      auto &global = planner_manager_->global_data_;
+      global.local_traj_.clear();
+      global.global_duration_ = 0.0;
+      global.local_start_time_ = -1.0;
+      global.local_end_time_ = -1.0;
+      global.time_increase_ = 0.0;
+      global.last_time_inc_ = 0.0;
+      global.last_progress_time_ = 0.0;
+    }
+
+    last_freeze_update_time_ = node_->now();
+    changeFSMExecState(WAIT_TARGET, "FLOOR_RESET");
+    response->success = true;
+    response->message =
+        "navigation reset for floor=" + request->floor_id +
+        ", generation=" + std::to_string(request->generation);
+    RCLCPP_INFO(node_->get_logger(), "%s", response->message.c_str());
   }
 
   void SCANReplanFSM::updateLocalTrajTimeFreeze()
@@ -428,7 +495,7 @@ namespace scan_planner
       return;
 
     LocalTrajData *info = &planner_manager_->local_data_;
-    if (m20_execution_frozen_ && info->start_time_.seconds() > 1e-5)
+    if (go2_execution_frozen_ && info->start_time_.seconds() > 1e-5)
       info->start_time_ += rclcpp::Duration::from_seconds(dt);
   }
 
@@ -579,6 +646,7 @@ namespace scan_planner
       {
 
         replan_fail_count_ = 0;
+        reset_start_state_after_hold_ = false;
         changeFSMExecState(EXEC_TRAJ, "FSM");
         flag_escape_emergency_ = true;
       }
@@ -592,6 +660,17 @@ namespace scan_planner
 
     case REPLAN_TRAJ:
     {
+      // The upstream rebound planner intentionally rejects a segment shorter
+      // than 0.2 m. Finish cleanly instead of retrying forever at the goal.
+      if ((end_pt_ - odom_pos_).head<2>().norm() <= target_reached_tolerance_)
+      {
+        callEmergencyStop(odom_pos_);
+        have_target_ = false;
+        have_new_target_ = false;
+        replan_fail_count_ = 0;
+        changeFSMExecState(WAIT_TARGET, "GOAL_REACHED");
+        break;
+      }
 
       if (planFromCurrentTraj())
       {
@@ -732,8 +811,16 @@ namespace scan_planner
     //cout << "info->velocity_traj_=" << info->velocity_traj_.get_control_points() << endl;
 
     start_pt_ = odom_pos_;
-    start_vel_ = info->velocity_traj_.evaluateDeBoorT(t_cur);
-    start_acc_ = info->acceleration_traj_.evaluateDeBoorT(t_cur);
+    if (go2_execution_frozen_ || reset_start_state_after_hold_)
+    {
+      start_vel_.setZero();
+      start_acc_.setZero();
+    }
+    else
+    {
+      start_vel_ = info->velocity_traj_.evaluateDeBoorT(t_cur);
+      start_acc_ = info->acceleration_traj_.evaluateDeBoorT(t_cur);
+    }
 
     const Eigen::Vector2d to_goal = end_pt_.head<2>() - odom_pos_.head<2>();
     if (to_goal.norm() > 1e-3 && start_vel_.head<2>().dot(to_goal) < 0.0)
@@ -766,6 +853,7 @@ namespace scan_planner
         return false;
     }
 
+    reset_start_state_after_hold_ = false;
     return true;
   }
 
@@ -774,6 +862,12 @@ namespace scan_planner
     start_pt_ = odom_pos_;
     start_vel_ = odom_vel_;
     start_acc_.setZero();
+
+    if (go2_execution_frozen_ || reset_start_state_after_hold_)
+    {
+      start_vel_.setZero();
+      return;
+    }
 
     LocalTrajData *info = &planner_manager_->local_data_;
     if (info->start_time_.seconds() < 1e-5 || info->duration_ <= 1e-5)

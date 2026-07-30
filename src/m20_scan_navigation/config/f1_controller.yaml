@@ -1,0 +1,13 @@
+/**:
+  ros__parameters:
+    use_sim_time: false
+    time_forward: 0.8
+    heading_error_threshold: 0.8
+    kp_pos: 0.8
+    kp_yaw: 1.5
+    max_vx: 0.40
+    max_vy: 0.18
+    max_vyaw: 0.60
+    finish_dist: 0.20
+    forward_only: false
+    max_forward_lateral_speed: 0.18

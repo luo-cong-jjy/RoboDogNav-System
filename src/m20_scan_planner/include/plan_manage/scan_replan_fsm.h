@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <iostream>
+#include <m20_warehouse_interfaces/srv/reset_navigation.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -52,7 +53,7 @@ namespace scan_planner
 
     /* parameters */
     int navi_mode_; // 1 manual select, 2 hard code
-    double no_replan_thresh_, replan_thresh_;
+    double no_replan_thresh_, replan_thresh_, target_reached_tolerance_;
     std::vector<Eigen::Vector3d> preset_waypoints_;
     int waypoint_num_;
     double planning_horizon_;
@@ -67,7 +68,8 @@ namespace scan_planner
     bool trigger_, have_target_, have_odom_, have_new_target_;
     bool preset_started_{false};
     bool rviz_height_ready_;
-    bool m20_execution_frozen_;
+    bool go2_execution_frozen_;
+    bool reset_start_state_after_hold_{false};
     bool enable_fail_safe_, need_hover_stop_;
     FSM_EXEC_STATE exec_state_;
     int continuously_called_times_{0};
@@ -92,7 +94,9 @@ namespace scan_planner
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub_;
-    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr m20_execution_frozen_sub_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr go2_execution_frozen_sub_;
+    rclcpp::Service<m20_warehouse_interfaces::srv::ResetNavigation>::SharedPtr
+        reset_navigation_service_;
     rclcpp::Publisher<scan_planner_msgs::msg::Bspline>::SharedPtr bspline_pub_;
     rclcpp::Publisher<scan_planner_msgs::msg::DataDisp>::SharedPtr data_disp_pub_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr self_inflation_pub_;
@@ -127,7 +131,12 @@ namespace scan_planner
     void waypointCallback(const nav_msgs::msg::Path::ConstSharedPtr &msg);
     void pathCallback(const nav_msgs::msg::Path::ConstSharedPtr &msg);
     void odometryCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &msg);
-    void m20ExecutionFrozenCallback(const std_msgs::msg::Bool::ConstSharedPtr &msg);
+    void go2ExecutionFrozenCallback(const std_msgs::msg::Bool::ConstSharedPtr &msg);
+    void resetNavigationCallback(
+        const std::shared_ptr<
+            m20_warehouse_interfaces::srv::ResetNavigation::Request> request,
+        std::shared_ptr<
+            m20_warehouse_interfaces::srv::ResetNavigation::Response> response);
 
     bool checkCollision();
 

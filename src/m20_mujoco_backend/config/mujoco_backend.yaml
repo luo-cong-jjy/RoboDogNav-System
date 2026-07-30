@@ -1,0 +1,38 @@
+m20_mujoco_backend:
+  ros__parameters:
+    use_viewer: true
+    viewer_follow_robot: true
+    viewer_follow_body: base_link
+    # Fixed tracking distance gives a stable robot-centered local view.
+    viewer_distance: 4.0
+    viewer_azimuth: 135.0
+    viewer_elevation: -25.0
+    timestep: 0.001
+    real_time_factor: 1.0
+    max_catchup_steps: 8
+    state_publish_hz: 200.0
+    diagnostics_publish_hz: 10.0
+    path_publish_hz: 10.0
+    path_max_poses: 5000
+    initial_z: 0.20
+    command_timeout_sec: 0.50
+    startup_hold_kp: 80.0
+    startup_hold_kd: 2.0
+    wheel_hold_kd: 0.60
+    # The official zero-command policy remains active for leg balance. Only
+    # wheel velocity targets are overridden with a physical damping brake.
+    parking_brake_enabled: true
+    parking_brake_kd: 4.0
+    locomotion_mode_topic: /m20/locomotion/mode
+    min_base_height: 0.05
+    max_tilt_rad: 1.20
+    standing_ready_height: 0.55
+    standing_ready_stable_sec: 0.30
+    # Match the vendored SCAN first-scene contract and RViz fixed frame.
+    map_frame: world
+    base_frame: base_link
+    body_pose_topic: /m20/sim/body_pose
+    path_topic: /quad_0/path
+    ready_topic: /m20/sim/backend_ready
+    fault_topic: /m20/sim/backend_fault
+    dynamics_state_topic: /m20/sim/dynamics_state

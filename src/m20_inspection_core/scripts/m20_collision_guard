@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+# Copyright 2026 Virdyn Robotics
+#
+# Licensed under the Apache License, Version 2.0.
+
+"""Executable wrapper for the M20 collision guard."""
+
+from m20_inspection_core.collision_guard_node import main
+
+
+if __name__ == '__main__':
+    main()

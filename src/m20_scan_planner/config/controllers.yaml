@@ -9,6 +9,8 @@ closed_loop_controller:
     max_vy: 0.35
     max_vyaw: 1.0
     finish_dist: 0.15
+    execution_hold_topic: /m20/control/execution_hold
+    require_external_execution_hold: false
     forward_only: false
     max_forward_lateral_speed: 0.35
 

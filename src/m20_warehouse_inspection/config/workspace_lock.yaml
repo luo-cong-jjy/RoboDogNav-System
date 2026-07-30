@@ -1,0 +1,63 @@
+schema_version: 1
+project_release: 1.3.0
+
+baseline:
+  operating_system: ubuntu_22.04
+  ros_distribution: humble
+  build_type: RelWithDebInfo
+
+project_packages:
+  - m20_warehouse_interfaces
+  - m20_multifloor_map
+  - m20_official_description
+  - m20_warehouse_sim
+  - m20_inspection_core
+  - m20_scan_planner
+  - m20_scan_navigation
+  - m20_locomotion_control
+  - m20_mujoco_backend
+  - m20_warehouse_inspection
+
+source_dependencies:
+  scan_planner:
+    path: src/vendor/SCAN-Planner
+    url: https://github.com/wuyi2121/SCAN-Planner.git
+    revision: d0b921c9b05a6d291d144d60882b2e0e88d2c0e0
+    patch: patches/scan_planner_humble_cpu.patch
+    patch_sha256: 8cfa3e13bfd3c7ddd0311eeaf46058ffbe61cd28e75dff633968e53cf17de974
+    integration_patch: patches/scan_planner_multifloor_integration.patch
+    integration_patch_sha256: e5080a336087e78e74036446b16b24f1ffd47e1021396bad501f2a0f5778e4a4
+  deep_robotics_model:
+    path: src/vendor/deep_robotics_model
+    url: https://github.com/DeepRoboticsLab/deep_robotics_model.git
+    revision: 6113c62da96295e8d53abbc079af5296bf4649f8
+  m20_sdk_deploy:
+    path: src/third_party/sdk_deploy
+    url: https://github.com/DeepRoboticsLab/sdk_deploy.git
+    revision: ee289d475f2dedf0332b7542f2b173fa9e8d1456
+    patch: patches/m20_sdk_cmdvel_adapter.patch
+    sdk_patch_sha256: 3e97c2554af7594470d928107951a42abf60a6db3453cc12cc2122b5a771c633
+
+build_closure:
+  - drdds
+  - local_sensing_node
+  - map_generator
+  - mockamap
+  - m20_official_description
+  - m20_warehouse_interfaces
+  - odom_visualization
+  - plan_env
+  - pose_utils
+  - scan_planner_msgs
+  - m20_locomotion_control
+  - m20_inspection_core
+  - m20_mujoco_backend
+  - m20_multifloor_map
+  - m20_warehouse_sim
+  - path_searching
+  - bspline_opt
+  - traj_utils
+  - m20_scan_planner
+  - m20_scan_navigation
+  - m20_sdk_deploy
+  - m20_warehouse_inspection

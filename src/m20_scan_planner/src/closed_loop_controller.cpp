@@ -10,6 +10,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <scan_planner_msgs/msg/bspline.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/float64.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2/utils.hpp>
 
@@ -24,14 +25,28 @@ public:
   {
     time_forward_ = declare_parameter<double>("time_forward", 0.8);
     heading_error_threshold_ = declare_parameter<double>("heading_error_threshold", 0.8);
+    heading_error_resume_threshold_ =
+        declare_parameter<double>("heading_error_resume_threshold", heading_error_threshold_);
+    heading_slowdown_threshold_ =
+        declare_parameter<double>("heading_slowdown_threshold", heading_error_threshold_);
+    heading_alignment_min_hold_sec_ =
+        declare_parameter<double>("heading_alignment_min_hold_sec", 0.0);
     kp_pos_ = declare_parameter<double>("kp_pos", 0.8);
     kp_yaw_ = declare_parameter<double>("kp_yaw", 1.5);
     max_vx_ = declare_parameter<double>("max_vx", 0.75);
     max_vy_ = declare_parameter<double>("max_vy", 0.35);
     max_vyaw_ = std::min(declare_parameter<double>("max_vyaw", 1.0), kMaxVYawLimit);
     finish_dist_ = declare_parameter<double>("finish_dist", 0.15);
-    forward_only_ = declare_parameter<bool>("forward_only", false);
-    max_forward_lateral_speed_ = declare_parameter<double>("max_forward_lateral_speed", max_vy_);
+    const auto execution_hold_topic =
+        declare_parameter<std::string>("execution_hold_topic", "/m20/control/execution_hold");
+    require_external_execution_hold_ =
+        declare_parameter<bool>("require_external_execution_hold", false);
+    external_execution_hold_ = require_external_execution_hold_;
+    heading_error_resume_threshold_ =
+        std::clamp(heading_error_resume_threshold_, 0.0, heading_error_threshold_);
+    heading_slowdown_threshold_ =
+        std::clamp(heading_slowdown_threshold_, 0.0, heading_error_threshold_);
+    heading_alignment_min_hold_sec_ = std::max(0.0, heading_alignment_min_hold_sec_);
 
     bspline_sub_ = create_subscription<scan_planner_msgs::msg::Bspline>(
         "planning/bspline", 10,
@@ -39,12 +54,27 @@ public:
     odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
         "body_pose", rclcpp::SensorDataQoS(),
         std::bind(&ClosedLoopController::odomCallback, this, std::placeholders::_1));
+    execution_hold_sub_ = create_subscription<std_msgs::msg::Bool>(
+        execution_hold_topic,
+        rclcpp::QoS(1).reliable().transient_local(),
+        std::bind(&ClosedLoopController::executionHoldCallback, this, std::placeholders::_1));
     cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 20);
-    execution_frozen_pub_ = create_publisher<std_msgs::msg::Bool>("planning/m20_execution_frozen", 10);
+    execution_frozen_pub_ = create_publisher<std_msgs::msg::Bool>("planning/go2_execution_frozen", 10);
+    heading_error_pub_ = create_publisher<std_msgs::msg::Float64>("heading_error", 20);
+    heading_aligning_pub_ = create_publisher<std_msgs::msg::Bool>(
+        "heading_aligning", rclcpp::QoS(1).reliable().transient_local());
     cmd_timer_ = create_wall_timer(std::chrono::milliseconds(10),
                                    std::bind(&ClosedLoopController::cmdCallback, this));
     last_update_time_ = now();
-    RCLCPP_INFO(get_logger(), "Closed-loop controller ready");
+    heading_alignment_started_ = now();
+    publishHeadingAligning();
+    RCLCPP_INFO(
+        get_logger(),
+        "Closed-loop controller ready; external execution hold=%s, "
+        "heading alignment enter=%.3frad exit=%.3frad slowdown=%.3frad hold=%.2fs",
+        require_external_execution_hold_ ? "required" : "optional",
+        heading_error_threshold_, heading_error_resume_threshold_,
+        heading_slowdown_threshold_, heading_alignment_min_hold_sec_);
   }
 
 private:
@@ -87,6 +117,50 @@ private:
     execution_frozen_pub_->publish(msg);
   }
 
+  void publishHeadingAligning()
+  {
+    std_msgs::msg::Bool msg;
+    msg.data = heading_aligning_;
+    heading_aligning_pub_->publish(msg);
+  }
+
+  void updateHeadingAlignment(
+      double absolute_yaw_error, const rclcpp::Time &current_time)
+  {
+    if (!heading_aligning_ && absolute_yaw_error >= heading_error_threshold_)
+    {
+      heading_aligning_ = true;
+      heading_alignment_started_ = current_time;
+      publishHeadingAligning();
+      RCLCPP_INFO(
+          get_logger(), "Heading alignment entered at error %.3frad",
+          absolute_yaw_error);
+      return;
+    }
+    if (!heading_aligning_) return;
+
+    const double held_sec = (current_time - heading_alignment_started_).seconds();
+    if (held_sec >= heading_alignment_min_hold_sec_ &&
+        absolute_yaw_error <= heading_error_resume_threshold_)
+    {
+      heading_aligning_ = false;
+      publishHeadingAligning();
+      RCLCPP_INFO(
+          get_logger(), "Heading alignment released at error %.3frad after %.2fs",
+          absolute_yaw_error, held_sec);
+    }
+  }
+
+  double headingTranslationScale(double absolute_yaw_error) const
+  {
+    if (heading_error_threshold_ <= heading_slowdown_threshold_ + 1e-9)
+      return absolute_yaw_error < heading_error_threshold_ ? 1.0 : 0.0;
+    return std::clamp(
+        (heading_error_threshold_ - absolute_yaw_error) /
+            (heading_error_threshold_ - heading_slowdown_threshold_),
+        0.0, 1.0);
+  }
+
   void bsplineCallback(const scan_planner_msgs::msg::Bspline::ConstSharedPtr msg)
   {
     if (msg->pos_pts.empty() || msg->knots.empty() || msg->order <= 0)
@@ -119,11 +193,22 @@ private:
     have_odom_ = true;
   }
 
+  void executionHoldCallback(const std_msgs::msg::Bool::ConstSharedPtr msg)
+  {
+    if (external_execution_hold_ != msg->data)
+    {
+      RCLCPP_INFO(
+          get_logger(), "External trajectory hold %s",
+          msg->data ? "asserted" : "released");
+    }
+    external_execution_hold_ = msg->data;
+  }
+
   void cmdCallback()
   {
     if (!receive_traj_ || !have_odom_)
     {
-      publishExecutionFrozen(false);
+      publishExecutionFrozen(external_execution_hold_);
       publishStop();
       return;
     }
@@ -133,8 +218,13 @@ private:
     const double t_eval = std::min(exec_time_, traj_duration_);
     Eigen::Vector3d pos_des = traj_[0].evaluateDeBoorT(t_eval);
     const double yaw_error = normalizeAngle(estimateDesiredYaw(t_eval, pos_des) - odom_yaw_);
+    std_msgs::msg::Float64 heading_error_msg;
+    heading_error_msg.data = yaw_error;
+    heading_error_pub_->publish(heading_error_msg);
     const double yaw_command = std::clamp(kp_yaw_ * yaw_error, -max_vyaw_, max_vyaw_);
-    if (std::abs(yaw_error) > heading_error_threshold_)
+    const double absolute_yaw_error = std::abs(yaw_error);
+    updateHeadingAlignment(absolute_yaw_error, current_time);
+    if (heading_aligning_)
     {
       publishExecutionFrozen(true);
       publishStop(yaw_command);
@@ -142,35 +232,31 @@ private:
       return;
     }
 
-    publishExecutionFrozen(false);
-    exec_time_ = std::min(traj_duration_, exec_time_ + dt);
+    // A downstream safety hold blocks execution but must not erase the
+    // upstream candidate command: collision prediction needs to keep checking
+    // the motion that would execute after release. Freeze only the trajectory
+    // clock here; the safety supervisor remains the sole zero-command gate.
+    publishExecutionFrozen(external_execution_hold_);
+    if (!external_execution_hold_)
+      exec_time_ = std::min(traj_duration_, exec_time_ + dt);
     last_update_time_ = current_time;
     pos_des = traj_[0].evaluateDeBoorT(exec_time_);
     const Eigen::Vector3d vel_des = traj_[1].evaluateDeBoorT(exec_time_);
     const Eigen::Vector2d pos_error(pos_des.x() - odom_pos_.x(), pos_des.y() - odom_pos_.y());
-    const Eigen::Vector2d vel_world = clampNorm(
+    Eigen::Vector2d vel_world = clampNorm(
         Eigen::Vector2d(vel_des.x(), vel_des.y()) + kp_pos_ * pos_error,
         std::max(max_vx_, max_vy_));
+    // A wheel-legged M20 cannot realize SCAN's holonomic tangent change
+    // instantaneously. Slow translation before the hard alignment gate so
+    // the measured body heading catches the B-spline direction without
+    // cutting toward an inflated obstacle.
+    vel_world *= headingTranslationScale(absolute_yaw_error);
     const double c = std::cos(odom_yaw_);
     const double s = std::sin(odom_yaw_);
     geometry_msgs::msg::Twist command;
     command.linear.x = std::clamp(c * vel_world.x() + s * vel_world.y(), -max_vx_, max_vx_);
     command.linear.y = std::clamp(-s * vel_world.x() + c * vel_world.y(), -max_vy_, max_vy_);
     command.angular.z = yaw_command;
-    if (forward_only_ && command.linear.x < 0.0 && pos_error.norm() > finish_dist_)
-    {
-      const double goal_yaw = std::atan2(pos_error.y(), pos_error.x());
-      const double goal_yaw_error = normalizeAngle(goal_yaw - odom_yaw_);
-      publishExecutionFrozen(true);
-      publishStop(std::clamp(kp_yaw_ * goal_yaw_error, -max_vyaw_, max_vyaw_));
-      return;
-    }
-    if (forward_only_)
-    {
-      command.linear.x = std::max(0.0, command.linear.x);
-      const double max_lateral = std::max(0.0, max_forward_lateral_speed_);
-      command.linear.y = std::clamp(command.linear.y, -max_lateral, max_lateral);
-    }
     if (exec_time_ >= traj_duration_ && pos_error.norm() < finish_dist_)
       command = geometry_msgs::msg::Twist();
     cmd_vel_pub_->publish(command);
@@ -178,8 +264,11 @@ private:
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr execution_frozen_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr heading_error_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr heading_aligning_pub_;
   rclcpp::Subscription<scan_planner_msgs::msg::Bspline>::SharedPtr bspline_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr execution_hold_sub_;
   rclcpp::TimerBase::SharedPtr cmd_timer_;
   bool receive_traj_{false};
   bool have_odom_{false};
@@ -189,11 +278,15 @@ private:
   Eigen::Vector3d odom_pos_{Eigen::Vector3d::Zero()};
   double odom_yaw_{0.0};
   double exec_time_{0.0};
+  bool require_external_execution_hold_{false};
+  bool external_execution_hold_{false};
+  bool heading_aligning_{false};
+  rclcpp::Time heading_alignment_started_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_update_time_{0, 0, RCL_ROS_TIME};
-  double time_forward_, heading_error_threshold_, kp_pos_, kp_yaw_;
+  double time_forward_, heading_error_threshold_, heading_error_resume_threshold_;
+  double heading_slowdown_threshold_, heading_alignment_min_hold_sec_;
+  double kp_pos_, kp_yaw_;
   double max_vx_, max_vy_, max_vyaw_, finish_dist_;
-  double max_forward_lateral_speed_;
-  bool forward_only_{false};
 };
 }  // namespace scan_planner
 

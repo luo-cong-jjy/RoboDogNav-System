@@ -1,12 +1,13 @@
 """Main ROS 2 launch entry point for simulation and real-robot remapping."""
 
 import os
+from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, LaunchConfiguration
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -16,7 +17,10 @@ def _as_bool(value):
 
 def _setup(context):
     planner_share = get_package_share_directory("m20_scan_planner")
-    m20_share = get_package_share_directory("m20_description")
+    m20_share = Path(
+        get_package_share_directory("m20_official_description")
+    )
+    official_model = m20_share / "urdf" / "m20_official.urdf"
     planner_yaml = os.path.join(planner_share, "config", "planner.yaml")
     controllers_yaml = os.path.join(planner_share, "config", "controllers.yaml")
     is_real = _as_bool(LaunchConfiguration("is_real_world").perform(context))
@@ -93,8 +97,8 @@ def _setup(context):
             parameters=[
                 common,
                 {
-                    "robot_description": Command(
-                        ["xacro ", os.path.join(m20_share, "xacro", "robot.xacro")]
+                    "robot_description": official_model.read_text(
+                        encoding="utf-8"
                     )
                 },
             ],

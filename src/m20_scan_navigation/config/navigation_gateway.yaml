@@ -1,0 +1,16 @@
+m20_navigation_gateway:
+  ros__parameters:
+    action_name: /m20/navigation/navigate
+    default_timeout_sec: 120.0
+    feedback_period_sec: 0.20
+    position_tolerance: 0.20
+    # Absorb the DDS delivery race between the switch Action result and the
+    # reliable hold=False sample received by this gateway.
+    floor_hold_release_timeout_sec: 2.0
+    # false: goal -> SCAN directly (default, preserves SCAN trajectory shape)
+    # true: goal -> static-grid A* -> sequential SCAN subgoals
+    use_grid_route: false
+    direct_goal_topic: /move_base_simple/goal
+    routed_goal_topic: /m20/navigation/goal_pose
+    scan_reset_service: /m20/navigation/reset
+    route_reset_service: /m20/navigation/route_reset
