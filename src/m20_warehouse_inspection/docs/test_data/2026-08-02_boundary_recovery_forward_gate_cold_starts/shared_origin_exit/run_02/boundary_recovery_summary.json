@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "case": "shared_origin_exit",
+  "action_success": true,
+  "action_error_code": 0,
+  "action_message": "native SCAN goal reached",
+  "duration_sec": 108.23664016299881,
+  "start_pose": {
+    "x": 0.10016217663173933,
+    "y": 0.11960267932782584,
+    "yaw": -2.6214915802809693
+  },
+  "final_pose": {
+    "x": -36.85673332093279,
+    "y": 0.03186974306669066,
+    "yaw": -3.0727251751527995
+  },
+  "final_error_m": 0.14676859968700343,
+  "minimum_obstacle_body_clearance_m": 0.9092218330583401,
+  "minimum_scan_inflation_clearance_m": 0.6592218330583401,
+  "minimum_guard_clearance_m": 0.6092218330583401,
+  "scan_inflated_region_sample_count": 0,
+  "longest_scan_inflated_region_sec": 0.0,
+  "obstacle_contact_event_count": 0,
+  "obstacle_contact_peak_force_n": 0.0,
+  "obstacle_contact_pairs": [],
+  "current_footprint_guard_event_count": 0,
+  "predicted_footprint_guard_event_count": 0,
+  "recovery_budget_exhausted_event_count": 0,
+  "raster_shell_escape_event_count": 0,
+  "map_edge_inward_recovery_event_count": 1,
+  "guard_events": [
+    "MAP_EDGE_INWARD_RECOVERY; trigger=PREDICTED_FOOTPRINT; cause=OUT_OF_BOUNDS; model=measured_lateral_drift; t=0.55s; circle=rear; xy=(0.36,0.21); yaw=-2.75; cell=(403,202); cmd=(-0.18,0.00,-0.22); recovery=(0.35,0.00,0.00)"
+  ],
+  "fallback_triggered": false,
+  "route_states": [
+    {
+      "elapsed_sec": 0.0,
+      "state": "WAITING_FOR_MAP_AND_ODOM"
+    },
+    {
+      "elapsed_sec": 0.0,
+      "state": "READY"
+    }
+  ],
+  "scan_goal_count": 0,
+  "scan_goals": [],
+  "intermediate_stop_check_count": 0,
+  "intermediate_stop_violation_count": 0,
+  "intermediate_stop_violations": [],
+  "backend_faults": [],
+  "feedback": [
+    {
+      "elapsed_sec": 0.1107360120076919,
+      "state": "PLANNING",
+      "distance_remaining_m": 37.1003532409668,
+      "route_update_count": 39,
+      "message": "goal sent directly to SCAN"
+    },
+    {
+      "elapsed_sec": 0.11137470800895244,
+      "state": "TRACKING",
+      "distance_remaining_m": 37.100589752197266,
+      "route_update_count": 39,
+      "message": "native SCAN trajectory tracking"
+    }
+  ],
+  "accepted": true
+}

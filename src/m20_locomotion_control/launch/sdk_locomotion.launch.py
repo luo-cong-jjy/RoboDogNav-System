@@ -14,23 +14,57 @@
 
 """Connect the safe warehouse command stream to the official M20 RL SDK."""
 
+from pathlib import Path
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution
+
+from m20_locomotion_control.capability_profile import (
+    load_capability_profile,
+)
+
+
+def _runtime_actions(context):
+    """Resolve and validate one capability profile before starting nodes."""
+    share = Path(get_package_share_directory('m20_locomotion_control'))
+    config = str(share / 'config' / 'sdk_locomotion.yaml')
+    profile_path = LaunchConfiguration(
+        'locomotion_capability_config'
+    ).perform(context)
+    profile = load_capability_profile(profile_path)
+    require_backend_ready = LaunchConfiguration('require_backend_ready')
+    return [
+        Node(
+            package='m20_locomotion_control',
+            executable='m20_locomotion_manager',
+            name='m20_locomotion_manager',
+            output='screen',
+            parameters=[
+                config,
+                profile.intent_parameters(),
+                {'require_backend_ready': require_backend_ready},
+            ],
+        ),
+        Node(
+            package='m20_sdk_deploy',
+            executable='rl_deploy_cmdvel',
+            output='screen',
+            parameters=[config, profile.sdk_parameters()],
+            condition=IfCondition(LaunchConfiguration('start_sdk')),
+        ),
+    ]
 
 
 def generate_launch_description() -> LaunchDescription:
     """Start the project-owned intent adapter and optional vendor controller."""
-    config = PathJoinSubstitution(
-        [FindPackageShare('m20_locomotion_control'), 'config',
-         'sdk_locomotion.yaml']
+    share = Path(get_package_share_directory('m20_locomotion_control'))
+    default_capability = (
+        share / 'config' / 'm20_policy_v1_capabilities.yaml'
     )
-    start_sdk = LaunchConfiguration('start_sdk')
-    require_backend_ready = LaunchConfiguration('require_backend_ready')
     return LaunchDescription(
         [
             DeclareLaunchArgument(
@@ -49,22 +83,14 @@ def generate_launch_description() -> LaunchDescription:
                     'contract.'
                 ),
             ),
-            Node(
-                package='m20_locomotion_control',
-                executable='m20_locomotion_manager',
-                name='m20_locomotion_manager',
-                output='screen',
-                parameters=[
-                    config,
-                    {'require_backend_ready': require_backend_ready},
-                ],
+            DeclareLaunchArgument(
+                'locomotion_capability_config',
+                default_value=str(default_capability),
+                description=(
+                    'Versioned M20 command, turn and recovery capability '
+                    'profile.'
+                ),
             ),
-            Node(
-                package='m20_sdk_deploy',
-                executable='rl_deploy_cmdvel',
-                output='screen',
-                parameters=[config],
-                condition=IfCondition(start_sdk),
-            ),
+            OpaqueFunction(function=_runtime_actions),
         ]
     )

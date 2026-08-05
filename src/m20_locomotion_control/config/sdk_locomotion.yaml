@@ -4,34 +4,32 @@ m20_navigation_adapter:
     output_topic: /m20/navigation/cmd_vel_candidate
     mode_topic: /m20/navigation/candidate_mode
     command_timeout_sec: 0.30
-    max_forward: 0.45
-    max_side: 0.20
-    max_yaw: 0.65
-    deadband_linear: 0.01
-    deadband_yaw: 0.02
-    lateral_threshold: 0.05
-    turn_yaw_threshold: 0.25
-    in_place_linear_threshold: 0.08
-    turn_curvature_threshold: 1.20
-    curvature_speed_floor: 0.05
-    # High-curvature coordination is turn-first with only a 0.05 m/s crawl.
-    # Large heading changes are already pure rotation in the SCAN controller.
-    turn_max_forward: 0.05
-    lateral_max_forward: 0.10
-    suppress_side_in_cruise: true
-    suppress_side_in_turn: true
-    # Correct cross-track drift before the double-circle footprint reaches a
-    # narrow-passage edge, while retaining a small straight-line deadband.
-    course_yaw_gain: 1.20
-    turn_course_enter: 0.25
-    turn_course_exit: 0.08
-    turn_yaw_exit: 0.20
-    # Prevent SCAN replans from rapidly toggling wheel cruise/turn intent.
-    turn_min_hold_sec: 0.50
-    cruise_yaw_deadband: 0.02
-    cruise_yaw_filter_time_constant: 0.12
-    output_linear_accel: 1.0
-    output_yaw_accel: 1.2
+    # All body, command, rolling-turn and drift values are injected from the
+    # selected versioned M20 capability profile by the parent launch.
+    # Inner velocity feedback is staged off until the same MuJoCo navigation
+    # task has passed open-loop/closed-loop A/B acceptance. It consumes the
+    # base_link twist from Odometry and corrects this pre-safety candidate, so
+    # every corrected output remains subject to the collision guard.
+    velocity_feedback_enabled: false
+    velocity_feedback_odometry_topic: /m20/sim/body_pose
+    velocity_feedback_expected_child_frame: base_link
+    velocity_feedback_execution_hold_topic: /m20/control/execution_hold
+    velocity_feedback_state_topic: /m20/navigation/velocity_feedback_state
+    velocity_feedback_timeout_sec: 0.15
+    # The current MuJoCo A/B showed improved straight-line accuracy but extra
+    # turn overshoot. Reset and bypass PI during coordinated/lateral maneuvers.
+    velocity_feedback_cruise_only: true
+    velocity_feedback_max_abs_yaw_reference: 0.08
+    velocity_feedback_linear_kp: 0.30
+    velocity_feedback_linear_ki: 0.08
+    velocity_feedback_yaw_kp: 0.20
+    velocity_feedback_yaw_ki: 0.05
+    velocity_feedback_linear_error_deadband: 0.03
+    velocity_feedback_yaw_error_deadband: 0.04
+    velocity_feedback_linear_integral_limit: 0.20
+    velocity_feedback_yaw_integral_limit: 0.25
+    velocity_feedback_linear_correction_limit: 0.10
+    velocity_feedback_yaw_correction_limit: 0.12
 
 m20_locomotion_manager:
   ros__parameters:
@@ -47,31 +45,6 @@ m20_locomotion_manager:
     rolling_navigation_enabled: false
     allow_manual_lateral: true
     command_timeout_sec: 0.30
-    max_forward: 0.45
-    max_side: 0.20
-    max_yaw: 0.65
-    deadband_linear: 0.01
-    deadband_yaw: 0.02
-    lateral_threshold: 0.05
-    turn_yaw_threshold: 0.25
-    in_place_linear_threshold: 0.08
-    turn_curvature_threshold: 1.20
-    curvature_speed_floor: 0.05
-    turn_max_forward: 0.05
-    lateral_max_forward: 0.10
-    suppress_side_in_cruise: true
-    suppress_side_in_turn: true
-    # Autonomous patrol is rolling-first: SCAN lateral tracking error becomes
-    # a yaw correction, while explicit MANUAL lateral motion stays available.
-    course_yaw_gain: 1.20
-    turn_course_enter: 0.25
-    turn_course_exit: 0.08
-    turn_yaw_exit: 0.20
-    turn_min_hold_sec: 0.50
-    cruise_yaw_deadband: 0.02
-    cruise_yaw_filter_time_constant: 0.12
-    output_linear_accel: 1.0
-    output_yaw_accel: 1.2
 
 m20_cmd_vel_interface:
   ros__parameters:
@@ -79,8 +52,5 @@ m20_cmd_vel_interface:
     auto_start: true
     standup_delay_sec: 3.3
     cmd_timeout_sec: 0.5
-    max_forward: 0.45
-    max_side: 0.20
-    max_yaw: 0.65
     control_rate_hz: 50.0
     debug_print: false

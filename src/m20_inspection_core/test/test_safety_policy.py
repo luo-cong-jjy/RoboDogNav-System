@@ -19,8 +19,10 @@ import pytest
 from m20_inspection_core.safety_policy import (
     TimedCommand,
     clamp_command,
+    proportional_ramp_command,
     select_fresh_command,
     slew_command,
+    valid_collision_recovery_command,
 )
 
 
@@ -65,3 +67,48 @@ def test_ordinary_output_respects_acceleration_limits() -> None:
         angular_acceleration=1.2,
     )
     assert output == pytest.approx((0.1, -0.1, 0.12))
+
+
+def test_recovery_ramp_preserves_command_curvature() -> None:
+    target = (0.35, 0.0, 0.65)
+    output = proportional_ramp_command(
+        current=(0.0, 0.0, 0.0),
+        target=target,
+        dt=0.2,
+        ramp_duration=1.0,
+    )
+
+    assert output == pytest.approx((0.07, 0.0, 0.13))
+    assert output[0] / output[2] == pytest.approx(
+        target[0] / target[2]
+    )
+
+
+def test_recovery_ramp_restarts_when_turn_direction_changes() -> None:
+    output = proportional_ramp_command(
+        current=(0.175, 0.0, 0.325),
+        target=(0.35, 0.0, -0.65),
+        dt=0.1,
+        ramp_duration=1.0,
+    )
+
+    assert output == pytest.approx((0.035, 0.0, -0.065))
+
+
+@pytest.mark.parametrize(
+    ('command', 'expected'),
+    (
+        ((0.35, 0.0, 0.65), True),
+        ((-0.35, 0.0, 0.0), True),
+        ((0.35, 0.0, 0.0), True),
+        ((-0.35, 0.0, 0.35), False),
+        ((0.0, 0.0, 0.65), False),
+        ((0.35, 0.01, 0.65), False),
+        ((0.0, 0.0, 0.0), False),
+    ),
+)
+def test_collision_recovery_command_shape_is_restricted(
+    command: tuple[float, float, float],
+    expected: bool,
+) -> None:
+    assert valid_collision_recovery_command(command) is expected

@@ -36,6 +36,7 @@ def test_phase3_launch_uses_vendor_renderer_and_starts_manager() -> None:
     assert "executable='m20_floor_switch_manager'" in launch
     assert 'collision_guard_scan_native.yaml' in launch
     assert "condition=UnlessCondition(use_grid_route)" in launch
+    assert "'collision_grid_route_enabled': (" in launch
 
 
 def test_map_server_exposes_generation_compare_and_swap() -> None:

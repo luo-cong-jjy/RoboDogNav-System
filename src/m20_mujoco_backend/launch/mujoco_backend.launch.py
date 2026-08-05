@@ -59,6 +59,11 @@ def _runtime_actions(context):
         system = yaml.safe_load(stream)
     initial_pose = system['floors']['F1']['initial_pose']
 
+    def initial_component(argument: str, index: int) -> float:
+        """Resolve an optional simulation-only cold-start pose override."""
+        configured = LaunchConfiguration(argument).perform(context).strip()
+        return float(configured) if configured else float(initial_pose[index])
+
     return [
         Node(
             package='m20_mujoco_backend',
@@ -73,9 +78,9 @@ def _runtime_actions(context):
                     'viewer_distance': LaunchConfiguration(
                         'viewer_distance'
                     ),
-                    'initial_x': float(initial_pose[0]),
-                    'initial_y': float(initial_pose[1]),
-                    'initial_yaw': float(initial_pose[2]),
+                    'initial_x': initial_component('initial_x', 0),
+                    'initial_y': initial_component('initial_y', 1),
+                    'initial_yaw': initial_component('initial_yaw', 2),
                     'real_time_factor': LaunchConfiguration(
                         'real_time_factor'
                     ),
@@ -117,6 +122,30 @@ def generate_launch_description() -> LaunchDescription:
                 ),
             ),
             DeclareLaunchArgument('real_time_factor', default_value='1.0'),
+            DeclareLaunchArgument(
+                'initial_x',
+                default_value='',
+                description=(
+                    'Optional MuJoCo cold-start x override. Empty uses the '
+                    'F1 initial_pose from system_config.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'initial_y',
+                default_value='',
+                description=(
+                    'Optional MuJoCo cold-start y override. Empty uses the '
+                    'F1 initial_pose from system_config.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'initial_yaw',
+                default_value='',
+                description=(
+                    'Optional MuJoCo cold-start yaw override. Empty uses the '
+                    'F1 initial_pose from system_config.'
+                ),
+            ),
             OpaqueFunction(function=_runtime_actions),
         ]
     )

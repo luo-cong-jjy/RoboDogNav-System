@@ -35,6 +35,14 @@ if(BUILD_TESTING)
     test_launch_contract
     test/test_launch_contract.py
   )
+  ament_add_pytest_test(
+    test_velocity_feedback
+    test/test_velocity_feedback.py
+  )
+  ament_add_pytest_test(
+    test_capability_profile
+    test/test_capability_profile.py
+  )
 endif()
 
 ament_package()

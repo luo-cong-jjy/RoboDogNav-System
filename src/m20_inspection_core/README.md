@@ -15,9 +15,16 @@ collision stop ------/
 急停、切图保持、地图未就绪和定位超时直接输出零速度，不经过普通加速度限制。命令超时
 和普通停止采用配置的受控减速。
 
-`m20_collision_guard` 对 active occupancy 按 M20 半径 0.38 m 加 0.12 m 余量膨胀，
-并以前视 1.0 s 检查 SCAN 原始速度。地图或里程计未就绪时默认断言停车。该保护是独立
-于 SCAN 内部 GridMap 的最后一道静态地图导航保护；实机阶段仍需增加硬件级保护。
+完整系统的 `m20_collision_guard` 对 active occupancy 使用前后双圆检查滚动化后的
+候选命令。正常 native-SCAN profile 为 0.25 m 机身半径加 0.05 m 余量、0.70 s
+前视；0.60 m 膨胀的后备栅格路线使用独立 robust profile。地图或里程计未就绪时
+默认断言停车。该保护是独立于 SCAN 内部 GridMap 的最后一道静态地图导航保护；
+实机阶段仍需增加硬件级保护。
+
+保护器区分保守安全栅格和不含额外余量的 hard-body 栅格。只有保守离散外壳误命中且
+整条 hard-body 扫掠自由时，才允许有界 `RASTER_SHELL_ESCAPE`；共享地图边缘的
+`MAP_EDGE_INWARD_RECOVERY` 也必须经过完整直线扫掠验证。实体机身占用仍硬停车，
+两类恢复都不能使用纯偏航、横移或带偏航倒车。
 
 阶段 3 的 `/m20/floor_switch` Action 实现双向 F1↔F2 原子切换：
 
@@ -61,3 +68,7 @@ floor-switch manager 会执行 `RECOVERING_COMMITTED_TARGET` 恢复路径，而�
 `mission_hold` 与 `floor_switch_hold` 相互独立，任一为 true 时 safety supervisor
 立即输出零速度。stop、任务取消和未恢复故障都会保留任务 hold，避免上层任务退出后
 底层旧命令恢复。
+
+后备路线还通过 `/m20/control/route_segment_hold` 请求段间锁存停车。该保持与上述
+任务/切层保持同级，立即输出零速并冻结旧 SCAN 轨迹；只有下一段目标已发布且里程计
+完成连续停稳确认后才释放。

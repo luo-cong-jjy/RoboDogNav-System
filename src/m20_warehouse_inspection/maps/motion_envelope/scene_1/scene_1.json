@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "floor_id": "F1",
+  "display_name": "M20 motion envelope open field",
+  "source_bounds": {
+    "x": [
+      -25.0,
+      25.0
+    ],
+    "y": [
+      -25.0,
+      25.0
+    ],
+    "z": [
+      0.0,
+      2.0
+    ]
+  },
+  "coordinate_convention": {
+    "simulation_offset": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "ground_z": 0.0
+  },
+  "obstacle_height": 2.0,
+  "transition_gateway": {
+    "edge": "",
+    "center_y": 0.0,
+    "width": 0.0
+  },
+  "obstacle_count": 0,
+  "obstacles": []
+}

@@ -41,12 +41,24 @@ def generate_launch_description() -> LaunchDescription:
     use_rviz = LaunchConfiguration('use_rviz')
     use_planner = LaunchConfiguration('use_planner')
     use_grid_route = LaunchConfiguration('use_grid_route')
+    collision_grid_route_enabled = LaunchConfiguration(
+        'collision_grid_route_enabled'
+    )
     clearance_config = LaunchConfiguration('clearance_config')
     use_mujoco_viewer = LaunchConfiguration('use_mujoco_viewer')
     mujoco_viewer_distance = LaunchConfiguration(
         'mujoco_viewer_distance'
     )
     real_time_factor = LaunchConfiguration('real_time_factor')
+    initial_x = LaunchConfiguration('initial_x')
+    initial_y = LaunchConfiguration('initial_y')
+    initial_yaw = LaunchConfiguration('initial_yaw')
+    velocity_feedback_enabled = LaunchConfiguration(
+        'velocity_feedback_enabled'
+    )
+    locomotion_capability_config = LaunchConfiguration(
+        'locomotion_capability_config'
+    )
     navigation_timeout_sec = LaunchConfiguration(
         'navigation_timeout_sec'
     )
@@ -65,7 +77,22 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument('use_rviz', default_value='true'),
             DeclareLaunchArgument('use_planner', default_value='true'),
-            DeclareLaunchArgument('use_grid_route', default_value='false'),
+            DeclareLaunchArgument(
+                'use_grid_route',
+                default_value='true',
+                description=(
+                    'Proactively use the M20 clearance route. Set false only '
+                    'for controlled native-SCAN comparison runs.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'collision_grid_route_enabled',
+                default_value='true',
+                description=(
+                    'Keep bounded clearance-route retries available after an '
+                    'M20 footprint-guard rejection.'
+                ),
+            ),
             DeclareLaunchArgument(
                 'clearance_config',
                 default_value=str(
@@ -75,10 +102,11 @@ def generate_launch_description() -> LaunchDescription:
                         )
                     )
                     / 'config'
-                    / 'clearance_conservative.yaml'
+                    / 'clearance_vendor.yaml'
                 ),
                 description=(
-                    'Unified SCAN/collision clearance parameter file.'
+                    'Vendor SCAN planning clearance plus the independent '
+                    'M20 command-guard footprint.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -97,6 +125,40 @@ def generate_launch_description() -> LaunchDescription:
                 ),
             ),
             DeclareLaunchArgument('real_time_factor', default_value='1.0'),
+            DeclareLaunchArgument(
+                'initial_x',
+                default_value='',
+                description='Optional simulation-only cold-start x override.',
+            ),
+            DeclareLaunchArgument(
+                'initial_y',
+                default_value='',
+                description='Optional simulation-only cold-start y override.',
+            ),
+            DeclareLaunchArgument(
+                'initial_yaw',
+                default_value='',
+                description=(
+                    'Optional simulation-only cold-start yaw override.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'velocity_feedback_enabled',
+                default_value='false',
+                description=(
+                    'Enable bounded measured body-velocity PI compensation '
+                    'for MuJoCo A/B validation.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'locomotion_capability_config',
+                default_value=str(
+                    locomotion
+                    / 'config'
+                    / 'm20_policy_v1_capabilities.yaml'
+                ),
+                description='Versioned M20 platform capability profile.',
+            ),
             DeclareLaunchArgument(
                 'navigation_timeout_sec',
                 default_value='300.0',
@@ -120,8 +182,15 @@ def generate_launch_description() -> LaunchDescription:
                     'use_rviz': use_rviz,
                     'use_planner': use_planner,
                     'use_grid_route': use_grid_route,
+                    'collision_grid_route_enabled': (
+                        collision_grid_route_enabled
+                    ),
                     'clearance_config': clearance_config,
                     'motion_backend': 'external',
+                    'velocity_feedback_enabled': velocity_feedback_enabled,
+                    'locomotion_capability_config': (
+                        locomotion_capability_config
+                    ),
                     'navigation_timeout_sec': navigation_timeout_sec,
                     'run_acceptance': run_acceptance,
                     'acceptance_mode': acceptance_mode,
@@ -141,6 +210,9 @@ def generate_launch_description() -> LaunchDescription:
                     'use_viewer': use_mujoco_viewer,
                     'viewer_distance': mujoco_viewer_distance,
                     'real_time_factor': real_time_factor,
+                    'initial_x': initial_x,
+                    'initial_y': initial_y,
+                    'initial_yaw': initial_yaw,
                 }.items(),
             ),
             IncludeLaunchDescription(
@@ -154,6 +226,9 @@ def generate_launch_description() -> LaunchDescription:
                 launch_arguments={
                     'start_sdk': 'true',
                     'require_backend_ready': 'true',
+                    'locomotion_capability_config': (
+                        locomotion_capability_config
+                    ),
                 }.items(),
             ),
         ]

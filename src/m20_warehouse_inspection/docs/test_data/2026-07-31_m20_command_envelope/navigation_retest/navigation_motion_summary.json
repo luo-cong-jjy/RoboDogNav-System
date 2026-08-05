@@ -1,0 +1,301 @@
+{
+  "schema_version": 2,
+  "sample_period_sec": 0.05,
+  "leg_motion_threshold_rad_s": 0.05,
+  "wheel_motion_threshold_rad_s": 0.2,
+  "tests": [
+    {
+      "name": "straight_forward_2p5m",
+      "success": true,
+      "duration_sec": 9.804642907984089,
+      "start": [
+        -36.99764178469402,
+        0.0033103898642992467,
+        -0.04364422602143232
+      ],
+      "target": [
+        -34.5,
+        0.0
+      ],
+      "final": [
+        -34.55816660275767,
+        -0.011031349959943388,
+        -0.05199780936963503
+      ],
+      "final_error_m": 0.05920341508990576,
+      "direct_length_m": 2.4976439784986515,
+      "travel_length_m": 2.496663693667473,
+      "path_length_ratio": 0.9996075161874081,
+      "max_cross_track_m": 0.018233484188418907,
+      "moving_sample_count": 151,
+      "mean_abs_yaw_error_deg": 0.4154632737873978,
+      "p95_abs_yaw_error_deg": 0.8697492208692882,
+      "raw_wz_rms": 0.021048090411226284,
+      "raw_wz_p95": 0.028919154341710645,
+      "raw_wz_above_0p02_fraction": 0.23841059602649006,
+      "controller_heading_error_mean_deg": 0.0,
+      "controller_heading_error_p95_deg": 0.0,
+      "controller_heading_error_max_deg": 0.0,
+      "heading_alignment_sample_fraction": 0.0,
+      "heading_alignment_events": 0,
+      "leg_velocity_rms": 0.26153591385716657,
+      "wheel_velocity_rms": 3.8724815331486373,
+      "wheel_leg_simultaneous_fraction": 0.3509933774834437,
+      "collision_stop_samples": 0,
+      "max_contact_count": 5,
+      "max_obstacle_contact_count": 0,
+      "obstacle_contact_event_count": 0,
+      "obstacle_contact_peak_force_n": 0.0,
+      "trajectory_messages": 4,
+      "mode_transitions": 0,
+      "mode_fraction": {
+        "WHEEL_CRUISE": 1.0
+      }
+    },
+    {
+      "name": "reverse_heading_return_2p5m",
+      "success": true,
+      "duration_sec": 15.066262446984183,
+      "start": [
+        -34.55849727887247,
+        -0.011234447367757765,
+        -0.05988901425875152
+      ],
+      "target": [
+        -37.0,
+        0.0
+      ],
+      "final": [
+        -37.05240634750059,
+        0.0019577093641146366,
+        2.7278126225142167
+      ],
+      "final_error_m": 0.052442901181258716,
+      "direct_length_m": 2.4415285683523713,
+      "travel_length_m": 5.177961855141099,
+      "path_length_ratio": 2.1207869210538743,
+      "max_cross_track_m": 1.1597361877599974,
+      "moving_sample_count": 253,
+      "mean_abs_yaw_error_deg": 53.19006430310634,
+      "p95_abs_yaw_error_deg": 163.2915760917617,
+      "raw_wz_rms": 0.6504749948851188,
+      "raw_wz_p95": 1.0,
+      "raw_wz_above_0p02_fraction": 0.924901185770751,
+      "controller_heading_error_mean_deg": 0.0,
+      "controller_heading_error_p95_deg": 0.0,
+      "controller_heading_error_max_deg": 0.0,
+      "heading_alignment_sample_fraction": 0.0,
+      "heading_alignment_events": 0,
+      "leg_velocity_rms": 1.6003797209835724,
+      "wheel_velocity_rms": 9.776327363707523,
+      "wheel_leg_simultaneous_fraction": 0.8774703557312253,
+      "collision_stop_samples": 0,
+      "max_contact_count": 6,
+      "max_obstacle_contact_count": 0,
+      "obstacle_contact_event_count": 0,
+      "obstacle_contact_peak_force_n": 0.0,
+      "trajectory_messages": 5,
+      "mode_transitions": 4,
+      "mode_fraction": {
+        "COORDINATED_TURN": 0.4426877470355731,
+        "WHEEL_CRUISE": 0.5573122529644269
+      }
+    },
+    {
+      "name": "right_turn_90_and_straight_6m",
+      "success": true,
+      "duration_sec": 22.874738314014394,
+      "start": [
+        -37.05211421347251,
+        0.0018653940390662247,
+        2.7301486109446165
+      ],
+      "target": [
+        -37.0,
+        -6.0
+      ],
+      "final": [
+        -37.00757127414385,
+        -6.019329547989128,
+        -1.5511763754611745
+      ],
+      "final_error_m": 0.02075947055262528,
+      "direct_length_m": 6.002091643703015,
+      "travel_length_m": 7.114857188476631,
+      "path_length_ratio": 1.1853962936305802,
+      "max_cross_track_m": 0.4759692420469907,
+      "moving_sample_count": 407,
+      "mean_abs_yaw_error_deg": 16.976504237213003,
+      "p95_abs_yaw_error_deg": 88.36774089001425,
+      "raw_wz_rms": 0.4947705309537569,
+      "raw_wz_p95": 1.0,
+      "raw_wz_above_0p02_fraction": 0.9852579852579852,
+      "controller_heading_error_mean_deg": 0.0,
+      "controller_heading_error_p95_deg": 0.0,
+      "controller_heading_error_max_deg": 0.0,
+      "heading_alignment_sample_fraction": 0.0,
+      "heading_alignment_events": 0,
+      "leg_velocity_rms": 1.1259716209462178,
+      "wheel_velocity_rms": 5.397317900361267,
+      "wheel_leg_simultaneous_fraction": 0.5798525798525799,
+      "collision_stop_samples": 0,
+      "max_contact_count": 6,
+      "max_obstacle_contact_count": 0,
+      "obstacle_contact_event_count": 0,
+      "obstacle_contact_peak_force_n": 0.0,
+      "trajectory_messages": 11,
+      "mode_transitions": 8,
+      "mode_fraction": {
+        "COORDINATED_TURN": 0.21375921375921375,
+        "WHEEL_CRUISE": 0.7862407862407862
+      }
+    },
+    {
+      "name": "left_turn_90_and_straight_3m",
+      "success": true,
+      "duration_sec": 13.378788029018324,
+      "start": [
+        -37.00801001188199,
+        -6.017988942414306,
+        -1.5672686257442
+      ],
+      "target": [
+        -34.0,
+        -6.0
+      ],
+      "final": [
+        -34.11029342422074,
+        -6.013049419354254,
+        0.011704810168123985
+      ],
+      "final_error_m": 0.11106271548913187,
+      "direct_length_m": 3.008063801456261,
+      "travel_length_m": 3.341784608658131,
+      "path_length_ratio": 1.1109420641411627,
+      "max_cross_track_m": 0.2687624739979137,
+      "moving_sample_count": 221,
+      "mean_abs_yaw_error_deg": 18.48411910735398,
+      "p95_abs_yaw_error_deg": 79.83568643502629,
+      "raw_wz_rms": 0.5121325892445333,
+      "raw_wz_p95": 1.0,
+      "raw_wz_above_0p02_fraction": 0.5520361990950227,
+      "controller_heading_error_mean_deg": 0.0,
+      "controller_heading_error_p95_deg": 0.0,
+      "controller_heading_error_max_deg": 0.0,
+      "heading_alignment_sample_fraction": 0.0,
+      "heading_alignment_events": 0,
+      "leg_velocity_rms": 1.1423877869556636,
+      "wheel_velocity_rms": 5.418499361792749,
+      "wheel_leg_simultaneous_fraction": 0.669683257918552,
+      "collision_stop_samples": 0,
+      "max_contact_count": 6,
+      "max_obstacle_contact_count": 0,
+      "obstacle_contact_event_count": 0,
+      "obstacle_contact_peak_force_n": 0.0,
+      "trajectory_messages": 5,
+      "mode_transitions": 8,
+      "mode_fraction": {
+        "COORDINATED_TURN": 0.2669683257918552,
+        "WHEEL_CRUISE": 0.7330316742081447
+      }
+    },
+    {
+      "name": "reverse_heading_return_3m",
+      "success": true,
+      "duration_sec": 16.816078893985832,
+      "start": [
+        -34.110506034939334,
+        -6.012887586448431,
+        0.0017210928768958786
+      ],
+      "target": [
+        -37.0,
+        -6.0
+      ],
+      "final": [
+        -36.849161518187756,
+        -5.944169854645461,
+        -2.898207363817298
+      ],
+      "final_error_m": 0.1608392138930415,
+      "direct_length_m": 2.8895227052242514,
+      "travel_length_m": 4.410697566878014,
+      "path_length_ratio": 1.5264450280676047,
+      "max_cross_track_m": 0.8535136320851159,
+      "moving_sample_count": 287,
+      "mean_abs_yaw_error_deg": 49.19066190359736,
+      "p95_abs_yaw_error_deg": 167.0877194185569,
+      "raw_wz_rms": 0.6765876838317791,
+      "raw_wz_p95": 1.0,
+      "raw_wz_above_0p02_fraction": 0.818815331010453,
+      "controller_heading_error_mean_deg": 0.0,
+      "controller_heading_error_p95_deg": 0.0,
+      "controller_heading_error_max_deg": 0.0,
+      "heading_alignment_sample_fraction": 0.0,
+      "heading_alignment_events": 0,
+      "leg_velocity_rms": 1.3582439499390573,
+      "wheel_velocity_rms": 6.204356461229183,
+      "wheel_leg_simultaneous_fraction": 0.9651567944250871,
+      "collision_stop_samples": 0,
+      "max_contact_count": 6,
+      "max_obstacle_contact_count": 0,
+      "obstacle_contact_event_count": 0,
+      "obstacle_contact_peak_force_n": 0.0,
+      "trajectory_messages": 4,
+      "mode_transitions": 8,
+      "mode_fraction": {
+        "COORDINATED_TURN": 0.4355400696864111,
+        "WHEEL_CRUISE": 0.5644599303135889
+      }
+    },
+    {
+      "name": "left_turn_90_return_home_6m",
+      "success": true,
+      "duration_sec": 22.374687970004743,
+      "start": [
+        -36.84854137046431,
+        -5.944803989183675,
+        -2.9101657676201236
+      ],
+      "target": [
+        -37.0,
+        0.0
+      ],
+      "final": [
+        -37.019804621125395,
+        -0.06003626365921482,
+        1.3628884670591013
+      ],
+      "final_error_m": 0.06321847809050145,
+      "direct_length_m": 5.94673306835568,
+      "travel_length_m": 7.278013738110183,
+      "path_length_ratio": 1.22386756803305,
+      "max_cross_track_m": 1.0071252002454723,
+      "moving_sample_count": 395,
+      "mean_abs_yaw_error_deg": 22.355838146062453,
+      "p95_abs_yaw_error_deg": 76.07216940465632,
+      "raw_wz_rms": 0.5330732146072935,
+      "raw_wz_p95": 1.0,
+      "raw_wz_above_0p02_fraction": 0.7139240506329114,
+      "controller_heading_error_mean_deg": 0.0,
+      "controller_heading_error_p95_deg": 0.0,
+      "controller_heading_error_max_deg": 0.0,
+      "heading_alignment_sample_fraction": 0.0,
+      "heading_alignment_events": 0,
+      "leg_velocity_rms": 1.1013444298392114,
+      "wheel_velocity_rms": 5.558769420816355,
+      "wheel_leg_simultaneous_fraction": 0.5392405063291139,
+      "collision_stop_samples": 0,
+      "max_contact_count": 6,
+      "max_obstacle_contact_count": 0,
+      "obstacle_contact_event_count": 0,
+      "obstacle_contact_peak_force_n": 0.0,
+      "trajectory_messages": 11,
+      "mode_transitions": 8,
+      "mode_fraction": {
+        "COORDINATED_TURN": 0.21772151898734177,
+        "WHEEL_CRUISE": 0.7822784810126582
+      }
+    }
+  ]
+}

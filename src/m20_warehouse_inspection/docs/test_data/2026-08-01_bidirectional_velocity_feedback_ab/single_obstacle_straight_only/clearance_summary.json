@@ -1,0 +1,81 @@
+{
+  "schema_version": 2,
+  "action_success": true,
+  "action_message": "mission complete",
+  "duration_sec": 32.86403703899987,
+  "final_error_m": 0.17972129241869544,
+  "minimum_circle_center_obstacle_distance_m": 0.41450507630335076,
+  "minimum_scan_hard_clearance_m": 0.16450507630335076,
+  "minimum_guard_clearance_m": 0.11450507630335077,
+  "doorway_sample": {
+    "x": -12.504321067158969,
+    "y": -1.5145350241389364,
+    "yaw": -0.0688513590893197,
+    "distance_from_doorway_x_m": 0.004321067158969072,
+    "guard_clearance_m": 0.2021515688981968
+  },
+  "collision_stop_sample_count": 32,
+  "predicted_stop_event_count": 1,
+  "rotation_recovery_event_count": 1,
+  "recovery_budget_exhausted_event_count": 0,
+  "current_stop_event_count": 0,
+  "guard_events": [
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.55s; circle=front; xy=(-13.39,-1.15); yaw=-0.50; cell=(132,177); cmd=(0.45,0.00,0.35); recovery=(0.35,0.00,-0.35)"
+  ],
+  "obstacle_contact_event_count": 0,
+  "obstacle_contact_peak_force_n": 0.0,
+  "longest_commanded_stationary_sec": 0.359364246000041,
+  "velocity_tracking_sample_count": 600,
+  "rms_forward_velocity_tracking_error_mps": 0.09274096310391597,
+  "rms_yaw_velocity_tracking_error_radps": 0.0731367520660715,
+  "velocity_feedback_active_sample_count": 371,
+  "velocity_feedback_reason_counts": {
+    "UNAVAILABLE": 2,
+    "MANEUVER_GATED": 233,
+    "STOPPED": 3,
+    "ACTIVE": 371,
+    "EXECUTION_HOLD": 31,
+    "COMMAND_ZEROED": 1
+  },
+  "maximum_abs_feedback_vx_correction_mps": 0.07270939800000004,
+  "maximum_abs_feedback_wz_correction_radps": 0.014071278619819216,
+  "trajectory_messages": 17,
+  "feedback": [
+    {
+      "state": "STARTING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "mission accepted"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "child action running"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "native SCAN trajectory tracking"
+    },
+    {
+      "state": "DWELLING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "inspecting F1_DIRECT_EXIT"
+    },
+    {
+      "state": "STEP_COMPLETE",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "F1_DIRECT_EXIT complete"
+    },
+    {
+      "state": "COMPLETED",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "mission complete"
+    }
+  ]
+}

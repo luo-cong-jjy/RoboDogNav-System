@@ -62,6 +62,60 @@ def slew_command(
     return tuple(output)
 
 
+def proportional_ramp_command(
+    current: PlanarCommand,
+    target: PlanarCommand,
+    dt: float,
+    ramp_duration: float,
+) -> PlanarCommand:
+    """
+    Ramp all components by one scale so command curvature stays constant.
+
+    Collision recovery starts from a hard stop.  If its direction changes,
+    restart from zero rather than crossing through an unvalidated mixed
+    command.
+    """
+    if ramp_duration <= 0.0:
+        return target
+    if dt <= 0.0:
+        return current
+    norm_squared = sum(value * value for value in target)
+    if norm_squared <= 1.0e-12:
+        return target
+    alignment = sum(
+        old * new for old, new in zip(current, target)
+    )
+    if alignment <= 0.0:
+        current_scale = 0.0
+    else:
+        current_scale = max(
+            0.0,
+            min(
+                1.0,
+                alignment / norm_squared,
+            ),
+        )
+    scale = min(1.0, current_scale + dt / ramp_duration)
+    return tuple(scale * value for value in target)
+
+
+def valid_collision_recovery_command(command: PlanarCommand) -> bool:
+    """
+    Accept only recovery shapes validated for the current M20 policy.
+
+    Forward recovery may be straight or a rolling turn after the collision
+    guard validates its complete sweep. Straight reverse is also allowed as a
+    checked escape. Pure yaw, lateral motion, and reverse-yaw remain forbidden.
+    """
+    vx, vy, wz = command
+    epsilon = 1.0e-3
+    if abs(vy) > 1.0e-9 or abs(vx) <= epsilon:
+        return False
+    if vx < -epsilon:
+        return abs(wz) <= epsilon
+    return True
+
+
 def select_fresh_command(
     now: float,
     timeout: float,

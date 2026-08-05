@@ -55,6 +55,7 @@ from .dynamics import (
     quaternion_to_rpy,
     raw_to_sdk,
     sdk_to_raw,
+    world_vector_to_body,
     yaw_quaternion,
 )
 
@@ -642,7 +643,16 @@ class M20MujocoBackend(Node):
         stamp = self.get_clock().now().to_msg()
         position = np.nan_to_num(self._data.qpos[:3])
         quaternion = normalized_quaternion(self._data.qpos[3:7])
-        velocity = np.nan_to_num(self._data.qvel[:6])
+        generalized_velocity = np.nan_to_num(self._data.qvel[:6])
+        # MuJoCo free-joint translation is world-frame while rotation is
+        # body-frame. ROS Odometry requires the complete twist to use
+        # child_frame_id, so rotate only the linear component to base_link.
+        linear_velocity_world = generalized_velocity[:3]
+        linear_velocity_body = world_vector_to_body(
+            linear_velocity_world,
+            quaternion,
+        )
+        angular_velocity_body = generalized_velocity[3:6]
 
         raw_position = self._data.qpos[7:23].copy()
         raw_velocity = self._data.qvel[6:22].copy()
@@ -702,12 +712,12 @@ class M20MujocoBackend(Node):
         odometry.pose.pose.orientation.x = float(quaternion[1])
         odometry.pose.pose.orientation.y = float(quaternion[2])
         odometry.pose.pose.orientation.z = float(quaternion[3])
-        odometry.twist.twist.linear.x = float(velocity[0])
-        odometry.twist.twist.linear.y = float(velocity[1])
-        odometry.twist.twist.linear.z = float(velocity[2])
-        odometry.twist.twist.angular.x = float(velocity[3])
-        odometry.twist.twist.angular.y = float(velocity[4])
-        odometry.twist.twist.angular.z = float(velocity[5])
+        odometry.twist.twist.linear.x = float(linear_velocity_body[0])
+        odometry.twist.twist.linear.y = float(linear_velocity_body[1])
+        odometry.twist.twist.linear.z = float(linear_velocity_body[2])
+        odometry.twist.twist.angular.x = float(angular_velocity_body[0])
+        odometry.twist.twist.angular.y = float(angular_velocity_body[1])
+        odometry.twist.twist.angular.z = float(angular_velocity_body[2])
         self._body_pose_pub.publish(odometry)
 
         transform = TransformStamped()
@@ -757,7 +767,15 @@ class M20MujocoBackend(Node):
             if self._last_command_monotonic is None
             else now - self._last_command_monotonic
         )
-        roll, pitch, yaw = quaternion_to_rpy(self._data.qpos[3:7])
+        quaternion = normalized_quaternion(self._data.qpos[3:7])
+        roll, pitch, yaw = quaternion_to_rpy(quaternion)
+        generalized_velocity = np.nan_to_num(self._data.qvel[:6])
+        linear_velocity_world = generalized_velocity[:3]
+        linear_velocity_body = world_vector_to_body(
+            linear_velocity_world,
+            quaternion,
+        )
+        angular_velocity_body = generalized_velocity[3:6]
         state = {
             'ready': self._ready,
             'fault': self._fault,
@@ -770,7 +788,18 @@ class M20MujocoBackend(Node):
             'measured_real_time_factor': simulation_elapsed / wall_elapsed,
             'base_position': self._data.qpos[:3].tolist(),
             'base_rpy': [roll, pitch, yaw],
-            'base_velocity': self._data.qvel[:6].tolist(),
+            # Compatibility field: MuJoCo free-joint qvel stores world-frame
+            # translation followed by body-frame angular velocity.
+            'base_velocity': generalized_velocity.tolist(),
+            'base_linear_velocity_world': (
+                linear_velocity_world.tolist()
+            ),
+            'base_linear_velocity_body': (
+                linear_velocity_body.tolist()
+            ),
+            'base_angular_velocity_body': (
+                angular_velocity_body.tolist()
+            ),
             'contact_count': int(self._data.ncon),
             'obstacle_contact_count': self._obstacle_contact_count,
             'obstacle_contact_event_count': (

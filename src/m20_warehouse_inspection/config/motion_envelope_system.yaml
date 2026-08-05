@@ -1,0 +1,15 @@
+schema_version: 1
+system:
+  project_id: m20_motion_envelope
+  robot_model: deep_robotics_m20
+  default_profile: open_field
+  logical_floor_count: 1
+
+# This profile is intentionally limited to the MuJoCo backend. It contains no
+# navigation map or inspection route, so SCAN cannot affect SDK measurements.
+floors:
+  F1:
+    display_name: motion_envelope_open_field
+    simulation_offset: [0.0, 0.0, 0.0]
+    metadata_file: maps/motion_envelope/scene_1/scene_1.json
+    initial_pose: [0.0, 0.0, 0.0]

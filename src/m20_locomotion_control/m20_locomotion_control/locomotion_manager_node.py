@@ -51,6 +51,9 @@ class LocomotionManager(Node):
         self.declare_parameter(
             'safety_state_topic', '/m20/control/safety_state'
         )
+        self.declare_parameter('capability_profile_id', 'fallback_defaults')
+        self.declare_parameter('minimum_centerline_turn_radius', 0.0)
+        self.declare_parameter('turn_swept_radius', 0.0)
         self.declare_parameter('require_backend_ready', False)
         self.declare_parameter('rolling_navigation_enabled', True)
         self.declare_parameter('allow_manual_lateral', True)
@@ -65,20 +68,25 @@ class LocomotionManager(Node):
         self.declare_parameter('in_place_linear_threshold', 0.08)
         self.declare_parameter('turn_curvature_threshold', 1.20)
         self.declare_parameter('curvature_speed_floor', 0.05)
-        self.declare_parameter('turn_max_forward', 0.12)
+        self.declare_parameter('turn_min_forward', 0.35)
+        self.declare_parameter('turn_max_forward', 0.45)
         self.declare_parameter('lateral_max_forward', 0.10)
         self.declare_parameter('suppress_side_in_cruise', True)
         self.declare_parameter('suppress_side_in_turn', True)
-        self.declare_parameter('course_yaw_gain', 0.80)
+        self.declare_parameter('course_yaw_gain', 1.20)
         self.declare_parameter('turn_course_enter', 0.25)
         self.declare_parameter('turn_course_exit', 0.08)
-        self.declare_parameter('turn_yaw_exit', 0.12)
-        self.declare_parameter('turn_min_hold_sec', 0.30)
-        self.declare_parameter('cruise_yaw_deadband', 0.04)
+        self.declare_parameter('turn_yaw_exit', 0.20)
+        self.declare_parameter('turn_min_hold_sec', 0.50)
+        self.declare_parameter('cruise_yaw_deadband', 0.02)
         self.declare_parameter(
             'cruise_yaw_filter_time_constant',
             0.12,
         )
+        self.declare_parameter('reverse_speed_offset', 0.19)
+        self.declare_parameter('reverse_speed_gain', 1.32)
+        self.declare_parameter('reverse_yaw_offset', 0.15)
+        self.declare_parameter('reverse_yaw_gain', 1.00)
         self.declare_parameter('output_linear_accel', 1.0)
         self.declare_parameter('output_yaw_accel', 1.2)
 
@@ -106,6 +114,9 @@ class LocomotionManager(Node):
             ),
             curvature_speed_floor=float(
                 self.get_parameter('curvature_speed_floor').value
+            ),
+            turn_min_forward=float(
+                self.get_parameter('turn_min_forward').value
             ),
             turn_max_forward=float(
                 self.get_parameter('turn_max_forward').value
@@ -141,6 +152,18 @@ class LocomotionManager(Node):
                 self.get_parameter(
                     'cruise_yaw_filter_time_constant'
                 ).value
+            ),
+            reverse_speed_offset=float(
+                self.get_parameter('reverse_speed_offset').value
+            ),
+            reverse_speed_gain=float(
+                self.get_parameter('reverse_speed_gain').value
+            ),
+            reverse_yaw_offset=float(
+                self.get_parameter('reverse_yaw_offset').value
+            ),
+            reverse_yaw_gain=float(
+                self.get_parameter('reverse_yaw_gain').value
             ),
             output_linear_accel=float(
                 self.get_parameter('output_linear_accel').value
@@ -223,7 +246,8 @@ class LocomotionManager(Node):
             'Locomotion manager ready: safe Twist -> SDK Twist; '
             'autonomous rolling adapter='
             f'{self._rolling_navigation_enabled}; motion mode is an intent '
-            'label, not a discrete ONNX gait input'
+            'label, not a discrete ONNX gait input; capability profile='
+            f'{self.get_parameter("capability_profile_id").value}'
         )
 
     def _command_callback(self, message: Twist) -> None:

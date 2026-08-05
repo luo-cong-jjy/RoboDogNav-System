@@ -73,23 +73,30 @@ def test_backend_is_downstream_of_safety_supervisor() -> None:
     assert "executable='m20_navigation_adapter'" in launch
 
 
-def test_integrated_system_uses_m20_heading_tracking_override() -> None:
+def test_integrated_system_keeps_vendor_scan_controller() -> None:
     launch = (
         PACKAGE_ROOT / 'launch' / 'multifloor_scan_rviz.launch.py'
     ).read_text(encoding='utf-8')
-    assert 'scan_m20_physical_controller.yaml' in launch
+    assert 'scan_vendor_controller.yaml' in launch
+    assert 'scan_m20_physical_controller.yaml' not in launch
     assert "'controller_config': controller_config" in launch
-    controller = (
-        SOURCE_ROOT
-        / 'm20_scan_planner'
-        / 'src'
-        / 'closed_loop_controller.cpp'
+    assert 'capability_profile.controller_parameters()' in launch
+    assert "'bidirectional_tracking_enabled'" in launch
+    assert "'reverse_tracking_entry_alignment'" in launch
+    assert "'reverse_tracking_exit_alignment'" in launch
+    assert "executable='m20_navigation_adapter'" in launch
+
+
+def test_integrated_system_has_no_scan_planner_speed_override() -> None:
+    launch = (
+        PACKAGE_ROOT / 'launch' / 'multifloor_scan_rviz.launch.py'
     ).read_text(encoding='utf-8')
-    assert 'heading_error_resume_threshold' in controller
-    assert 'heading_slowdown_threshold' in controller
-    assert 'heading_alignment_min_hold_sec' in controller
-    assert 'if (heading_aligning_)' in controller
-    assert 'vel_world *= headingTranslationScale' in controller
+    assert 'scan_m20_physical_planner.yaml' not in launch
+    assert 'planner_config' not in launch
+
+    f1_launch = _launch_text()
+    assert 'scan_m20_physical_planner.yaml' not in f1_launch
+    assert 'scan_m20_physical_controller.yaml' not in f1_launch
 
 
 def test_collision_guard_profile_follows_navigation_profile() -> None:

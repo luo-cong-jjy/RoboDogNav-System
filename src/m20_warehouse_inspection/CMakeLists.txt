@@ -13,7 +13,9 @@ install(
 
 install(
   PROGRAMS
+    scripts/m20_boundary_recovery_probe
     scripts/m20_clearance_probe
+    scripts/m20_command_envelope_probe
     scripts/m20_flat_map_server
     scripts/m20_generate_maps
     scripts/m20_phase4_acceptance
@@ -78,6 +80,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_mujoco_bringup
     test/test_mujoco_bringup.py
+  )
+  ament_add_pytest_test(
+    test_boundary_recovery
+    test/test_boundary_recovery.py
   )
   ament_add_pytest_test(
     test_narrow_passage

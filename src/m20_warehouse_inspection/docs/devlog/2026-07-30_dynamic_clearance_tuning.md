@@ -88,6 +88,8 @@ lookahead_sec: 1.00
 - 后续航向跟随试验把 SCAN 硬半径改为 `0.30 m`、软距离改为 `0.15 m`，名义总包络
   仍为 `0.45 m`；最新结论见
   `docs/devlog/2026-07-30_heading_alignment_control.md`。
+- 完成对比后，正式默认值按项目决策恢复原项目 `0.25/0.20 m` 硬/软拆分；独立
+  `0.30 m` 保护器不变。
 
 完整数值和验收判据见
 `docs/test_reports/2026-07-30_dynamic_clearance_tuning.md`。

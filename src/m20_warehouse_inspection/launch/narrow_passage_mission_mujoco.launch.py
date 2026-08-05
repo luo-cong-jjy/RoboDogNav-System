@@ -96,6 +96,9 @@ def _include_profile(context):
                 'navigation_timeout_sec': LaunchConfiguration(
                     'navigation_timeout_sec'
                 ),
+                'velocity_feedback_enabled': LaunchConfiguration(
+                    'velocity_feedback_enabled'
+                ),
             }.items(),
         )
     ]
@@ -129,6 +132,10 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument(
                 'navigation_timeout_sec',
                 default_value='120.0',
+            ),
+            DeclareLaunchArgument(
+                'velocity_feedback_enabled',
+                default_value='false',
             ),
             OpaqueFunction(function=_include_profile),
         ]

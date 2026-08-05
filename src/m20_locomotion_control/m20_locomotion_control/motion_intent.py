@@ -48,17 +48,22 @@ class IntentParameters:
     in_place_linear_threshold: float = 0.08
     turn_curvature_threshold: float = 1.20
     curvature_speed_floor: float = 0.05
-    turn_max_forward: float = 0.12
+    turn_min_forward: float = 0.35
+    turn_max_forward: float = 0.45
     lateral_max_forward: float = 0.10
     suppress_side_in_cruise: bool = True
     suppress_side_in_turn: bool = True
-    course_yaw_gain: float = 0.80
+    course_yaw_gain: float = 1.20
     turn_course_enter: float = 0.25
     turn_course_exit: float = 0.08
-    turn_yaw_exit: float = 0.12
-    turn_min_hold_sec: float = 0.30
-    cruise_yaw_deadband: float = 0.04
+    turn_yaw_exit: float = 0.20
+    turn_min_hold_sec: float = 0.50
+    cruise_yaw_deadband: float = 0.02
     cruise_yaw_filter_time_constant: float = 0.12
+    reverse_speed_offset: float = 0.19
+    reverse_speed_gain: float = 1.32
+    reverse_yaw_offset: float = 0.15
+    reverse_yaw_gain: float = 1.00
     output_linear_accel: float = 1.0
     output_yaw_accel: float = 1.2
 
@@ -159,6 +164,33 @@ def _soft_deadband(value: float, deadband: float) -> float:
     return math.copysign(magnitude - threshold, value)
 
 
+def _reverse_deadzone_compensation(
+    value: float,
+    offset: float,
+    gain: float,
+    limit: float,
+) -> float:
+    """Map a negative request through the measured official-policy dead zone."""
+    if value >= 0.0:
+        return value
+    magnitude = max(0.0, offset) + max(0.0, gain) * abs(value)
+    return -min(max(0.0, limit), magnitude)
+
+
+def _reverse_yaw_compensation(
+    value: float,
+    offset: float,
+    gain: float,
+    limit: float,
+    deadband: float,
+) -> float:
+    """Compensate weak reverse-turn response while preserving yaw direction."""
+    if abs(value) <= max(0.0, deadband):
+        return 0.0
+    magnitude = max(0.0, offset) + max(0.0, gain) * abs(value)
+    return math.copysign(min(max(0.0, limit), magnitude), value)
+
+
 class RollingNavigationAdapter:
     """Convert holonomic path tracking into stable rolling-and-yaw commands."""
 
@@ -217,20 +249,22 @@ class RollingNavigationAdapter:
             abs(forward),
             self._parameters.curvature_speed_floor,
         )
-        enter_turn = (
-            abs(course_error) >= self._parameters.turn_course_enter
-            or (
-                abs(desired_yaw) >= self._parameters.turn_yaw_threshold
-                and (
-                    abs(forward)
-                    <= self._parameters.in_place_linear_threshold
-                    or curvature
-                    >= self._parameters.turn_curvature_threshold
-                )
+        stable_roll_required = (
+            abs(desired_yaw) > self._parameters.deadband_yaw
+            and (
+                abs(forward)
+                <= self._parameters.in_place_linear_threshold
+                or curvature
+                >= self._parameters.turn_curvature_threshold
             )
         )
+        enter_turn = (
+            abs(course_error) >= self._parameters.turn_course_enter
+            or stable_roll_required
+        )
         exit_turn = (
-            abs(course_error) <= self._parameters.turn_course_exit
+            not stable_roll_required
+            and abs(course_error) <= self._parameters.turn_course_exit
             and abs(desired_yaw) <= self._parameters.turn_yaw_exit
         )
         if self._turning:
@@ -253,11 +287,39 @@ class RollingNavigationAdapter:
             ),
             forward if abs(forward) > 1.0e-9 else 1.0,
         )
-        if self._turning:
-            target_forward = _clamp(
-                rolling_speed,
-                self._parameters.turn_max_forward,
+        rolling_speed = _reverse_deadzone_compensation(
+            rolling_speed,
+            self._parameters.reverse_speed_offset,
+            self._parameters.reverse_speed_gain,
+            self._parameters.max_forward,
+        )
+        if rolling_speed < -self._parameters.deadband_linear:
+            desired_yaw = _reverse_yaw_compensation(
+                desired_yaw,
+                self._parameters.reverse_yaw_offset,
+                self._parameters.reverse_yaw_gain,
+                self._parameters.max_yaw,
+                self._parameters.deadband_yaw,
             )
+        if self._turning:
+            turn_limit = min(
+                self._parameters.max_forward,
+                max(0.0, self._parameters.turn_max_forward),
+            )
+            target_forward = _clamp(rolling_speed, turn_limit)
+            if (
+                stable_roll_required
+                and turn_limit > self._parameters.deadband_linear
+            ):
+                turn_floor = min(
+                    turn_limit,
+                    max(0.0, self._parameters.turn_min_forward),
+                )
+                direction = -1.0 if rolling_speed < 0.0 else 1.0
+                target_forward = direction * max(
+                    abs(target_forward),
+                    turn_floor,
+                )
             target_yaw = desired_yaw
             self._filtered_cruise_yaw = target_yaw
             intent = MotionIntent.COORDINATED_TURN
@@ -282,11 +344,6 @@ class RollingNavigationAdapter:
             target_yaw = self._filtered_cruise_yaw
             intent = MotionIntent.WHEEL_CRUISE
 
-        pure_turn_request = (
-            abs(forward) <= self._parameters.deadband_linear
-            and abs(side) <= self._parameters.deadband_linear
-            and abs(yaw) > self._parameters.deadband_yaw
-        )
         turn_without_translation = (
             self._turning
             and self._parameters.turn_max_forward
@@ -294,7 +351,7 @@ class RollingNavigationAdapter:
         )
         output_forward = (
             0.0
-            if pure_turn_request or turn_without_translation
+            if turn_without_translation
             else _slew(
                 self._last_output[0],
                 target_forward,

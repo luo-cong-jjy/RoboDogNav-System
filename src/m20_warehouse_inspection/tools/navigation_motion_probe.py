@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run repeatable free-navigation probes and record wheel-leg motion metrics."""
+"""Record repeatable free-navigation and wheel-leg motion metrics."""
 
 import argparse
 import csv
@@ -101,10 +101,15 @@ class NavigationMotionProbe(Node):
         self.sdk_command = Twist()
         self.joint_state = None
         self.mode = 'UNKNOWN'
+        self.tracking_direction = 'UNKNOWN'
         self.collision_stop = False
+        self.guard_diagnostic = 'NOT_READY'
+        self.guard_events = []
         self.heading_error = 0.0
         self.heading_aligning = False
+        self.backend_fault = ''
         self.dynamics = {}
+        self.velocity_feedback = {}
         self.trajectory_count = 0
         self.create_subscription(
             Odometry,
@@ -143,6 +148,16 @@ class NavigationMotionProbe(Node):
             latched,
         )
         self.create_subscription(
+            String,
+            '/planning/tracking_direction',
+            lambda message: setattr(
+                self,
+                'tracking_direction',
+                str(message.data),
+            ),
+            10,
+        )
+        self.create_subscription(
             Bool,
             '/m20/control/collision_stop',
             lambda message: setattr(
@@ -150,6 +165,12 @@ class NavigationMotionProbe(Node):
                 'collision_stop',
                 bool(message.data),
             ),
+            latched,
+        )
+        self.create_subscription(
+            String,
+            '/m20/control/collision_guard_diagnostic',
+            self._guard_diagnostic_callback,
             latched,
         )
         self.create_subscription(
@@ -179,6 +200,22 @@ class NavigationMotionProbe(Node):
             20,
         )
         self.create_subscription(
+            String,
+            '/m20/sim/backend_fault',
+            lambda message: setattr(
+                self,
+                'backend_fault',
+                str(message.data),
+            ),
+            latched,
+        )
+        self.create_subscription(
+            String,
+            '/m20/navigation/velocity_feedback_state',
+            self._velocity_feedback_callback,
+            20,
+        )
+        self.create_subscription(
             Bspline,
             '/planning/bspline',
             lambda _message: setattr(
@@ -197,6 +234,37 @@ class NavigationMotionProbe(Node):
             self.dynamics = json.loads(message.data)
         except json.JSONDecodeError:
             self.dynamics = {}
+
+    def _velocity_feedback_callback(self, message: String) -> None:
+        try:
+            diagnostic = json.loads(message.data)
+            self.velocity_feedback = (
+                diagnostic if isinstance(diagnostic, dict) else {}
+            )
+        except json.JSONDecodeError:
+            self.velocity_feedback = {}
+
+    def _feedback_component(self, field: str, index: int):
+        vector = self.velocity_feedback.get(field)
+        if not isinstance(vector, list) or len(vector) <= index:
+            return None
+        try:
+            value = float(vector[index])
+        except (TypeError, ValueError):
+            return None
+        return value if math.isfinite(value) else None
+
+    def _guard_diagnostic_callback(self, message: String) -> None:
+        diagnostic = str(message.data)
+        self.guard_diagnostic = diagnostic
+        if diagnostic.startswith(
+            (
+                'CURRENT_FOOTPRINT',
+                'PREDICTED_FOOTPRINT',
+                'RECOVERY_BUDGET_EXHAUSTED',
+            )
+        ):
+            self.guard_events.append(diagnostic)
 
     def publish_goal(self, x: float, y: float, yaw: float) -> None:
         message = PoseStamped()
@@ -248,11 +316,41 @@ class NavigationMotionProbe(Node):
             'sdk_vy': float(self.sdk_command.linear.y),
             'sdk_wz': float(self.sdk_command.angular.z),
             'mode': self.mode,
+            'tracking_direction': self.tracking_direction,
             'leg_velocity_max': leg_max,
             'wheel_velocity_max': wheel_max,
             'collision_stop': self.collision_stop,
+            'guard_diagnostic': self.guard_diagnostic,
             'heading_error': self.heading_error,
             'heading_aligning': self.heading_aligning,
+            'backend_fault': self.backend_fault,
+            'feedback_enabled': bool(
+                self.velocity_feedback.get('enabled', False)
+            ),
+            'feedback_active': bool(
+                self.velocity_feedback.get('active', False)
+            ),
+            'feedback_reason': str(
+                self.velocity_feedback.get('reason', 'UNAVAILABLE')
+            ),
+            'feedback_reference_vx': self._feedback_component(
+                'reference', 0
+            ),
+            'feedback_reference_wz': self._feedback_component(
+                'reference', 2
+            ),
+            'feedback_measurement_vx': self._feedback_component(
+                'measurement', 0
+            ),
+            'feedback_measurement_wz': self._feedback_component(
+                'measurement', 2
+            ),
+            'feedback_correction_vx': self._feedback_component(
+                'correction', 0
+            ),
+            'feedback_correction_wz': self._feedback_component(
+                'correction', 2
+            ),
             # Total MuJoCo contacts include normal wheel/foot-ground contacts.
             'contact_count': int(self.dynamics.get('contact_count', 0)),
             'obstacle_contact_count': int(
@@ -287,6 +385,7 @@ def _summarise_test(
     duration: float,
     success: bool,
     trajectories: int,
+    guard_events,
 ):
     moving = [
         sample for sample in samples
@@ -332,7 +431,58 @@ def _summarise_test(
         mode: count / max(1, len(moving))
         for mode, count in sorted(modes.items())
     }
+    directions = {}
+    for sample in moving:
+        direction = sample['tracking_direction']
+        directions[direction] = directions.get(direction, 0) + 1
+    tracking_direction_fraction = {
+        direction: count / max(1, len(moving))
+        for direction, count in sorted(directions.items())
+    }
+    feedback_samples = [
+        sample for sample in moving
+        if sample['feedback_reference_vx'] is not None
+        and sample['feedback_reference_wz'] is not None
+        and sample['feedback_measurement_vx'] is not None
+        and sample['feedback_measurement_wz'] is not None
+    ]
+    linear_tracking_errors = [
+        sample['feedback_reference_vx']
+        - sample['feedback_measurement_vx']
+        for sample in feedback_samples
+    ]
+    yaw_tracking_errors = [
+        sample['feedback_reference_wz']
+        - sample['feedback_measurement_wz']
+        for sample in feedback_samples
+    ]
+    linear_corrections = [
+        float(sample['feedback_correction_vx'] or 0.0)
+        for sample in feedback_samples
+    ]
+    yaw_corrections = [
+        float(sample['feedback_correction_wz'] or 0.0)
+        for sample in feedback_samples
+    ]
+    feedback_reasons = {}
+    for sample in moving:
+        reason = sample['feedback_reason']
+        feedback_reasons[reason] = feedback_reasons.get(reason, 0) + 1
     final = samples[-1]
+    collision_spans = []
+    collision_started = None
+    collision_last = None
+    for sample in samples:
+        if sample['collision_stop']:
+            if collision_started is None:
+                collision_started = sample['elapsed_sec']
+            collision_last = sample['elapsed_sec']
+        elif collision_started is not None:
+            collision_spans.append(collision_last - collision_started)
+            collision_started = None
+            collision_last = None
+    if collision_started is not None:
+        collision_spans.append(collision_last - collision_started)
     return {
         'name': name,
         'success': success,
@@ -393,6 +543,23 @@ def _summarise_test(
         'collision_stop_samples': sum(
             bool(sample['collision_stop']) for sample in samples
         ),
+        'longest_collision_stop_sec': max(collision_spans, default=0.0),
+        'predicted_stop_event_count': sum(
+            item.startswith('PREDICTED_FOOTPRINT')
+            for item in guard_events
+        ),
+        'current_stop_event_count': sum(
+            item.startswith('CURRENT_FOOTPRINT')
+            for item in guard_events
+        ),
+        'recovery_event_count': sum(
+            'recovery=(' in item for item in guard_events
+        ),
+        'recovery_budget_exhausted_event_count': sum(
+            item.startswith('RECOVERY_BUDGET_EXHAUSTED')
+            for item in guard_events
+        ),
+        'guard_events': list(guard_events),
         'max_contact_count': max(
             sample['contact_count'] for sample in samples
         ),
@@ -405,9 +572,50 @@ def _summarise_test(
         'obstacle_contact_peak_force_n': max(
             sample['obstacle_contact_peak_force_n'] for sample in samples
         ),
+        'backend_fault_samples': sum(
+            bool(sample['backend_fault']) for sample in samples
+        ),
+        'backend_fault_reasons': sorted({
+            sample['backend_fault']
+            for sample in samples
+            if sample['backend_fault']
+        }),
         'trajectory_messages': trajectories,
         'mode_transitions': mode_transitions,
         'mode_fraction': mode_fraction,
+        'tracking_direction_fraction': tracking_direction_fraction,
+        'velocity_feedback_valid_samples': len(feedback_samples),
+        'velocity_feedback_enabled_sample_fraction': (
+            sum(bool(sample['feedback_enabled']) for sample in moving)
+            / max(1, len(moving))
+        ),
+        'velocity_feedback_active_sample_fraction': (
+            sum(bool(sample['feedback_active']) for sample in moving)
+            / max(1, len(moving))
+        ),
+        'velocity_feedback_reason_counts': dict(
+            sorted(feedback_reasons.items())
+        ),
+        'velocity_tracking_linear_error_rms_m_s': _rms(
+            linear_tracking_errors
+        ),
+        'velocity_tracking_yaw_error_rms_rad_s': _rms(
+            yaw_tracking_errors
+        ),
+        'velocity_feedback_linear_correction_rms_m_s': _rms(
+            linear_corrections
+        ),
+        'velocity_feedback_yaw_correction_rms_rad_s': _rms(
+            yaw_corrections
+        ),
+        'velocity_feedback_linear_correction_peak_m_s': max(
+            (abs(value) for value in linear_corrections),
+            default=0.0,
+        ),
+        'velocity_feedback_yaw_correction_peak_rad_s': max(
+            (abs(value) for value in yaw_corrections),
+            default=0.0,
+        ),
     }
 
 
@@ -448,6 +656,7 @@ def main() -> int:
                 target_x - start[0],
             )
             trajectories_before = node.trajectory_count
+            guard_events_before = len(node.guard_events)
             node.publish_goal(target_x, target_y, direct_yaw)
             print(
                 f'START {name}: pose=({start[0]:.3f},'
@@ -490,6 +699,13 @@ def main() -> int:
                         break
                 else:
                     settled_since = None
+                if node.backend_fault:
+                    print(
+                        f'ABORT {name}: backend fault='
+                        f'{node.backend_fault}',
+                        flush=True,
+                    )
+                    break
             duration = time.monotonic() - started_at
             if not samples:
                 raise RuntimeError(f'no samples collected for {name}')
@@ -501,6 +717,7 @@ def main() -> int:
                 duration,
                 success,
                 node.trajectory_count - trajectories_before,
+                node.guard_events[guard_events_before:],
             )
             summaries.append(summary)
             print(
@@ -508,7 +725,8 @@ def main() -> int:
                 f'duration={duration:.2f}s '
                 f'error={summary["final_error_m"]:.3f}m '
                 f'cross_track={summary["max_cross_track_m"]:.3f}m '
-                f'simultaneous={summary["wheel_leg_simultaneous_fraction"]:.3f}',
+                'simultaneous='
+                f'{summary["wheel_leg_simultaneous_fraction"]:.3f}',
                 flush=True,
             )
             if not success:
@@ -528,7 +746,7 @@ def main() -> int:
         writer.writeheader()
         writer.writerows(all_samples)
     report = {
-        'schema_version': 2,
+        'schema_version': 6,
         'sample_period_sec': 0.05,
         'leg_motion_threshold_rad_s': 0.05,
         'wheel_motion_threshold_rad_s': 0.20,
@@ -544,7 +762,10 @@ def main() -> int:
         bool(summaries)
         and all(item['success'] for item in summaries)
         and all(
-            item['collision_stop_samples'] == 0
+            item['current_stop_event_count'] == 0
+            and item['recovery_budget_exhausted_event_count'] == 0
+            and item['backend_fault_samples'] == 0
+            and item['longest_collision_stop_sec'] <= 8.0
             and item['obstacle_contact_event_count'] == 0
             for item in summaries
         )

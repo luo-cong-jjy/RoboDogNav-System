@@ -1,12 +1,9 @@
 scan_planner_node:
   ros__parameters:
-    # Match the independent 0.30 m guard envelope. At SCAN's 0.05 m grid,
-    # any value above 0.30 m occupies the next cell and closes the validated
-    # 0.90 m passage, so residual margin must come from tracking control.
-    grid_map.double_cylinder_radius: 0.30
-    # Keep the original 0.45 m per-side nominal envelope after moving 0.05 m
-    # from the soft optimizer term into the hard planning footprint.
-    optimization.dist0: 0.15
+    # Keep SCAN planning identical to the vendored project.  The independent
+    # command guard below owns the additional 0.05 m execution margin.
+    grid_map.double_cylinder_radius: 0.25
+    optimization.dist0: 0.20
 
 m20_grid_route_planner:
   ros__parameters:

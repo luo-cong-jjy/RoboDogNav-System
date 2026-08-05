@@ -50,6 +50,10 @@ def generate_launch_description() -> LaunchDescription:
                 'navigation_timeout_sec',
                 default_value='120.0',
             ),
+            DeclareLaunchArgument(
+                'velocity_feedback_enabled',
+                default_value='false',
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     str(
@@ -73,6 +77,9 @@ def generate_launch_description() -> LaunchDescription:
                     'use_grid_route': 'false',
                     'navigation_timeout_sec': LaunchConfiguration(
                         'navigation_timeout_sec'
+                    ),
+                    'velocity_feedback_enabled': LaunchConfiguration(
+                        'velocity_feedback_enabled'
                     ),
                 }.items(),
             ),

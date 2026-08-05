@@ -16,7 +16,9 @@ Runtime contract:
 - input: `/JOINTS_CMD`
 - motion intent: `/m20/locomotion/mode`
 - SDK feedback: `/JOINTS_DATA`, `/IMU_DATA`
-- system pose: `/m20/sim/body_pose`, `world -> base_link`
+- system odometry: `/m20/sim/body_pose`; pose uses `header.frame_id`
+  (`world` by default), while the complete twist uses `child_frame_id`
+  (`base_link`)
 - visualization: `/joint_states`, `/quad_0/path`
 - health: `/m20/sim/backend_ready`, `/m20/sim/backend_fault`,
   `/m20/sim/dynamics_state`
@@ -26,6 +28,12 @@ warehouse obstacles. `obstacle_contact_count` is instantaneous, while
 `obstacle_contact_event_count`, `obstacle_contact_peak_force_n`, and
 `obstacle_contact_pairs` are latched for the complete backend run so brief
 physics contacts cannot be missed by the lower-rate diagnostic subscriber.
+MuJoCo free-joint translation is exposed explicitly as
+`base_linear_velocity_world`; its rotation into `base_link` is
+`base_linear_velocity_body`. Angular velocity is already body-relative and is
+published as `base_angular_velocity_body`. The legacy mixed-frame
+`base_velocity` field remains available only for historical probe
+compatibility and must not be used for new feedback controllers.
 
 The backend begins with a PD hold at the official folded initial joint pose.
 SDK reset/control-word messages containing zero motor gains cannot release

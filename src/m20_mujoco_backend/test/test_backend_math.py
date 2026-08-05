@@ -25,6 +25,8 @@ from m20_mujoco_backend.dynamics import (
     pd_torque,
     raw_to_sdk,
     sdk_to_raw,
+    world_vector_to_body,
+    yaw_quaternion,
 )
 
 
@@ -70,6 +72,39 @@ def test_wheel_brake_zeros_only_wheel_targets_without_mutating_input():
     assert np.allclose(stopped_feedforward[WHEEL_INDICES], 0.0)
     assert np.allclose(stopped_velocity[LEG_INDICES], velocity[LEG_INDICES])
     assert np.allclose(velocity, np.arange(16, dtype=float))
+
+
+def test_world_vector_to_body_is_identity_at_zero_yaw():
+    result = world_vector_to_body(
+        [1.0, -2.0, 0.5],
+        yaw_quaternion(0.0),
+    )
+    assert np.allclose(result, [1.0, -2.0, 0.5])
+
+
+def test_world_vector_to_body_rotates_ninety_degree_yaw():
+    result = world_vector_to_body(
+        [0.0, 2.0, 0.5],
+        yaw_quaternion(np.pi / 2.0),
+    )
+    assert np.allclose(result, [2.0, 0.0, 0.5], atol=1.0e-12)
+
+
+def test_world_vector_to_body_uses_full_three_dimensional_orientation():
+    half_sqrt = np.sqrt(0.5)
+    result = world_vector_to_body(
+        [0.0, 0.0, 3.0],
+        [half_sqrt, half_sqrt, 0.0, 0.0],
+    )
+    assert np.allclose(result, [0.0, 3.0, 0.0], atol=1.0e-12)
+
+
+def test_world_vector_to_body_rejects_nonfinite_vector():
+    result = world_vector_to_body(
+        [np.nan, 1.0, 2.0],
+        yaw_quaternion(0.0),
+    )
+    assert np.allclose(result, np.zeros(3))
 
 
 def test_warehouse_contact_summary_excludes_normal_ground_contact():

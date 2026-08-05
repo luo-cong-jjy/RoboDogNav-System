@@ -17,6 +17,5 @@ m20_collision_guard:
     sample_period_sec: 0.05
     command_timeout_sec: 0.50
     publish_rate_hz: 20.0
-    max_linear_x: 0.45
-    max_linear_y: 0.20
-    max_angular_z: 0.65
+    # Command, drift and bounded-recovery values come from the selected M20
+    # capability profile. This file only defines the robust grid-route shape.

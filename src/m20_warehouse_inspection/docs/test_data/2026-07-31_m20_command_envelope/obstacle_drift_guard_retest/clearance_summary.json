@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "action_success": false,
+  "action_message": "probe timeout after 120.0s",
+  "duration_sec": 120.02324576998944,
+  "final_error_m": 6.263284191805677,
+  "minimum_circle_center_obstacle_distance_m": 0.3515390049748562,
+  "minimum_scan_hard_clearance_m": 0.10153900497485618,
+  "minimum_guard_clearance_m": 0.051539004974856195,
+  "doorway_sample": {
+    "x": -13.077215863961294,
+    "y": -1.3928912681806227,
+    "yaw": -0.39935998664202244,
+    "distance_from_doorway_x_m": 0.5772158639612943,
+    "guard_clearance_m": 0.053170695052162265
+  },
+  "collision_stop_sample_count": 2046,
+  "predicted_stop_event_count": 2,
+  "rotation_recovery_event_count": 1,
+  "current_stop_event_count": 0,
+  "guard_events": [
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.65s; circle=front; xy=(-13.28,-1.25); yaw=-0.49; cell=(134,175); cmd=(0.45,0.00,0.33); recovery=(0.35,0.00,-0.33)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.70s; circle=front; xy=(-12.62,-1.35); yaw=0.03; cell=(147,173); cmd=(0.45,0.00,0.65)"
+  ],
+  "obstacle_contact_event_count": 0,
+  "obstacle_contact_peak_force_n": 0.0,
+  "longest_commanded_stationary_sec": 104.3292557989771,
+  "trajectory_messages": 11,
+  "feedback": [
+    {
+      "state": "STARTING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "mission accepted"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "child action running"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "native SCAN trajectory tracking"
+    }
+  ]
+}

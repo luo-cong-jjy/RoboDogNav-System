@@ -1,7 +1,159 @@
 # Changelog
 
-## Unreleased - 2026-07-30
+## Unreleased - 2026-08-02
 
+### Current baseline
+
+- Replaced unconditional stop-to-stop grid-route execution with an M20-aware
+  hybrid handoff policy. Shallow corners carry velocity into the next native
+  SCAN replan only when the measured 0.54 m minimum rolling radius fits and
+  the complete handoff chord stays at least 0.10 m outside the existing
+  0.60 m hard grid; sharp or tight corners retain the latched measured-stop
+  boundary. The fixed `narrow_corridor_entry` route is unchanged (14 global
+  poses, 6 SCAN goals) but now classifies all five intermediate transitions
+  as continuous. Vendor `src/third_party/SCAN-Planner` remains untouched.
+  See [the implementation record](docs/devlog/2026-08-02_continuous_route_handoff.md)
+  and [the validation record](docs/test_reports/2026-08-02_continuous_route_handoff.md).
+
+- Added an integration-only soft-clearance route policy without changing the
+  vendored SCAN planner. The conservative fallback retains its 0.60 m hard
+  inflation and now penalizes the following 0.20 m band in A*, simplification,
+  and SCAN-subgoal compression while leaving that band traversable when it is
+  the only connection. Rear-sector position goals are routed immediately and
+  use validated reverse B-spline execution instead of forcing a narrow-aisle
+  U-turn; terminal quaternion orientation is explicitly not enforced. Fixed
+  official-SDK + MuJoCo runs passed both the long upper-boundary fallback and
+  a 1 m straight-reverse case with zero obstacle contact or SCAN-inflation
+  entry. See [the implementation record](docs/devlog/2026-08-02_clearance_heading_policy.md)
+  and [the test report](docs/test_reports/2026-08-02_clearance_heading_policy.md).
+  A subsequent live manual goal proved that failure-only activation can be
+  too late: the robot stopped inside a straight-traversable aisle with no
+  rolling-turn room. The complete RViz and MuJoCo launchers now enable the
+  clearance route proactively, while standalone SCAN and an explicit
+  `use_grid_route:=false` retain the vendor comparison path. The identical
+  start/goal cold replay then succeeded in 35.47 s with 0.636 m minimum body
+  clearance and zero guard or contact events.
+
+- Added fixed official-M20 SDK + MuJoCo boundary-recovery regression for the
+  upper warehouse boundary and shared-origin map edge. Conservative raster
+  shell hits are now separated from hard-body occupancy, map-edge reverse
+  predictions may use a fully swept straight inward recovery, and standby
+  grid-route heading segments assert a latched safety hold until measured
+  odometry is stopped. Six independent cold starts passed 6/6 with zero robot
+  obstacle contact, backend fault, SCAN inflation entry, or rolling subgoal
+  transition. Vendor SCAN planning and visualization remain unchanged. See
+  [the implementation record](docs/devlog/2026-08-02_boundary_recovery_validation.md)
+  and [the cold-start report](docs/test_reports/2026-08-02_boundary_recovery_cold_starts.md).
+
+- Completed the default two-area official-M20 SDK + MuJoCo inspection at
+  `11/11`.  Normal goals still use unmodified vendor SCAN planning and
+  visualization.  When bounded collision recovery is exhausted, the standby
+  inflated-grid route now executes heading changes stop-to-stop using measured
+  odometry velocity; boundary starts may first use a bounded straight reverse
+  escape.  The run crossed the shared origin twice (`F1 generation 1 -> F2
+  generation 2 -> F1 generation 3`), dynamically exercised the stop-to-stop
+  fallback at F2 upper-left, and returned to the original start.  See
+  [the implementation record](docs/devlog/2026-08-02_multifloor_stop_to_stop_fallback.md)
+  and [the full-system report](docs/test_reports/2026-08-02_multifloor_mujoco_11_step.md).
+
+- Requalified M20 bidirectional execution using per-B-spline straightness and
+  rear-axis alignment instead of a single 100 Hz endpoint tangent. Reverse
+  legs now lock their entry yaw; the official SDK + MuJoCo six-goal replay
+  passed 6/6 without direction chatter, safety recovery, contact, or backend
+  fault. A near-straight measured-velocity gate improved open-area time and
+  final error, but repeated single-obstacle clearance remained variable, so
+  `velocity_feedback_enabled` stays false by default. See
+  [the requalification report](docs/test_reports/2026-08-01_m20_velocity_feedback_requalification.md).
+
+- Added capability-gated bidirectional B-spline execution for the complete
+  M20 integration. A trajectory tangent more than 2.10 rad behind the body is
+  tracked with reverse body velocity, with 1.75 rad/0.80 s exit hysteresis;
+  standalone SCAN keeps the option disabled. Recovery now requires 1.50 s of
+  continuous clear state before its episode budget can rearm. The official
+  SDK + MuJoCo six-goal regression passed 6/6 in 102.72 s, including both
+  180-degree reverse legs, with zero collision stop, recovery, budget
+  exhaustion, or obstacle-contact events. See
+  [the dynamic report](docs/test_reports/2026-07-31_m20_bidirectional_tracking_bounded_recovery.md).
+- Added the versioned `m20_policy_v1` locomotion capability profile and made
+  it the single runtime source for the navigation adapter, collision guard,
+  final SDK gate, and official-policy bridge. The profile records the M20 body
+  envelope, stable rolling command interval, direction-dependent drift and
+  recovery bounds; launch-time validation rejects inconsistent profiles. The
+  old native-SCAN collision-guard override of `0.75/0.35/1.0` is removed.
+  Collision recovery now has a non-resetting 6 s/0.75 m budget and a 1.5 s,
+  0.03 m progress watchdog, so it cannot become an unbounded substitute for
+  path tracking. See
+  [the implementation record](docs/devlog/2026-07-31_m20_capability_profile_bounded_recovery.md).
+- Documented the source-level Go2/M20 locomotion comparison. The vendored
+  SCAN simulation is an ideal holonomic pose integrator and its real path only
+  publishes `/cmd_vel`; it does not include a Unitree SDK adapter. Official
+  Go2 Sport control delegates `Move(vx, vy, vyaw)` to the onboard gait service,
+  while the public M20 `sdk_deploy` runs a 57-input/16-output ONNX policy
+  externally and sends 12 leg-position plus four wheel-velocity targets over
+  `/JOINTS_CMD`. This fixes the next architecture boundary at a platform
+  capability/locomotion backend rather than inside SCAN.
+- Added a staged, bounded measured body-velocity PI loop inside the M20
+  pre-safety navigation adapter. It validates `base_link` odometry twist,
+  resets on execution hold, bypasses stale/invalid feedback, prevents command
+  reversal and integral windup, and leaves every corrected candidate upstream
+  of collision prediction. The initial identical-task MuJoCo A/B improved
+  forward/yaw tracking RMS by 14.06%/7.40% with zero contact, but one closed
+  run reduced minimum guard clearance by 50.9 mm and increased final error by
+  74.5 mm. Three further closed-loop cold starts remained contact-free but
+  reached only 74.6 mm worst guard clearance. In the strict six-goal replay,
+  open loop reached 6/6 while closed loop timed out on goal 5 after 90 seconds
+  of repeated predicted-stop recovery. The loop is therefore rejected as the
+  production default; pure-yaw projection and bounded recovery must be fixed
+  before feedback is reconsidered.
+- Reverted the M20-specific SCAN speed override, 0.30/0.15 clearance split,
+  clearance-aware A*/B-spline costs, and heading-hysteresis controller. The
+  complete RViz and MuJoCo launches now use the vendored SCAN planner and
+  controller values unchanged: 0.75 m/s, 0.25 m hard double-circle radius,
+  and 0.20 m optimizer distance. The copied controller differs only by the
+  external execution hold required for collision supervision and atomic floor
+  switching; M20 kinematic adaptation remains downstream.
+- Added a reproducible original-SCAN versus M20 execution comparison. The
+  vendored 500-obstacle Mockamap has a 0.003385 m minimum positive body gap,
+  while the current 246-obstacle scene has a 0.900236 m minimum gap. The
+  original six-goal ideal-holonomic run passed 6/6; the current M20 run faulted
+  with `EXCESSIVE_TILT` on its first obstacle-free target while retaining more
+  than 1.17 m guard clearance. SCAN remains frozen; follow-up work is confined
+  to the M20 command projection, stable dynamic envelope and feedback hold.
+- Added an obstacle-free MuJoCo command-envelope launch that bypasses SCAN,
+  safety, and the project motion adapter and sends exact staged Twist commands
+  to the official M20 SDK policy. The first run kept idle, 0.10 m/s forward,
+  and a 0.20/0.15 forward/yaw arc stable, while pure 0.20 rad/s yaw crossed the
+  conservative tilt/height boundary; production adaptation remains unchanged
+  until cold-start turn-matrix repetition is complete.
+
+### Withdrawn experiments and retained development history
+
+The entries below record the iterations that led to the rollback. Any SCAN
+speed, clearance-cost, hard-radius, or heading-controller setting that
+conflicts with the current baseline above is no longer active.
+
+- Added a configuration-space clearance query shared by native rebound A*
+  and B-spline optimization. The production profile now assigns a quadratic
+  traversal penalty inside the 0.15 m band outside hard occupancy and a
+  cubic away-gradient to every nearby control point. These are soft costs:
+  the 0.30 m hard layer and 0.90 m nominal passage remain unchanged, while
+  standalone vendor weights default to zero.
+- Added an M20 warehouse execution-speed profile layered after the untouched
+  SCAN vendor profile. Planner generation, optimizer feasibility, and the
+  closed-loop forward command now share 0.40 m/s; the SDK keeps 0.45 m/s as a
+  downstream ceiling. The value is an aisle-safety operating speed, not an
+  M20 hardware limit: Deep Robotics publishes 2.0 m/s maximum working speed
+  and trains the supplied policy over a +/-2.0 m/s forward-command range.
+- Re-aligned the production conservative planner's hard double-circle layer
+  with the independent command guard: 0.30 m hard plus 0.15 m soft keeps the
+  validated 0.45 m per-side nominal envelope while preventing native SCAN
+  from treating the guard's 0.25--0.30 m safety band as ordinary free space.
+  The standalone vendor profile remains unchanged at 0.25/0.20 m.
+- Restored the production SCAN planner to the vendor hard/soft clearance split
+  (`double_cylinder_radius=0.25 m`, `optimization.dist0=0.20 m`) after the
+  0.30 m hard layer rejected a start configuration that remains free under
+  the upstream parameters. The independent 0.30 m command guard, heading
+  controller, SDK adaptation, and MuJoCo model are unchanged.
 - Added an M20-specific heading-alignment controller profile without changing
   upstream SCAN planning or visualization: translation now slows from 0.15 rad
   of tangent error, freezes above 0.55 rad, and resumes below 0.20 rad after a
@@ -20,6 +172,11 @@
   locomotion-mode transitions, recovery events, and explicit MuJoCo obstacle
   contact metrics. The tuned 0.90 m passage completed in 31.21 s with 75.9 mm
   minimum guard clearance and no guard event or physical obstacle contact.
+- Passed the final six-goal cold-start MuJoCo regression with the production
+  0.05 m/s turn crawl and 0.20 rad turn-exit threshold: 6/6 goals in
+  108.30 s, 0.1529 m maximum final error, zero collision-stop samples, and
+  zero physical obstacle contacts. All three command stages remained at zero
+  forward speed during heading alignment.
 - Promoted the validated `0.90 m + conservative` bundle to the production
   defaults: the complete warehouse launch selects that bundle, and the
   raw/native collision guard fallback now uses the tested 0.25 m radius,

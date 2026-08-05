@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "suite": "smoke",
+  "requested_cases": [
+    "lateral_010"
+  ],
+  "completed_cases": 1,
+  "thresholds": {
+    "stable_tilt_rad": 0.25,
+    "stable_height_m": 0.48,
+    "abort_tilt_rad": 0.5,
+    "abort_height_m": 0.4
+  },
+  "all_stable": true,
+  "results": [
+    {
+      "name": "lateral_010",
+      "command": {
+        "vx": 0.0,
+        "vy": 0.1,
+        "wz": 0.0
+      },
+      "status": "PASS",
+      "stable": true,
+      "fault": "",
+      "safety_abort": "",
+      "sample_count": 106,
+      "peak_abs_tilt_rad": 0.12543897040333582,
+      "minimum_base_height_m": 0.548727274099592,
+      "mean_hold_body_vx_mps": -0.01708282961805637,
+      "mean_hold_body_vy_mps": 0.048618608742334465,
+      "mean_hold_body_wz_radps": 0.08469654056937805,
+      "mean_hold_odometry_body_vx_mps": -0.01978695434502912,
+      "mean_hold_odometry_body_vy_mps": 0.04937417012224624,
+      "mean_hold_odometry_body_wz_radps": 0.09105966762512996,
+      "mean_hold_twist_linear_contract_error_mps": 0.029137364779351974,
+      "mean_hold_twist_angular_contract_error_radps": 0.17303833428604803,
+      "planar_displacement_m": 0.09098214831048712,
+      "yaw_change_rad": 0.06821927967262635,
+      "maximum_abs_torque": 32.477094371773525,
+      "obstacle_contact_event_count": 0
+    }
+  ]
+}

@@ -74,6 +74,8 @@
 `0.30 m`、`optimization.dist0` 调整为 `0.15 m`，总单侧名义包络仍为
 `0.45 m`。当前正式值与动态依据见
 `2026-07-30_heading_alignment_control.md`。
+完成对比后，正式默认值已恢复原项目的 `0.25/0.20 m` 硬/软拆分，独立保护器
+仍为 `0.30 m`。
 
 ```yaml
 scan_planner_node:

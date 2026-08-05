@@ -294,6 +294,28 @@ namespace scan_planner
         pos = UniformBspline(optimal_control_points, 3, ts);
     }
 
+    /* M20_INTEGRATION_SHORT_ROUTE_TIMING_BEGIN */
+    // Refine moves control points after the upstream time allocation and can
+    // reintroduce a small dynamic-limit overshoot on short adapter subgoals.
+    // Rebuild the uniform knot timeline with a larger interval: geometry,
+    // clearance, and configured limits remain unchanged, while velocity and
+    // acceleration scale by 1/s and 1/s^2. The feasibility checker reports the
+    // first violation rather than the global peak, so use bounded 10% steps and
+    // stop immediately when the complete sampled trajectory passes.
+    if (flag_step_2_success)
+    {
+      for (int attempt = 0; attempt < 6; ++attempt)
+      {
+        if (checkDynamicFeasibility(pos))
+          break;
+        const double scaled_interval = pos.getInterval() * 1.10;
+        pos = UniformBspline(pos.getControlPoint(), 3, scaled_interval);
+        RCLCPP_INFO(node_->get_logger(),
+                    "Uniformly time-scaled refined trajectory by 1.10 while retaining configured dynamic limits");
+      }
+    }
+    /* M20_INTEGRATION_SHORT_ROUTE_TIMING_END */
+
     if (!flag_step_2_success || !checkDynamicFeasibility(pos))
     {
       printf("\033[34mThis refined trajectory is unsafe or dynamically infeasible. Skip publishing it.\n\033[0m");

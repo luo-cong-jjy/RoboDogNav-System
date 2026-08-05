@@ -32,6 +32,10 @@ def test_backend_owns_current_scan_pose_and_sdk_topics():
     assert 'mjtCamera.mjCAMERA_TRACKING' in source
     assert "'/m20/locomotion/mode'" in source
     assert 'apply_wheel_brake(' in source
+    assert 'world_vector_to_body(' in source
+    assert "'base_linear_velocity_world'" in source
+    assert "'base_linear_velocity_body'" in source
+    assert "'base_angular_velocity_body'" in source
 
 
 def test_world_launch_uses_selected_system_configuration():

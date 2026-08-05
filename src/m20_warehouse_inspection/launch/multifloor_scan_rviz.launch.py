@@ -29,6 +29,11 @@ from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
+
+from m20_locomotion_control.capability_profile import (
+    load_capability_profile,
+)
 
 
 def _runtime_actions(context):
@@ -58,9 +63,24 @@ def _runtime_actions(context):
     use_rviz = LaunchConfiguration('use_rviz')
     use_planner = LaunchConfiguration('use_planner')
     use_grid_route = LaunchConfiguration('use_grid_route')
+    collision_grid_route_enabled = LaunchConfiguration(
+        'collision_grid_route_enabled'
+    )
     clearance_config = LaunchConfiguration('clearance_config')
     controller_config = LaunchConfiguration('controller_config')
     motion_backend = LaunchConfiguration('motion_backend')
+    velocity_feedback_enabled = LaunchConfiguration(
+        'velocity_feedback_enabled'
+    )
+    capability_profile = load_capability_profile(
+        LaunchConfiguration(
+            'locomotion_capability_config'
+        ).perform(context)
+    )
+    intent_parameters = capability_profile.intent_parameters()
+    controller_parameters = capability_profile.controller_parameters()
+    guard_parameters = capability_profile.collision_guard_parameters()
+    safety_parameters = capability_profile.safety_parameters()
 
     return [
             Node(
@@ -134,7 +154,14 @@ def _runtime_actions(context):
                 name='m20_navigation_adapter',
                 output='screen',
                 parameters=[
-                    str(locomotion / 'config' / 'sdk_locomotion.yaml')
+                    str(locomotion / 'config' / 'sdk_locomotion.yaml'),
+                    intent_parameters,
+                    {
+                        'velocity_feedback_enabled': ParameterValue(
+                            velocity_feedback_enabled,
+                            value_type=bool,
+                        )
+                    },
                 ],
             ),
             Node(
@@ -142,7 +169,8 @@ def _runtime_actions(context):
                 executable='m20_safety_supervisor',
                 output='screen',
                 parameters=[
-                    str(core / 'config' / 'safety_scan_vendor.yaml')
+                    str(core / 'config' / 'safety_scan_vendor.yaml'),
+                    safety_parameters,
                 ],
             ),
             Node(
@@ -153,6 +181,7 @@ def _runtime_actions(context):
                 parameters=[
                     str(core / 'config' / 'collision_guard.yaml'),
                     clearance_config,
+                    guard_parameters,
                 ],
                 condition=IfCondition(use_grid_route),
             ),
@@ -164,11 +193,7 @@ def _runtime_actions(context):
                 parameters=[
                     str(core / 'config' / 'collision_guard_scan_native.yaml'),
                     clearance_config,
-                    {
-                        'max_linear_x': 0.75,
-                        'max_linear_y': 0.35,
-                        'max_angular_z': 1.0,
-                    },
+                    guard_parameters,
                 ],
                 condition=UnlessCondition(use_grid_route),
             ),
@@ -182,8 +207,41 @@ def _runtime_actions(context):
                     'use_local_sensing': 'true',
                     'use_planner': use_planner,
                     'use_grid_route': use_grid_route,
+                    'collision_grid_route_enabled': (
+                        collision_grid_route_enabled
+                    ),
                     'clearance_config': clearance_config,
                     'controller_config': controller_config,
+                    'bidirectional_tracking_enabled': str(
+                        controller_parameters[
+                            'bidirectional_tracking_enabled'
+                        ]
+                    ).lower(),
+                    'reverse_tracking_enter_angle': str(
+                        controller_parameters[
+                            'reverse_tracking_enter_angle'
+                        ]
+                    ),
+                    'reverse_tracking_exit_angle': str(
+                        controller_parameters[
+                            'reverse_tracking_exit_angle'
+                        ]
+                    ),
+                    'reverse_tracking_min_hold_sec': str(
+                        controller_parameters[
+                            'reverse_tracking_min_hold_sec'
+                        ]
+                    ),
+                    'reverse_tracking_entry_alignment': str(
+                        controller_parameters[
+                            'reverse_tracking_entry_alignment'
+                        ]
+                    ),
+                    'reverse_tracking_exit_alignment': str(
+                        controller_parameters[
+                            'reverse_tracking_exit_alignment'
+                        ]
+                    ),
                 }.items(),
             ),
             Node(
@@ -222,6 +280,14 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument('use_planner', default_value='true'),
             DeclareLaunchArgument('use_grid_route', default_value='false'),
             DeclareLaunchArgument(
+                'collision_grid_route_enabled',
+                default_value='false',
+                description=(
+                    'Standby conservative grid route used only after the M20 '
+                    'guard rejects a native SCAN trajectory.'
+                ),
+            ),
+            DeclareLaunchArgument(
                 'clearance_config',
                 default_value=str(
                     Path(
@@ -230,12 +296,11 @@ def generate_launch_description() -> LaunchDescription:
                         )
                     )
                     / 'config'
-                    / 'clearance_conservative.yaml'
+                    / 'clearance_vendor.yaml'
                 ),
                 description=(
-                    'Unified straight-passage clearance profile. The complete '
-                    'warehouse system uses 0.90 m preferred clearance because '
-                    'its active occupancy maps have 0.10 m cells.'
+                    'Vendor SCAN planning clearance. M20 execution safety '
+                    'remains in the downstream collision guard.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -247,11 +312,11 @@ def generate_launch_description() -> LaunchDescription:
                         )
                     )
                     / 'config'
-                    / 'scan_m20_physical_controller.yaml'
+                    / 'scan_vendor_controller.yaml'
                 ),
                 description=(
-                    'M20 physical heading-tracking override layered after '
-                    'the vendor SCAN controller parameters.'
+                    'Closed-loop controller profile. The complete system '
+                    'defaults to the vendor SCAN values.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -260,6 +325,30 @@ def generate_launch_description() -> LaunchDescription:
                 description=(
                     'rviz starts the planar backend; external reserves the '
                     'pose, joint-state and TF contract for MuJoCo or hardware.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'velocity_feedback_enabled',
+                default_value='false',
+                description=(
+                    'Enable bounded measured body-velocity PI compensation '
+                    'before collision prediction.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'locomotion_capability_config',
+                default_value=str(
+                    Path(
+                        get_package_share_directory(
+                            'm20_locomotion_control'
+                        )
+                    )
+                    / 'config'
+                    / 'm20_policy_v1_capabilities.yaml'
+                ),
+                description=(
+                    'Versioned M20 command, turn and recovery capability '
+                    'profile shared by motion adaptation and collision guard.'
                 ),
             ),
             OpaqueFunction(function=_runtime_actions),

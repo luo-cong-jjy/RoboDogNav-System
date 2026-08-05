@@ -38,8 +38,17 @@ def generate_launch_description() -> LaunchDescription:
     use_rviz = LaunchConfiguration('use_rviz')
     use_planner = LaunchConfiguration('use_planner')
     use_grid_route = LaunchConfiguration('use_grid_route')
+    collision_grid_route_enabled = LaunchConfiguration(
+        'collision_grid_route_enabled'
+    )
     clearance_config = LaunchConfiguration('clearance_config')
     motion_backend = LaunchConfiguration('motion_backend')
+    velocity_feedback_enabled = LaunchConfiguration(
+        'velocity_feedback_enabled'
+    )
+    locomotion_capability_config = LaunchConfiguration(
+        'locomotion_capability_config'
+    )
     navigation_timeout_sec = LaunchConfiguration(
         'navigation_timeout_sec'
     )
@@ -56,11 +65,21 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument('use_planner', default_value='true'),
             DeclareLaunchArgument(
                 'use_grid_route',
-                default_value='false',
+                default_value='true',
                 description=(
-                    'Optional warehouse A* subgoal adapter. The normal system '
-                    'keeps this false so manual and automatic goals both use '
-                    'the vendored SCAN first-scene planning chain.'
+                    'Use the M20 clearance route before motion so a native '
+                    'SCAN trajectory cannot enter an aisle that permits '
+                    'straight travel but has no rolling-turn space. Set false '
+                    'only for vendor-SCAN comparison runs.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'collision_grid_route_enabled',
+                default_value='true',
+                description=(
+                    'Retain the bounded grid replan path after a guard event; '
+                    'with the default proactive route this remains a bounded '
+                    'retry rather than the first planning decision.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -72,16 +91,37 @@ def generate_launch_description() -> LaunchDescription:
                         )
                     )
                     / 'config'
-                    / 'clearance_conservative.yaml'
+                    / 'clearance_vendor.yaml'
                 ),
                 description=(
-                    'Unified SCAN/collision clearance parameter file.'
+                    'Vendor SCAN planning clearance plus the independent '
+                    'M20 command-guard footprint.'
                 ),
             ),
             DeclareLaunchArgument(
                 'motion_backend',
                 default_value='rviz',
                 description='rviz planar backend or an external backend.',
+            ),
+            DeclareLaunchArgument(
+                'velocity_feedback_enabled',
+                default_value='false',
+                description=(
+                    'Enable bounded measured body-velocity PI compensation.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'locomotion_capability_config',
+                default_value=str(
+                    Path(
+                        get_package_share_directory(
+                            'm20_locomotion_control'
+                        )
+                    )
+                    / 'config'
+                    / 'm20_policy_v1_capabilities.yaml'
+                ),
+                description='Versioned M20 platform capability profile.',
             ),
             DeclareLaunchArgument(
                 'navigation_timeout_sec',
@@ -102,8 +142,15 @@ def generate_launch_description() -> LaunchDescription:
                     'use_rviz': use_rviz,
                     'use_planner': use_planner,
                     'use_grid_route': use_grid_route,
+                    'collision_grid_route_enabled': (
+                        collision_grid_route_enabled
+                    ),
                     'clearance_config': clearance_config,
                     'motion_backend': motion_backend,
+                    'velocity_feedback_enabled': velocity_feedback_enabled,
+                    'locomotion_capability_config': (
+                        locomotion_capability_config
+                    ),
                     'system_config': system_config,
                 }.items(),
             ),

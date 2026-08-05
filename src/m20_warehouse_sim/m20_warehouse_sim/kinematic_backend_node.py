@@ -170,7 +170,8 @@ class RvizKinematicBackend(Node):
     ) -> SetSimulationPose.Response:
         """Teleport the RViz backend while discarding all prior motion."""
         if not all(
-            math.isfinite(value) for value in (request.x, request.y, request.yaw)
+            math.isfinite(value)
+            for value in (request.x, request.y, request.yaw)
         ):
             response.success = False
             response.message = 'pose contains a non-finite value'
@@ -227,8 +228,10 @@ class RvizKinematicBackend(Node):
         odometry.pose.pose.orientation.y = qy
         odometry.pose.pose.orientation.z = qz
         odometry.pose.pose.orientation.w = qw
-        odometry.twist.twist.linear.x = self._state.vx_world
-        odometry.twist.twist.linear.y = self._state.vy_world
+        # ROS Odometry expresses twist in child_frame_id. Keep the
+        # world-frame values only inside PlanarState for pose integration.
+        odometry.twist.twist.linear.x = self._state.vx_body
+        odometry.twist.twist.linear.y = self._state.vy_body
         odometry.twist.twist.angular.z = self._state.wz
         self._odom_publisher.publish(odometry)
 

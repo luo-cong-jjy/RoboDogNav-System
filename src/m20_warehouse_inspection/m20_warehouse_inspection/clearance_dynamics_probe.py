@@ -136,6 +136,7 @@ class ClearanceDynamicsProbe(Node):
         self.guard_diagnostic = 'NOT_READY'
         self.guard_events: List[str] = []
         self.dynamics: Dict = {}
+        self.velocity_feedback: Dict = {}
         self.trajectory_count = 0
         self.feedback: List[Dict] = []
         self.create_subscription(
@@ -189,6 +190,12 @@ class ClearanceDynamicsProbe(Node):
             20,
         )
         self.create_subscription(
+            String,
+            '/m20/navigation/velocity_feedback_state',
+            self._velocity_feedback_callback,
+            20,
+        )
+        self.create_subscription(
             Bspline,
             '/planning/bspline',
             lambda _message: setattr(
@@ -205,6 +212,7 @@ class ClearanceDynamicsProbe(Node):
         if (
             diagnostic.startswith('CURRENT_FOOTPRINT')
             or diagnostic.startswith('PREDICTED_FOOTPRINT')
+            or diagnostic.startswith('RECOVERY_BUDGET_EXHAUSTED')
         ):
             self.guard_events.append(diagnostic)
 
@@ -213,6 +221,12 @@ class ClearanceDynamicsProbe(Node):
             self.dynamics = json.loads(message.data)
         except json.JSONDecodeError:
             self.dynamics = {}
+
+    def _velocity_feedback_callback(self, message: String) -> None:
+        try:
+            self.velocity_feedback = json.loads(message.data)
+        except json.JSONDecodeError:
+            self.velocity_feedback = {}
 
     def _feedback_callback(self, message) -> None:
         state = message.feedback.state
@@ -253,6 +267,11 @@ class ClearanceDynamicsProbe(Node):
             footprint_offset,
         )
         base_velocity = self.dynamics.get('base_velocity', [0.0] * 6)
+        body_twist = self.pose.twist.twist
+        correction = self.velocity_feedback.get(
+            'correction',
+            [0.0, 0.0, 0.0],
+        )
         return {
             'elapsed_sec': elapsed_sec,
             'x': pose[0],
@@ -266,6 +285,17 @@ class ClearanceDynamicsProbe(Node):
             'safe_wz': float(self.safe.angular.z),
             'base_vx': float(base_velocity[0]),
             'base_vy': float(base_velocity[1]),
+            'odom_body_vx': float(body_twist.linear.x),
+            'odom_body_vy': float(body_twist.linear.y),
+            'odom_body_wz': float(body_twist.angular.z),
+            'velocity_feedback_active': bool(
+                self.velocity_feedback.get('active', False)
+            ),
+            'velocity_feedback_reason': str(
+                self.velocity_feedback.get('reason', 'UNAVAILABLE')
+            ),
+            'velocity_feedback_vx_correction': float(correction[0]),
+            'velocity_feedback_wz_correction': float(correction[2]),
             'collision_stop': self.collision_stop,
             'guard_state': self.guard_state,
             'circle_center_obstacle_distance_m': circle_distance,
@@ -333,8 +363,32 @@ def summarise(
     """Build the stable machine-readable acceptance summary."""
     final = samples[-1]
     doorway = min(samples, key=lambda item: abs(item['x'] - doorway_x))
+    tracking = [
+        item
+        for item in samples
+        if (
+            not item['collision_stop']
+            and (
+                abs(item['safe_vx']) > 0.03
+                or abs(item['safe_wz']) > 0.08
+            )
+        )
+    ]
+    reason_counts = {}
+    for item in samples:
+        reason = item['velocity_feedback_reason']
+        reason_counts[reason] = reason_counts.get(reason, 0) + 1
+
+    def rms(values: Sequence[float]) -> float:
+        """Return root mean square, or zero when no sample qualifies."""
+        if not values:
+            return 0.0
+        return math.sqrt(
+            sum(value * value for value in values) / len(values)
+        )
+
     return {
-        'schema_version': 1,
+        'schema_version': 2,
         'action_success': action_success,
         'action_message': action_message,
         'duration_sec': final['elapsed_sec'],
@@ -370,6 +424,10 @@ def summarise(
         'rotation_recovery_event_count': sum(
             'recovery=(' in item for item in guard_events
         ),
+        'recovery_budget_exhausted_event_count': sum(
+            item.startswith('RECOVERY_BUDGET_EXHAUSTED')
+            for item in guard_events
+        ),
         'current_stop_event_count': sum(
             item.startswith('CURRENT_FOOTPRINT')
             for item in guard_events
@@ -383,6 +441,31 @@ def summarise(
         ),
         'longest_commanded_stationary_sec': (
             longest_commanded_stationary_period(samples)
+        ),
+        'velocity_tracking_sample_count': len(tracking),
+        'rms_forward_velocity_tracking_error_mps': rms(
+            [
+                item['safe_vx'] - item['odom_body_vx']
+                for item in tracking
+            ]
+        ),
+        'rms_yaw_velocity_tracking_error_radps': rms(
+            [
+                item['safe_wz'] - item['odom_body_wz']
+                for item in tracking
+            ]
+        ),
+        'velocity_feedback_active_sample_count': sum(
+            bool(item['velocity_feedback_active']) for item in samples
+        ),
+        'velocity_feedback_reason_counts': reason_counts,
+        'maximum_abs_feedback_vx_correction_mps': max(
+            abs(item['velocity_feedback_vx_correction'])
+            for item in samples
+        ),
+        'maximum_abs_feedback_wz_correction_radps': max(
+            abs(item['velocity_feedback_wz_correction'])
+            for item in samples
         ),
         'trajectory_messages': trajectory_count,
         'feedback': list(feedback),
@@ -524,6 +607,7 @@ def main(arguments: Optional[Sequence[str]] = None) -> int:
         action_success
         and report['obstacle_contact_event_count'] == 0
         and report['current_stop_event_count'] == 0
+        and report['recovery_budget_exhausted_event_count'] == 0
     )
     return 0 if clean else 2
 

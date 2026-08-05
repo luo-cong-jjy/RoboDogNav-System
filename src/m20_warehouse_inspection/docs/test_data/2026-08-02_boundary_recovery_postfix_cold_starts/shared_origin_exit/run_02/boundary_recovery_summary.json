@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "case": "shared_origin_exit",
+  "action_success": true,
+  "action_error_code": 0,
+  "action_message": "goal reached",
+  "duration_sec": 109.31330881500617,
+  "start_pose": {
+    "x": 0.10013766197212697,
+    "y": 0.11961953031670552,
+    "yaw": -2.6215846254996706
+  },
+  "final_pose": {
+    "x": -36.92879103571709,
+    "y": 0.02084851658595616,
+    "yaw": -3.0609119496249555
+  },
+  "final_error_m": 0.0741982293459866,
+  "minimum_obstacle_body_clearance_m": 0.8857198807514408,
+  "minimum_scan_inflation_clearance_m": 0.6357198807514408,
+  "minimum_guard_clearance_m": 0.5857198807514408,
+  "scan_inflated_region_sample_count": 0,
+  "longest_scan_inflated_region_sec": 0.0,
+  "obstacle_contact_event_count": 0,
+  "obstacle_contact_peak_force_n": 0.0,
+  "obstacle_contact_pairs": [],
+  "current_footprint_guard_event_count": 0,
+  "predicted_footprint_guard_event_count": 2,
+  "recovery_budget_exhausted_event_count": 1,
+  "raster_shell_escape_event_count": 0,
+  "guard_events": [
+    "PREDICTED_FOOTPRINT; cause=OUT_OF_BOUNDS; model=nominal; t=0.55s; circle=rear; xy=(0.35,0.22); yaw=-2.75; cell=(403,202); cmd=(-0.18,0.00,-0.22); recovery=(0.35,0.00,0.00)",
+    "RECOVERY_BUDGET_EXHAUSTED; reason=NO_PROGRESS; trigger=PREDICTED_FOOTPRINT; cause=OUT_OF_BOUNDS; model=measured_lateral_drift; t=0.25s; circle=rear; xy=(0.36,0.18); yaw=-2.82; cell=(403,201); cmd=(-0.35,0.00,-0.65)",
+    "PREDICTED_FOOTPRINT; cause=OUT_OF_BOUNDS; model=measured_lateral_drift; t=0.55s; circle=rear; xy=(0.35,0.16); yaw=-2.86; cell=(403,201); cmd=(-0.14,0.00,-0.33); recovery=(0.35,0.00,0.00)"
+  ],
+  "fallback_triggered": true,
+  "route_states": [
+    {
+      "elapsed_sec": 0.0,
+      "state": "WAITING_FOR_MAP_AND_ODOM"
+    },
+    {
+      "elapsed_sec": 0.0,
+      "state": "READY"
+    },
+    {
+      "elapsed_sec": 3.7869333660055418,
+      "state": "TRACKING_ROUTE"
+    },
+    {
+      "elapsed_sec": 109.08546050000587,
+      "state": "GOAL_REACHED"
+    },
+    {
+      "elapsed_sec": 109.24255125000491,
+      "state": "READY"
+    }
+  ],
+  "scan_goal_count": 1,
+  "scan_goals": [
+    {
+      "elapsed_sec": 3.7865941299969563,
+      "x": -37.0,
+      "y": 0.0,
+      "stationary_before_publish_sec": 3.3331901009951252,
+      "linear_speed_mps": 0.0007279124373700089,
+      "angular_speed_radps": 0.0025436545417362867
+    }
+  ],
+  "intermediate_stop_check_count": 0,
+  "intermediate_stop_violation_count": 0,
+  "intermediate_stop_violations": [],
+  "backend_faults": [],
+  "feedback": [
+    {
+      "elapsed_sec": 0.14863463799702004,
+      "state": "PLANNING",
+      "distance_remaining_m": 37.1003303527832,
+      "route_update_count": 39,
+      "message": "goal sent directly to SCAN"
+    },
+    {
+      "elapsed_sec": 0.1492868290079059,
+      "state": "TRACKING",
+      "distance_remaining_m": 37.10032653808594,
+      "route_update_count": 39,
+      "message": "native SCAN trajectory tracking"
+    },
+    {
+      "elapsed_sec": 2.156632423007977,
+      "state": "RECOVERY_REPLAN",
+      "distance_remaining_m": 37.098899841308594,
+      "route_update_count": 439,
+      "message": "collision recovery ended; resetting SCAN (1/2)"
+    },
+    {
+      "elapsed_sec": 2.1975750440033153,
+      "state": "WAITING_FOR_RECOVERY_REARM",
+      "distance_remaining_m": 37.09894561767578,
+      "route_update_count": 448,
+      "message": "waiting for collision guard CLEAR"
+    },
+    {
+      "elapsed_sec": 3.767950480003492,
+      "state": "REPLANNING",
+      "distance_remaining_m": 37.10025405883789,
+      "route_update_count": 761,
+      "message": "goal rerouted through M20 clearance subgoals after bounded recovery"
+    },
+    {
+      "elapsed_sec": 3.768454531003954,
+      "state": "PLANNING",
+      "distance_remaining_m": 37.10025405883789,
+      "route_update_count": 761,
+      "message": "READY"
+    },
+    {
+      "elapsed_sec": 3.9688928960094927,
+      "state": "TRACKING",
+      "distance_remaining_m": 37.098167419433594,
+      "route_update_count": 762,
+      "message": "TRACKING_ROUTE"
+    }
+  ],
+  "accepted": true
+}

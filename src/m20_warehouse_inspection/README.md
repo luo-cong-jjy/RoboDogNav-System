@@ -59,9 +59,9 @@
 - 所有切换步骤都先导航到共享原点 `(0,0)`，停车后才切换 active map。
 - 人工目标和自动完整任务共用原版 `/move_base_simple/goal -> SCAN -> B-spline ->
   closed-loop controller` 链路。
-- 原生模式的 SCAN 硬规划双圆半径和独立 `collision_guard` 有效保护半径均为
-  0.30 m；保护器由 0.25 m 机身轮廓加 0.05 m 静态图余量组成，栅格增强模式继续
-  使用 0.50 m 保护半径。
+- 完整系统与独立启动均使用原项目 SCAN 参数：`0.25 m` 硬规划双圆半径和
+  `0.20 m` 优化器软距离。额外 `0.05 m` 执行余量只属于下游
+  `collision_guard`，不再反向修改 SCAN 的路径搜索和 B-spline 参数。
 - RViz 的 active floor 恢复原项目 `AxisColor`，inactive floor 使用蓝灰色；不再把
   同一 active PCD 通过两个图层重叠绘制，因此移动视角不会发生黄/粉色深度竞争。
 - 实现任务 pause、resume、stop 和 fault retry；任务暂停或故障使用独立
@@ -83,6 +83,12 @@
 只替换速度之后的运控/物理执行以及 `/m20/sim/body_pose` 来源。
 - 后端在官方 SDK 完成站立且姿态稳定前保持 `backend_ready=false`，不向 SCAN 开放
   body pose/TF；故障或后端未就绪时速度适配器立即进入 hold。
+- 新增版本化 `m20_policy_v1` 平台能力配置，使导航适配、碰撞保护、最终 SDK 门和
+  官方策略桥共享同一 M20 包线；恢复动作采用 `6 s / 0.75 m` 有界预算及连续
+  `1.50 s` clear 后才重新许可。
+- 完整 M20 系统根据 B-spline 切向在 FORWARD/REVERSE 间滞回选择；180° 回程直接
+  沿原轨迹倒车，不再将原 SCAN 的理想纯偏航请求投影为向前滚动掉头。独立 SCAN
+  启动默认关闭该平台适配。
 
 阶段 5 记录见
 [docs/devlog/2026-07-27_phase5.md](docs/devlog/2026-07-27_phase5.md)，验收摘要见
@@ -152,6 +158,16 @@ SDK ready/fault 门控和新的完整启动入口已实现；无 GUI 验收已�
 [docs/devlog/2026-07-30_candidate_safety_freeze.md](docs/devlog/2026-07-30_candidate_safety_freeze.md)，
 RViz/MuJoCo 同目标回归见
 [docs/test_reports/2026-07-30_candidate_safety_freeze.md](docs/test_reports/2026-07-30_candidate_safety_freeze.md)。
+有界机体系速度闭环的实现、坐标契约和安全降级见
+[docs/devlog/2026-07-31_m20_velocity_feedback.md](docs/devlog/2026-07-31_m20_velocity_feedback.md)，
+首次同任务 MuJoCo A/B 数据与暂不提升默认值的判定见
+[docs/test_reports/2026-07-31_m20_velocity_feedback_ab.md](docs/test_reports/2026-07-31_m20_velocity_feedback_ab.md)。
+默认双区域 11 步完整动力学任务与段间停稳结果见
+[docs/test_reports/2026-08-02_multifloor_mujoco_11_step.md](docs/test_reports/2026-08-02_multifloor_mujoco_11_step.md)。
+针对上边界和共享原点的 6 次独立冷启动恢复复验见
+[docs/test_reports/2026-08-02_boundary_recovery_cold_starts.md](docs/test_reports/2026-08-02_boundary_recovery_cold_starts.md)，
+实现边界见
+[docs/devlog/2026-08-02_boundary_recovery_validation.md](docs/devlog/2026-08-02_boundary_recovery_validation.md)。
 
 ## 配置入口
 
@@ -175,8 +191,9 @@ launch 文件中。
 
 第一个终端启动一次完整系统。默认使用 0.90 m 高密度双场景，RViz 中仍显示
 原版 SCAN 的实时点云、占据、膨胀和轨迹；运动执行改为官方 ONNX 策略与 MuJoCo
-16 关节动力学。主入口直接加载正式参数：SCAN 硬规划双圆半径
-`0.30 m`、圆心偏置 `0.18 m`、保护器机身半径 `0.25 m`、独立安全余量
+16 关节动力学。主入口直接加载原版 SCAN 参数：硬规划双圆半径
+`0.25 m`、优化器软距离 `0.20 m`、圆心偏置 `0.18 m`；下游保护器机身半径
+`0.25 m`、独立安全余量
 `0.05 m`、碰撞预测前视
 `0.70 s`，不需要在命令行追加测试参数：
 
@@ -236,11 +253,12 @@ MuJoCo 原生三维窗口现在默认打开。如需无界面运行或降低重�
 `m20_locomotion_control/config/sdk_locomotion.yaml`，设置
 `rolling_navigation_enabled: false`即可回退到原适配行为。
 
-完整系统还默认加载 M20 航向对正 profile。轨迹切线误差从 `0.15 rad` 起逐步降低
-平移速度，达到 `0.55 rad` 时冻结轨迹时钟并纯偏航，至少保持 `0.40 s` 且误差低于
-`0.20 rad` 后才恢复平移。高曲率转向只保留 `0.05 m/s` 的低速爬行，避免机身方向
-落后时切向障碍。预测保护触发后，只有当前双圆足迹安全、且同一占据图验证纯旋转全程
-安全时才允许零平移脱困；`CURRENT_FOOTPRINT` 及其他安全保持仍然硬停车。
+此前加在 SCAN 闭环控制器中的航向迟滞、转向前减速和 `0.40 m/s` 规划限速已经
+撤回。SCAN 继续按原项目发布完整的全向 `cmd_vel_raw`；轮腿机器狗无法直接兑现的
+横移、转向和限速问题统一由 `m20_navigation_adapter` 与官方 SDK 接口处理。
+预测保护触发后，只有当前双圆足迹安全、且同一占据图验证纯旋转全程安全时才允许
+零平移脱困；`CURRENT_FOOTPRINT` 及其他安全保持仍然硬停车。此前带 SCAN 航向
+改动的六目标结果仅作为历史实验记录，不代表当前默认基线，当前基线需重新做动态复验。
 
 步骤一，只启动一次完整系统：
 
@@ -314,7 +332,8 @@ F1 左下 -> F1 右下 -> F1 右上 -> F1 左上
 
 注意：这里的0.90 m是“两个独立障碍物本体之间”的生成约束，不等同于机器人和
 单个障碍物之间的规划净空。当前资产已通过0.30 m保护半径的膨胀连通性回归，
-完整MuJoCo 11步动态任务仍需按新资产复验。
+默认资产的完整MuJoCo 11步动态任务已完成11/11；这仍不代替新地图或实机部署时的
+独立净空验收。
 
 ### 路线受扰动测试场景
 
@@ -525,10 +544,10 @@ m20_warehouse_inspection"
 /m20/navigation/reset                清空 SCAN/GridMap/路线状态
 /m20/navigation/route_reset          清空可选 A* 路线和内部短子目标
 /m20/navigation/cmd_vel_raw          SCAN 原始速度
+/planning/tracking_direction         M20 B-spline 前进/倒车执行方向诊断
 /m20/navigation/cmd_vel_candidate    滚动化后的预安全候选速度
 /m20/navigation/candidate_mode       预安全滚动/转向意图
-/m20/navigation/heading_error        机身航向与 B-spline 切线的有符号误差
-/m20/navigation/heading_aligning     闭环控制器是否处于纯偏航对正
+/m20/navigation/velocity_feedback_state 机体系速度闭环状态、误差和补偿
 /m20/mission/run                     自动巡检任务 Action
 /m20/mission/control                 pause/resume/stop/retry 服务
 /m20/mission/state                   typed 任务状态
@@ -536,8 +555,9 @@ m20_warehouse_inspection"
 /m20/visualization/mission_marker    RViz 任务文字状态
 /m20/control/collision_stop          前视碰撞保护输出
 /m20/control/collision_guard_diagnostic 首个双圆碰撞样本诊断
-/m20/control/collision_recovery_available 预测停车是否有安全纯旋转解
-/m20/control/collision_recovery_cmd  经同一双圆保护验证的零平移恢复指令
+/m20/control/collision_recovery_available 预测停车是否有安全有界滚动恢复解
+/m20/control/collision_recovery_cmd  经完整扫掠保护验证的短时滚动恢复指令
+/m20/control/route_segment_hold      后备路线换向段之间的锁存停车请求
 /m20/control/execution_hold          锁存的 SCAN 执行时钟保持
 /m20/control/cmd_vel_safe            所有后端唯一允许订阅的速度
 /m20/sim/body_pose                   当前选定后端位姿；完整联仿由 MuJoCo 发布
@@ -574,9 +594,11 @@ Goal、轨迹和 TF 均恢复原话题与显示属性。非活动楼层通过
 - active PCD 的四周 2 m 高墙面点，进入 SCAN 局部感知和占据/膨胀窗口；
 - active occupancy 的四条占据边，供栅格 A* 和独立 `collision_guard` 使用。
 
-原生 profile 的静态碰撞保护使用与 SCAN 硬规划足迹一致的前后双圆：圆心沿机体航向
-`±0.18 m`；SCAN 硬规划半径为 `0.30 m`，保护器按 `0.25 m` 机身半径加
-`0.05 m` 独立余量膨胀栅格。显式栅格增强
+完整系统使用前后双圆，圆心沿机体航向 `±0.18 m`。SCAN 与原项目一致，采用
+`0.25 m` 硬规划半径和 `0.20 m` 优化器软距离；rebound A* 仍是原版二值碰撞
+代价，B-spline 也没有额外全局净空项。独立保护器按 `0.25 m` 机身半径加
+`0.05 m` 余量检查候选命令，所以规划层与执行层有意保持分层：前者用于原版
+算法对照，后者负责 M20 实际执行安全。显式栅格增强
 profile 使用相同偏移和 `0.38 + 0.12 = 0.50 m` 半径。规划与保护只消费当前
 active floor，因此非活动区域的围栏不会错误影响当前楼层。F1 右围栏和 F2 左围栏只在
 `y=[-2,2]` 留门，其余边界仍参与规划与碰撞保护。机器狗先从 F1 运动到门洞中心
@@ -591,8 +613,8 @@ active floor，因此非活动区域的围栏不会错误影响当前楼层。F1
 独立碰撞保护和占据图分辨率分别计算：
 
 - M20机身宽0.51 m；
-- SCAN硬规划双圆柱横向半径0.30 m；
-- SCAN优化器软距离0.15 m，总单侧名义包络仍为0.45 m；
+- SCAN硬规划双圆柱横向半径0.25 m；
+- SCAN优化器软距离0.20 m，总单侧名义包络仍为0.45 m；
 - 独立保护半径为`0.25 + 0.05 = 0.30 m`；
 - 正式场景占据图分辨率0.10 m，完整系统默认`conservative`净空档；
 - 正式系统当前首个正常候选宽度为0.90 m，0.80 m及以下不能直接作为现场放行值。
@@ -636,6 +658,59 @@ ros2 run m20_warehouse_inspection m20_start_inspection \
 本轮航向跟随、旋转恢复和否决实验见
 [航向控制记录](docs/devlog/2026-07-30_heading_alignment_control.md)与
 [对应测试报告](docs/test_reports/2026-07-30_heading_alignment_control.md)。
+上述 SCAN 内部航向和净空试验现已撤回；当前主线恢复固定第三方 SCAN 参数与
+原闭环控制行为，仅保留话题、Action、切层和 execution hold 接口。恢复范围见
+[SCAN 原项目基线恢复记录](docs/devlog/2026-07-31_scan_vendor_baseline_restore.md)，
+构建与一致性结果见
+[对应测试报告](docs/test_reports/2026-07-31_scan_vendor_baseline_restore.md)。
+原版场景 1 与当前 M20 的障碍间距、理想全向执行器、官方轮足动力学和同路线
+实测对照见
+[执行链对照记录](docs/devlog/2026-07-31_scan_m20_execution_comparison.md)及
+[测试报告](docs/test_reports/2026-07-31_scan_m20_execution_comparison.md)。
+该对照确认当前首要问题位于 M20 运动适配/动态执行链，不再通过修改 SCAN
+规划参数补偿。
+Go2 官方 Sport 接口、原 SCAN 理想仿真、M20 公开 RL 部署 SDK 与两台机器人
+模型/转向约束的逐层对照见
+[Go2/M20 SDK 与模型对照](docs/devlog/2026-07-31_go2_m20_sdk_model_comparison.md)。
+该记录明确：原 SCAN 仓库不包含 Unitree SDK 适配器，M20 的轮腿参与由 ONNX
+连续策略共同决定，后续差异统一收敛到平台能力与运动 backend，而不进入规划器。
+
+该平台边界现已实现为版本化 `m20_policy_v1` 能力配置：导航适配、碰撞预测、最终
+SDK 门和官方策略桥共享同一组 M20 包线；碰撞恢复增加时间、位移和无进展上限。
+实现与参数推导见
+[M20 平台能力配置与有界恢复记录](docs/devlog/2026-07-31_m20_capability_profile_bounded_recovery.md)。
+官方 SDK + MuJoCo 单障碍和六目标最终动态结果见
+[双向轨迹跟踪与有界恢复报告](docs/test_reports/2026-07-31_m20_bidirectional_tracking_bounded_recovery.md)：
+六目标 `6/6`，两个 180° 回程的横向误差分别为 `0.0084 m / 0.0051 m`，无恢复、
+预算耗尽或实体障碍接触。
+
+后续冷启动已把倒车判定收敛为“新 B-spline 多点直线校验 + 后轴对齐 + 倒车航向
+锁存”，避免曲线误判和末端切向抖动。新的六目标仍为 `6/6`。实测速度反馈在开阔
+路线改善用时与终点误差，但单障碍重复样本的最小硬余量仍有较大波动，因此主配置
+继续默认关闭反馈。实现过程见
+[倒车与速度反馈记录](docs/devlog/2026-08-01_m20_reverse_alignment_velocity_feedback_ab.md)，
+量化结果见
+[再资格验证报告](docs/test_reports/2026-08-01_m20_velocity_feedback_requalification.md)。
+
+### M20 SDK 隔离速度试验
+
+可在不启动 SCAN、地图切换、碰撞保护和任务执行器的情况下，直接测试官方策略与
+M20 MuJoCo 模型：
+
+```bash
+ros2 launch m20_warehouse_inspection \
+  m20_motion_envelope_mujoco.launch.py \
+  use_viewer:=false suite:=smoke \
+  output_directory:=/tmp/m20_motion_envelope
+```
+
+`suite` 支持 `smoke`、`axial`、`navigation`、`turn_matrix`、`reverse` 和
+`full`。精确冷启动
+单格可用 `case_name:=turn_005_020`；正式速度边界必须以单格重复结果为准，不把同一
+进程内不稳定动作后的结果直接当成独立样本。默认测试仍使用生产接口限幅
+`0.45 / 0.20 / 0.65`，不会改变 SCAN 参数或主系统默认启动方式。设计、源码核查和
+首轮结果见
+[M20 SDK 速度包线第一级记录](docs/devlog/2026-07-31_m20_command_envelope_phase1.md)。
 
 ## 独立工作空间边界
 

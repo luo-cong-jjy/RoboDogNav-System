@@ -331,17 +331,19 @@ SCAN 内部 GridMap 不在 local sensing 中隐式修改，而是在 floor-switc
 
 ## 9. 导航架构
 
-### 9.1 人工与诊断的原生 SCAN 路线
+### 9.1 独立诊断的原生 SCAN 路线
 
-单层人工目标和自动任务默认 `use_grid_route=false`，目标直接发送到
-`/move_base_simple/goal`。
+独立 `f1_scan.launch.py` 默认 `use_grid_route=false`，目标直接发送到
+`/move_base_simple/goal`，用于与第三方项目进行算法和可视化对照。
 GridMap、Dynamic A*、B 样条和闭环控制均由唯一的 `m20_scan_planner` 进程提供；
 `m20_scan_navigation` 不编译算法副本。
 
 ### 9.2 自动任务全局路线
 
-完整自动任务与人工目标共用原版 SCAN 链。二维占据栅格 A* 保留为显式开发兼容模式，
-后续可升级 Theta*：
+完整 M20 自动任务与人工目标默认先经过二维占据栅格净空 A*，再由原版 SCAN 执行
+顺序子目标；这避免平台先进入没有滚动转弯空间的窄通道。相邻缓弯在硬净空与 M20
+最小滚动半径校验通过后提前交接，急弯才停稳换段。后续仍可升级为带曲率状态的
+Hybrid A*：
 
 ```text
 目标点
@@ -350,7 +352,8 @@ GridMap、Dynamic A*、B 样条和闭环控制均由唯一的 `m20_scan_planner`
   -> /m20/navigation/global_route
 ```
 
-兼容模式只负责长距离引导和静态连通性，不直接控制机器人；日常入口不启用。
+该层只负责长距离引导和静态连通性，不直接控制机器人；日常完整系统默认启用，
+`use_grid_route=false` 保留为原版 SCAN 对照入口。
 
 ### 9.3 SCAN 局部规划
 
@@ -358,7 +361,8 @@ GridMap、Dynamic A*、B 样条和闭环控制均由唯一的 `m20_scan_planner`
 
 ```text
 global_route
-  -> 约 0.9 m 顺序 scan_goal
+  -> 压缩后的 scan_goal
+  -> 安全缓弯连续交接 / 危险急弯停稳交接
 local PointCloud2
 body_pose
   -> GridMap

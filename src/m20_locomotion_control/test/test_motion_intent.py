@@ -42,13 +42,13 @@ def test_straight_command_uses_cruise_and_suppresses_small_side_motion():
     assert command == (0.35, 0.0, 0.05)
 
 
-def test_large_curvature_uses_coordinated_turn_and_limits_translation():
+def test_large_curvature_uses_coordinated_turn_without_low_speed_clamp():
     intent, command = constrain_for_intent(
         (0.30, 0.0, 0.60),
         IntentParameters(),
     )
     assert intent is MotionIntent.COORDINATED_TURN
-    assert command == (0.12, 0.0, 0.60)
+    assert command == (0.30, 0.0, 0.60)
 
 
 def test_near_in_place_yaw_uses_coordinated_turn():
@@ -94,16 +94,29 @@ def test_navigation_adapter_converts_side_error_to_smooth_yaw():
     assert 0.0 < command[2] < 0.10
 
 
-def test_navigation_adapter_enters_turn_before_translating_fast():
+def test_navigation_adapter_preserves_measured_stable_rolling_speed():
     parameters = IntentParameters()
     adapter = RollingNavigationAdapter(parameters)
     intent, command = adapter.update((0.30, 0.20, 0.0), dt=1.0)
 
     assert intent is MotionIntent.COORDINATED_TURN
     assert adapter.turning
-    assert command[0] == parameters.turn_max_forward
+    assert command[0] == math.hypot(0.30, 0.20)
     assert command[1] == 0.0
     assert command[2] > parameters.turn_yaw_threshold
+
+
+def test_navigation_adapter_projects_low_speed_turn_to_stable_roll():
+    parameters = IntentParameters()
+    adapter = RollingNavigationAdapter(parameters)
+    intent, command = adapter.update((0.05, 0.0, 0.65), dt=1.0)
+
+    assert intent is MotionIntent.COORDINATED_TURN
+    assert command == (
+        parameters.turn_min_forward,
+        0.0,
+        parameters.max_yaw,
+    )
 
 
 def test_navigation_adapter_turn_hysteresis_prevents_mode_chatter():
@@ -133,16 +146,15 @@ def test_navigation_adapter_turn_holds_before_aligned_release():
     assert not adapter.turning
 
 
-def test_navigation_adapter_pure_turn_stops_translation_immediately():
-    adapter = RollingNavigationAdapter(IntentParameters())
-    adapter.update((0.30, 0.0, 0.0), dt=1.0)
-
-    intent, command = adapter.update((0.0, 0.0, 0.50), dt=0.02)
+def test_navigation_adapter_pure_turn_becomes_guarded_rolling_arc():
+    parameters = IntentParameters()
+    adapter = RollingNavigationAdapter(parameters)
+    intent, command = adapter.update((0.0, 0.0, 0.50), dt=1.0)
 
     assert intent is MotionIntent.COORDINATED_TURN
-    assert command[0] == 0.0
+    assert command[0] == parameters.turn_min_forward
     assert command[1] == 0.0
-    assert command[2] > 0.0
+    assert command[2] == 0.50
 
 
 def test_navigation_adapter_turn_first_profile_cancels_cruise_immediately():
@@ -182,3 +194,47 @@ def test_navigation_adapter_never_requests_autonomous_lateral_motion():
         intent, output = adapter.update(command, dt=0.10)
         assert intent is not MotionIntent.LATERAL_MANEUVER
         assert output[1] == 0.0
+
+
+def test_navigation_adapter_compensates_measured_reverse_dead_zone():
+    parameters = IntentParameters()
+    adapter = RollingNavigationAdapter(parameters)
+
+    intent, command = adapter.update((-0.05, 0.0, 0.0), dt=1.0)
+
+    assert intent is MotionIntent.WHEEL_CRUISE
+    assert math.isclose(
+        command[0],
+        -(parameters.reverse_speed_offset + 0.05 * parameters.reverse_speed_gain),
+    )
+    assert command[1:] == (0.0, 0.0)
+
+
+def test_navigation_adapter_compensates_reverse_yaw_under_response():
+    parameters = IntentParameters(
+        cruise_yaw_deadband=0.0,
+        cruise_yaw_filter_time_constant=0.0,
+    )
+    adapter = RollingNavigationAdapter(parameters)
+
+    _, command = adapter.update((-0.15, 0.0, 0.15), dt=1.0)
+
+    assert command[0] < -0.35
+    assert math.isclose(
+        command[2],
+        parameters.reverse_yaw_offset
+        + 0.15 * parameters.reverse_yaw_gain,
+    )
+
+
+def test_reverse_compensation_respects_sdk_command_limits():
+    parameters = IntentParameters()
+    adapter = RollingNavigationAdapter(parameters)
+
+    _, command = adapter.update((-0.45, 0.0, -0.65), dt=1.0)
+
+    assert command == (
+        -parameters.max_forward,
+        0.0,
+        -parameters.max_yaw,
+    )

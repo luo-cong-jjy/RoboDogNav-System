@@ -94,6 +94,38 @@ def quaternion_to_rpy(values: Iterable[float]) -> Tuple[float, float, float]:
     return roll, pitch, yaw
 
 
+def world_vector_to_body(
+    values: Iterable[float],
+    orientation: Iterable[float],
+) -> np.ndarray:
+    """Rotate a finite world-frame vector into the quaternion's body frame."""
+    vector = np.asarray(values, dtype=np.float64)
+    if vector.shape != (3,) or not np.all(np.isfinite(vector)):
+        return np.zeros(3, dtype=np.float64)
+    w, x, y, z = normalized_quaternion(orientation)
+    body_to_world = np.asarray(
+        [
+            [
+                1.0 - 2.0 * (y * y + z * z),
+                2.0 * (x * y - w * z),
+                2.0 * (x * z + w * y),
+            ],
+            [
+                2.0 * (x * y + w * z),
+                1.0 - 2.0 * (x * x + z * z),
+                2.0 * (y * z - w * x),
+            ],
+            [
+                2.0 * (x * z - w * y),
+                2.0 * (y * z + w * x),
+                1.0 - 2.0 * (x * x + y * y),
+            ],
+        ],
+        dtype=np.float64,
+    )
+    return body_to_world.T @ vector
+
+
 def sdk_to_raw(
     positions: np.ndarray,
     velocities: np.ndarray,

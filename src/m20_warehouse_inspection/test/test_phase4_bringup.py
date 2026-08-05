@@ -36,9 +36,14 @@ def test_phase4_launch_composes_phase3_and_mission_executor() -> None:
     assert "'use_grid_route'," in launch
     assert (
         "'use_grid_route',\n"
-        "                default_value='false',"
+        "                default_value='true',"
     ) in launch
     assert "'system_config': system_config" in launch
+    assert "'collision_grid_route_enabled'," in launch
+    assert "default_value='true'" in launch
+    assert 'clearance_vendor.yaml' in launch
+    assert 'scan_m20_physical_planner.yaml' not in launch
+    assert 'planner_config' not in launch
 
 
 def test_dense_profile_has_an_independent_named_launch_entry() -> None:

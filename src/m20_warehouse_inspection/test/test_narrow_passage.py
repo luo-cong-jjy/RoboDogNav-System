@@ -170,12 +170,22 @@ def test_production_guard_keeps_geometry_and_measured_stop_horizon() -> None:
     ).open('r', encoding='utf-8') as stream:
         profile = yaml.safe_load(stream)
     planner = profile['scan_planner_node']['ros__parameters']
-    assert planner['grid_map.double_cylinder_radius'] == 0.30
+    assert planner['grid_map.double_cylinder_radius'] == 0.25
+    assert planner['optimization.dist0'] == 0.20
     guard = profile['m20_collision_guard']['ros__parameters']
     assert guard['footprint_radius'] == 0.25
     assert guard['footprint_offset'] == 0.18
     assert guard['safety_margin'] == 0.05
     assert guard['lookahead_sec'] == 0.70
+    assert planner['grid_map.double_cylinder_radius'] == guard[
+        'footprint_radius'
+    ]
+    assert math.isclose(
+        planner['grid_map.double_cylinder_radius']
+        + planner['optimization.dist0'],
+        0.45,
+        abs_tol=1.0e-9,
+    )
     assert 0.45 * guard['lookahead_sec'] >= 2.0 * 0.156
 
     with (

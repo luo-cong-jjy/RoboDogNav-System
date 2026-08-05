@@ -27,6 +27,8 @@ class PlanarState:
     y: float
     z: float
     yaw: float
+    vx_body: float = 0.0
+    vy_body: float = 0.0
     vx_world: float = 0.0
     vy_world: float = 0.0
     wz: float = 0.0
@@ -70,6 +72,8 @@ def integrate_planar(
         y=state.y + vy_world * dt,
         z=state.z,
         yaw=normalize_angle(state.yaw + wz * dt),
+        vx_body=vx,
+        vy_body=vy,
         vx_world=vx_world,
         vy_world=vy_world,
         wz=wz,

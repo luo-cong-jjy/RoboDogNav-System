@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "independent_cold_starts": 6,
+  "accepted_runs": 6,
+  "observed_success_rate": 1.0,
+  "all_runs_accepted": true,
+  "cases": {
+    "shared_origin_exit": {
+      "runs": 3,
+      "accepted_runs": 3,
+      "observed_success_rate": 1.0,
+      "action_success_runs": 3,
+      "contact_free_runs": 3,
+      "fallback_coverage_runs": 1,
+      "raster_shell_escape_runs": 0,
+      "map_edge_inward_recovery_runs": 3,
+      "scan_inflation_entry_runs": 0,
+      "intermediate_stop_clean_runs": 3,
+      "maximum_obstacle_contact_events": 0,
+      "worst_scan_inflation_clearance_m": 0.21196084123835846,
+      "longest_scan_inflated_region_sec": 0.0,
+      "median_duration_sec": 111.4054493779986,
+      "maximum_duration_sec": 151.43325724800525
+    },
+    "upper_boundary": {
+      "runs": 3,
+      "accepted_runs": 3,
+      "observed_success_rate": 1.0,
+      "action_success_runs": 3,
+      "contact_free_runs": 3,
+      "fallback_coverage_runs": 3,
+      "raster_shell_escape_runs": 2,
+      "map_edge_inward_recovery_runs": 0,
+      "scan_inflation_entry_runs": 0,
+      "intermediate_stop_clean_runs": 3,
+      "maximum_obstacle_contact_events": 0,
+      "worst_scan_inflation_clearance_m": 0.11672886502374347,
+      "longest_scan_inflated_region_sec": 0.0,
+      "median_duration_sec": 94.73245107699768,
+      "maximum_duration_sec": 105.175738549995
+    }
+  },
+  "source_reports": [
+    "src/m20_warehouse_inspection/docs/test_data/2026-08-02_boundary_recovery_forward_gate_cold_starts/shared_origin_exit/run_01/boundary_recovery_summary.json",
+    "src/m20_warehouse_inspection/docs/test_data/2026-08-02_boundary_recovery_forward_gate_cold_starts/shared_origin_exit/run_02/boundary_recovery_summary.json",
+    "src/m20_warehouse_inspection/docs/test_data/2026-08-02_boundary_recovery_forward_gate_cold_starts/shared_origin_exit/run_03/boundary_recovery_summary.json",
+    "src/m20_warehouse_inspection/docs/test_data/2026-08-02_boundary_recovery_segment_hold_cold_starts/upper_boundary/run_01/boundary_recovery_summary.json",
+    "src/m20_warehouse_inspection/docs/test_data/2026-08-02_boundary_recovery_segment_hold_cold_starts/upper_boundary/run_02/boundary_recovery_summary.json",
+    "src/m20_warehouse_inspection/docs/test_data/2026-08-02_boundary_recovery_segment_hold_cold_starts/upper_boundary/run_03/boundary_recovery_summary.json"
+  ]
+}

@@ -7,10 +7,44 @@ m20_navigation_gateway:
     # Absorb the DDS delivery race between the switch Action result and the
     # reliable hold=False sample received by this gateway.
     floor_hold_release_timeout_sec: 2.0
+    # Recovery is allowed to move only within its own hard time/distance
+    # budget. If that budget is spent, or no collision-checked rolling escape
+    # exists, stop the old trajectory, wait for the guard to rearm, and ask
+    # unchanged native SCAN to plan again. The hard per-goal count prevents
+    # replanning from becoming an unbounded fallback.
+    collision_replan_enabled: true
+    collision_replan_max_attempts: 2
+    collision_replan_rearm_timeout_sec: 5.0
+    # The standalone SCAN launch leaves this false. The integrated M20 launch
+    # enables it so only a guard-proven native-path failure is rerouted through
+    # conservative static-grid subgoals; normal goals stay native SCAN.
+    collision_grid_route_enabled: false
+    collision_stop_topic: /m20/control/collision_stop
+    collision_diagnostic_topic: /m20/control/collision_guard_diagnostic
     # false: goal -> SCAN directly (default, preserves SCAN trajectory shape)
     # true: goal -> static-grid A* -> sequential SCAN subgoals
     use_grid_route: false
     direct_goal_topic: /move_base_simple/goal
     routed_goal_topic: /m20/navigation/goal_pose
+    # In the integrated M20 launch, RViz keeps publishing the public vendor
+    # topic while this gateway relays it to a private SCAN ingress. This lets
+    # a spent collision-recovery episode switch the same manual target to the
+    # conservative grid route without confusing route subgoals with new user
+    # clicks. The standalone vendor launch leaves the monitor disabled.
+    manual_goal_monitor_enabled: false
+    manual_goal_topic: /move_base_simple/goal
+    manual_state_topic: /m20/navigation/manual_state
+    manual_timeout_sec: 300.0
+    # A position goal in the rear sector is not a request to turn the chassis
+    # around. Send it through the bidirectional clearance route so a straight
+    # corridor can be executed in reverse. The angle matches the validated
+    # M20 reverse-tracking entry threshold.
+    rear_goal_route_enabled: true
+    rear_goal_trigger_angle: 2.10
+    rear_goal_minimum_distance: 0.35
+    # SCAN consumes only target position and its controller follows the
+    # B-spline tangent. Keep this contract explicit: a clicked quaternion is
+    # not treated as a strict terminal-yaw command.
+    terminal_orientation_mode: position_only
     scan_reset_service: /m20/navigation/reset
     route_reset_service: /m20/navigation/route_reset

@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "date": "2026-08-02",
+  "backend": "official M20 SDK + official ONNX + MuJoCo",
+  "route_policy": {
+    "complete_system_default_use_grid_route": true,
+    "hard_inflation_m": 0.6,
+    "soft_clearance_margin_m": 0.2,
+    "soft_clearance_weight": 4.0,
+    "terminal_orientation_mode": "position_only",
+    "rear_goal_trigger_angle_rad": 2.1,
+    "final_position_tolerance_m": 0.2
+  },
+  "runs": [
+    {
+      "case": "upper_boundary",
+      "accepted": true,
+      "action_success": true,
+      "duration_sec": 96.79954655599431,
+      "final_error_m": 0.09135105823933588,
+      "minimum_obstacle_body_clearance_m": 0.3966663736329634,
+      "minimum_scan_inflation_clearance_m": 0.14666637363296342,
+      "scan_inflated_region_sample_count": 0,
+      "obstacle_contact_event_count": 0,
+      "fallback_triggered": true,
+      "scan_goal_count": 3,
+      "intermediate_stop_violation_count": 0,
+      "backend_faults": []
+    },
+    {
+      "case": "rear_corridor",
+      "accepted": true,
+      "action_success": true,
+      "duration_sec": 4.333280852006283,
+      "start_yaw_rad": 0.00003325526393551612,
+      "final_yaw_rad": -0.0005883393862991009,
+      "final_error_m": 0.18446891409479635,
+      "minimum_obstacle_body_clearance_m": 1.9947570157826031,
+      "minimum_scan_inflation_clearance_m": 1.7447570157826031,
+      "scan_inflated_region_sample_count": 0,
+      "obstacle_contact_event_count": 0,
+      "tracking_direction": "REVERSE",
+      "backend_faults": []
+    },
+    {
+      "case": "narrow_corridor_entry",
+      "accepted": true,
+      "action_success": true,
+      "duration_sec": 35.47390544900554,
+      "final_error_m": 0.12875077446481983,
+      "minimum_obstacle_body_clearance_m": 0.6360887374125475,
+      "minimum_scan_inflation_clearance_m": 0.38608873741254746,
+      "scan_inflated_region_sample_count": 0,
+      "obstacle_contact_event_count": 0,
+      "predicted_footprint_guard_event_count": 0,
+      "intermediate_stop_violation_count": 0,
+      "backend_faults": []
+    }
+  ]
+}

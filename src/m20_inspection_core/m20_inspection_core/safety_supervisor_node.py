@@ -27,13 +27,15 @@ from .safety_policy import (
     PlanarCommand,
     TimedCommand,
     clamp_command,
+    proportional_ramp_command,
     select_fresh_command,
     slew_command,
+    valid_collision_recovery_command,
 )
 
 
 class SafetySupervisor(Node):
-    """Gate every motion command before it reaches a simulation or real backend."""
+    """Gate every command before it reaches a simulation or real backend."""
 
     def __init__(self) -> None:
         super().__init__('m20_safety_supervisor')
@@ -52,6 +54,10 @@ class SafetySupervisor(Node):
             'mission_hold_topic', '/m20/control/mission_hold'
         )
         self.declare_parameter(
+            'route_segment_hold_topic',
+            '/m20/control/route_segment_hold',
+        )
+        self.declare_parameter(
             'collision_stop_topic', '/m20/control/collision_stop'
         )
         self.declare_parameter(
@@ -63,11 +69,13 @@ class SafetySupervisor(Node):
             '/m20/control/collision_recovery_cmd',
         )
         self.declare_parameter('collision_recovery_timeout_sec', 0.15)
+        self.declare_parameter('collision_recovery_ramp_sec', 1.0)
         self.declare_parameter(
             'execution_hold_topic', '/m20/control/execution_hold'
         )
         self.declare_parameter('map_ready_topic', '/m20/map/ready')
         self.declare_parameter('odom_topic', '/m20/sim/body_pose')
+        self.declare_parameter('capability_profile_id', 'fallback_defaults')
         self.declare_parameter('publish_rate_hz', 50.0)
         self.declare_parameter('command_timeout_sec', 0.5)
         self.declare_parameter('odom_timeout_sec', 0.5)
@@ -93,6 +101,14 @@ class SafetySupervisor(Node):
                 ).value
             ),
         )
+        self._collision_recovery_ramp = max(
+            0.0,
+            float(
+                self.get_parameter(
+                    'collision_recovery_ramp_sec'
+                ).value
+            ),
+        )
         self._limits: PlanarCommand = (
             float(self.get_parameter('max_linear_x').value),
             float(self.get_parameter('max_linear_y').value),
@@ -114,6 +130,7 @@ class SafetySupervisor(Node):
         self._e_stop = False
         self._floor_hold = False
         self._mission_hold = False
+        self._route_segment_hold = False
         self._collision_stop = True
         self._collision_recovery_available = False
         self._collision_recovery: Optional[TimedCommand] = None
@@ -169,6 +186,12 @@ class SafetySupervisor(Node):
         )
         self.create_subscription(
             Bool,
+            str(self.get_parameter('route_segment_hold_topic').value),
+            self._route_segment_hold_callback,
+            latched_qos,
+        )
+        self.create_subscription(
+            Bool,
             str(self.get_parameter('collision_stop_topic').value),
             self._collision_stop_callback,
             latched_qos,
@@ -209,7 +232,10 @@ class SafetySupervisor(Node):
         self._publish_immediate_zero('MAP_NOT_READY')
         self.get_logger().info(
             'Safety supervisor ready: candidate/manual -> safe; '
-            'fail-closed gates enabled'
+            'fail-closed gates enabled; capability profile='
+            f'{self.get_parameter("capability_profile_id").value}; '
+            f'limits=({self._limits[0]:.2f},'
+            f'{self._limits[1]:.2f},{self._limits[2]:.2f})'
         )
 
     def _now(self) -> float:
@@ -257,6 +283,11 @@ class SafetySupervisor(Node):
         if self._mission_hold:
             self._publish_immediate_zero('MISSION_HOLD')
 
+    def _route_segment_hold_callback(self, message: Bool) -> None:
+        self._route_segment_hold = message.data
+        if self._route_segment_hold:
+            self._publish_immediate_zero('ROUTE_SEGMENT_HOLD')
+
     def _map_ready_callback(self, message: Bool) -> None:
         self._map_ready = message.data
         if not self._map_ready:
@@ -275,10 +306,14 @@ class SafetySupervisor(Node):
         self._collision_recovery_available = bool(message.data)
 
     def _collision_recovery_callback(self, message: Twist) -> None:
-        # The guard may authorize yaw only.  Enforce that invariant again at
-        # the final safety gate before the command reaches the SDK.
+        # The guard may authorize only swept-clear forward rolling motion or
+        # straight reverse. The final gate validates that shape before SDK.
         command = clamp_command(
-            (0.0, 0.0, float(message.angular.z)),
+            (
+                float(message.linear.x),
+                0.0,
+                float(message.angular.z),
+            ),
             self._limits,
         )
         self._collision_recovery = TimedCommand(command, self._now())
@@ -293,6 +328,8 @@ class SafetySupervisor(Node):
             return 'FLOOR_SWITCH_HOLD'
         if self._mission_hold:
             return 'MISSION_HOLD'
+        if self._route_segment_hold:
+            return 'ROUTE_SEGMENT_HOLD'
         if not self._map_ready:
             return 'MAP_NOT_READY'
         if (
@@ -314,11 +351,7 @@ class SafetySupervisor(Node):
         ):
             return None
         command = self._collision_recovery.command
-        if (
-            abs(command[0]) > 1.0e-9
-            or abs(command[1]) > 1.0e-9
-            or abs(command[2]) <= 1.0e-3
-        ):
+        if not valid_collision_recovery_command(command):
             return None
         return command
 
@@ -351,9 +384,14 @@ class SafetySupervisor(Node):
             if recovery is None:
                 self._publish_immediate_zero('COLLISION_STOP')
                 return
-            self._last_output = recovery
+            self._last_output = proportional_ramp_command(
+                self._last_output,
+                recovery,
+                dt,
+                self._collision_recovery_ramp,
+            )
             self._safe_publisher.publish(
-                self._message_from_command(recovery)
+                self._message_from_command(self._last_output)
             )
             self._publish_state('COLLISION_RECOVERY')
             return
@@ -385,6 +423,11 @@ def main() -> None:
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
+    except RuntimeError:
+        # CycloneDDS can invalidate a subscription while SIGINT is being
+        # handled. Treat only that shutdown path as a clean stop.
+        if rclpy.ok():
+            raise
     finally:
         try:
             node.destroy_node()
