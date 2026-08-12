@@ -1,0 +1,233 @@
+schema_version: 1
+
+system:
+  project_id: m20_warehouse_dense_four_corner
+  robot_model: deep_robotics_m20
+  default_profile: rviz_dense_four_corner
+  logical_floor_count: 2
+
+frames:
+  overview: warehouse_overview
+  active_map: map
+  odom: odom
+  robot_base: base_link
+  lidar: lidar_link
+
+simulation:
+  # 两个 40 m × 40 m 平面场景在共享原点相接，作为双层仓库的近似仿真。
+  layout_mode: flat_connected_regions
+  ground_z: 0.0
+  floor_size_x: 40.0
+  floor_size_y: 40.0
+  inter_region_gap: 0.0
+  prohibit_direct_region_crossing: false
+  teleport_on_floor_switch: false
+  elevator_transition_delay_sec: 0.0
+
+# 楼层事务与具体运输设备解耦。当前平面近似只在安全保持期间原地切图；未来真实
+# 电梯适配器改为 external_action，地图/generation/导航复位主事务无需改动。
+floor_switch:
+  transfer_adapter: timed_hold
+  pose_handoff: preserve
+  transition_delay_sec: 0.0
+  transfer_timeout_sec: 120.0
+  external_action_name: /m20/floor_transfer/execute
+
+map_generation:
+  deterministic: true
+  # 240 个确定性随机障碍物，加 6 个过道固定障碍物。
+  obstacle_count_per_floor: 246
+  obstacle_height: 2.0
+  surface_resolution: 0.10
+  boundary_clearance: 1.0
+  reserved_zone_clearance: 1.0
+  # 正式默认场景：所有独立障碍物的本体边界间距不得小于0.90 m。
+  minimum_obstacle_spacing: 0.90
+
+floors:
+  F1:
+    display_name: dense_scene_1
+    source_seed: 127
+    simulation_offset: [-20.0, 0.0, 0.0]
+    overview_z: 0.0
+    pcd_file: maps/dense_four_corner/scene_1/scene_1.pcd
+    metadata_file: maps/dense_four_corner/scene_1/scene_1.json
+    # 整个巡检流程的起点；最终必须返回这里。
+    initial_pose: [-37.0, 0.0, 0.0]
+    elevator_lobby_pose: [0.0, 0.0, 0.0]
+    elevator_cabin_pose: [0.0, 0.0, 0.0]
+    transition_gateway:
+      edge: max_x
+      center_y: 0.0
+      width: 4.0
+    reserved_zones:
+      - name: mission_start_zone
+        center: [-37.0, 0.0]
+        size: [3.0, 3.0]
+      - name: shared_gateway_zone
+        center: [-1.5, 0.0]
+        size: [3.0, 4.0]
+    # 1 m × 1 m 固定障碍物交错侵入三段巡检过道边缘，中心线保留 0.8 m 净空。
+    # F2 作为 F1 的 replica，会在自己的场景坐标中复制同一局部布局。
+    fixed_obstacles:
+      - name: bottom_aisle_west
+        center: [-28.0, -14.7]
+        size: [1.0, 1.0]
+      - name: bottom_aisle_east
+        center: [-12.0, -17.3]
+        size: [1.0, 1.0]
+      - name: right_aisle_lower
+        center: [-5.3, -8.0]
+        size: [1.0, 1.0]
+      - name: right_aisle_upper
+        center: [-2.7, 8.0]
+        size: [1.0, 1.0]
+      - name: top_aisle_east
+        center: [-12.0, 14.7]
+        size: [1.0, 1.0]
+      - name: top_aisle_west
+        center: [-28.0, 17.3]
+        size: [1.0, 1.0]
+    inspection_points:
+      - name: F1_LOWER_LEFT
+        pose: [-36.0, -16.0, 0.0]
+        dwell_sec: 1.0
+      - name: F1_LOWER_RIGHT
+        pose: [-4.0, -16.0, 0.0]
+        dwell_sec: 1.0
+      - name: F1_UPPER_RIGHT
+        pose: [-4.0, 16.0, 0.0]
+        dwell_sec: 1.0
+      - name: F1_UPPER_LEFT
+        pose: [-36.0, 16.0, 0.0]
+        dwell_sec: 1.0
+
+  F2:
+    display_name: dense_scene_2
+    # 第二场景复制第一场景的内部布局，只将门洞放到相邻的左边界。
+    replica_of: F1
+    source_seed: 127
+    simulation_offset: [20.0, 0.0, 0.0]
+    overview_z: 0.0
+    pcd_file: maps/dense_four_corner/scene_2/scene_2.pcd
+    metadata_file: maps/dense_four_corner/scene_2/scene_2.json
+    initial_pose: [3.0, 0.0, 0.0]
+    elevator_lobby_pose: [0.0, 0.0, 0.0]
+    elevator_cabin_pose: [0.0, 0.0, 0.0]
+    transition_gateway:
+      edge: min_x
+      center_y: 0.0
+      width: 4.0
+    reserved_zones:
+      - name: shared_gateway_zone
+        center: [1.5, 0.0]
+        size: [3.0, 4.0]
+    inspection_points:
+      - name: F2_LOWER_LEFT
+        pose: [4.0, -16.0, 0.0]
+        dwell_sec: 1.0
+      - name: F2_LOWER_RIGHT
+        pose: [36.0, -16.0, 0.0]
+        dwell_sec: 1.0
+      - name: F2_UPPER_RIGHT
+        pose: [36.0, 16.0, 0.0]
+        dwell_sec: 1.0
+      - name: F2_UPPER_LEFT
+        pose: [4.0, 16.0, 0.0]
+        dwell_sec: 1.0
+
+elevators:
+  E1:
+    # 一个 connector 可声明任意数量的有向路线，便于扩展到 F3/F4。
+    trigger_tolerance_xy: 0.35
+    trigger_tolerance_yaw: 3.141592653589793
+    transitions:
+      - from: F1
+        to: F2
+        source_trigger_pose: [0.0, 0.0, 0.0]
+        target_release_pose: [0.0, 0.0, 0.0]
+      - from: F2
+        to: F1
+        source_trigger_pose: [0.0, 0.0, 0.0]
+        target_release_pose: [0.0, 0.0, 0.0]
+
+map_switch_transaction:
+  require_robot_stopped: true
+  stop_linear_threshold: 0.03
+  stop_angular_threshold: 0.05
+  cancel_navigation_timeout_sec: 2.0
+  reset_navigation_timeout_sec: 2.0
+  load_map_timeout_sec: 5.0
+  relocate_timeout_sec: 2.0
+  # 246-obstacle PCD reload and the first native ray-cast can be slower than
+  # the baseline map; retain the hold until three fresh clouds arrive.
+  readiness_timeout_sec: 12.0
+  minimum_fresh_local_cloud_count: 3
+  failure_state: FAULT_HOLD
+
+navigation:
+  global_route_backend: scan_native
+  automatic_mission_route_backend: scan_native
+  local_planner_backend: scan_planner
+  scan_navigation_mode: 1
+  local_cloud_topic: /quad_0/cloud
+  sensor_cloud_topic: /quad_0/sensor_cloud
+  goal_topic: /move_base_simple/goal
+  raw_cmd_vel_topic: /m20/navigation/cmd_vel_raw
+  goal_position_tolerance: 0.20
+  goal_yaw_tolerance: 0.35
+
+safety:
+  manual_priority: true
+  immediate_zero_on_emergency_stop: true
+  immediate_zero_on_floor_switch_hold: true
+  navigation_command_timeout_sec: 0.5
+  max_linear_x: 0.45
+  max_linear_y: 0.20
+  max_angular_z: 0.65
+  max_linear_accel: 1.0
+  max_angular_accel: 1.2
+
+mission:
+  id: dense_four_corner_patrol
+  loop: false
+  sequence:
+    # 场景 1：左下 -> 右下 -> 右上 -> 左上。
+    - type: inspection
+      floor: F1
+      point: F1_LOWER_LEFT
+    - type: inspection
+      floor: F1
+      point: F1_LOWER_RIGHT
+    - type: inspection
+      floor: F1
+      point: F1_UPPER_RIGHT
+    - type: inspection
+      floor: F1
+      point: F1_UPPER_LEFT
+    - type: floor_transfer
+      connector: E1
+      from: F1
+      to: F2
+    # 场景 2：左下 -> 右下 -> 右上 -> 左上。
+    - type: inspection
+      floor: F2
+      point: F2_LOWER_LEFT
+    - type: inspection
+      floor: F2
+      point: F2_LOWER_RIGHT
+    - type: inspection
+      floor: F2
+      point: F2_UPPER_RIGHT
+    - type: inspection
+      floor: F2
+      point: F2_UPPER_LEFT
+    # 先回共享原点，原地反向切回 F1，再返回整个流程起点。
+    - type: floor_transfer
+      connector: E1
+      from: F2
+      to: F1
+    - type: terminal
+      floor: F1
+      location: initial_pose
+      name: MISSION_START_RETURN

@@ -1,0 +1,76 @@
+schema_version: 1
+
+# Deployment metadata and interface contract for the back-mounted x86 host.
+# This file documents the selected adapters; the site/floor geometry remains
+# in a separate system_config so a real map is never confused with a test map.
+host:
+  architecture: x86_64
+  operating_system: ubuntu_20.04
+  ros_distribution: foxy
+  build_from_clean_source: true
+
+localization:
+  backend: elevator_lio
+  package: lio
+  config_path: root_config_m20_navigation_relocation.yaml
+  input_topics:
+    front_cloud: /rslidar_points_front
+    rear_cloud: /rslidar_points_rear
+    imu: /IMU
+  output_topics:
+    lio_body_odometry: /LIO/odom_vehicle
+    lio_sensor_odometry: /LIO/odom_imu
+    world_cloud: /LIO/clouds_lidar
+    in_elevator: /LIO/in_elevator
+    elevator_state: /LIO/elevator_state
+  frames:
+    world: world
+    body: base_link
+    imu: m20_lio_imu
+  navigation_adapter:
+    output_odometry: /m20/localization/body_pose
+    measured_twist: /m20/locomotion/measured_twist
+    measured_twist_timeout_sec: 0.50
+
+navigation:
+  planner: scan_planner
+  body_pose_topic: /m20/localization/body_pose
+  cloud_topic: /LIO/clouds_lidar
+  sensor_pose_topic: /LIO/odom_imu
+  cloud_is_world: true
+  local_pcd_raycaster: false
+
+motion:
+  common_input: /m20/locomotion/cmd_vel_sdk
+  selected_factory_transport: basic_server
+  robot_host: 10.21.31.103
+  direct_ros:
+    enabled: true
+    readiness: source_complete_target_qos_pending
+    command_topic: /NAV_CMD
+    feedback_topic: /MOTION_INFO
+    state_topic: /MOTION_STATE
+    gait_topic: /GAIT
+    hard_estop_topic: /HES_STATUS
+    command_rate_hz: 20.0
+    firmware_minimum: V1.1.7
+    rmw: rmw_fastrtps_cpp
+    required_messages:
+      - drdds/msg/NavCmd
+      - drdds/msg/MotionInfo
+      - drdds/msg/MotionState
+      - drdds/msg/Gait
+
+floor_transfer:
+  # Elevator-LIO provides elevator-state estimation, not elevator calling,
+  # floor identity, or autonomous cabin-entry ownership.
+  recommended_adapter: external_action
+  first_hardware_stage: supervised_manual_transport
+  recommended_pose_handoff: wait_for_target
+  lio_set_pose_service_available: false
+
+simulation_only_components:
+  - m20_mujoco_backend
+  - local_sensing_node_pcd_raycaster
+  - m20_sdk_deploy_local_onnx_policy
+  - joints_cmd_simulation_transport

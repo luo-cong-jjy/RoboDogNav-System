@@ -1,0 +1,22 @@
+scan_planner_node:
+  ros__parameters:
+    # M20 geometry adaptation layered on the unchanged SCAN algorithm.
+    # The upstream 0.25/0.18 double circle spans about 0.86 x 0.50 m,
+    # whereas the validated M20 envelope is 0.82 x 0.51 m.  Moving 0.03 m
+    # from soft clearance into the hard radius gives a 0.92 x 0.56 m hard
+    # axial envelope while retaining the upstream 0.45 m nominal one-sided
+    # band. This is a traversability-oriented double-circle approximation,
+    # not a proof that the union of both circles contains every box corner.
+    grid_map.double_cylinder_radius: 0.28
+    grid_map.double_cylinder_offset: 0.18
+    optimization.dist0: 0.17
+
+m20_collision_guard:
+  ros__parameters:
+    # m20_safe remains at the previously validated 0.30 m effective radius.
+    # scan_native does not start this guard, but sharing the same physical
+    # radius avoids a geometry discontinuity when profiles are switched.
+    footprint_radius: 0.28
+    footprint_offset: 0.18
+    safety_margin: 0.02
+    lookahead_sec: 0.70

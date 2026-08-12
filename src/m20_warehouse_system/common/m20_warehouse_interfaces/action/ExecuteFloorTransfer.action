@@ -1,0 +1,22 @@
+# Internal transport-provider contract used by the floor-switch coordinator.
+# An implementation may drive a real elevator, ramp workflow, lift platform,
+# or another site-specific mechanism. It must not switch maps or release the
+# coordinator's safety hold.
+string connector_id
+string source_floor
+string target_floor
+uint64 source_generation
+---
+uint8 ERROR_NONE=0
+uint8 ERROR_REJECTED=1
+uint8 ERROR_TIMEOUT=2
+uint8 ERROR_CANCELLED=3
+uint8 ERROR_HARDWARE=4
+uint8 ERROR_INTERNAL=255
+
+bool success
+uint8 error_code
+string message
+---
+string phase
+string message

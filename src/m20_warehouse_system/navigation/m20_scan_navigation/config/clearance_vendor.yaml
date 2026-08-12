@@ -1,0 +1,12 @@
+scan_planner_node:
+  ros__parameters:
+    # Exact upstream SCAN-Planner clearance behaviour.
+    grid_map.double_cylinder_radius: 0.25
+    grid_map.double_cylinder_offset: 0.18
+    optimization.dist0: 0.20
+
+m20_collision_guard:
+  ros__parameters:
+    footprint_radius: 0.25
+    footprint_offset: 0.18
+    safety_margin: 0.05

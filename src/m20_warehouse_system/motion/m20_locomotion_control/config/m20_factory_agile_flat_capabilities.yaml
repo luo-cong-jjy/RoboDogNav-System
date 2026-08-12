@@ -1,0 +1,81 @@
+# Conservative bring-up profile for the M20 factory agile-flat gait (0x3002).
+# The command maxima stay below the vendor protocol maxima until an unloaded
+# real robot has passed the staged acceptance procedure.
+schema_version: 1
+profile_id: m20_factory_agile_flat_v1
+
+body:
+  length_m: 0.82
+  width_m: 0.506
+  height_m: 0.57
+
+command:
+  max_forward_mps: 0.45
+  max_side_mps: 0.20
+  max_yaw_radps: 0.65
+  # Cmd25 supports Y, but autonomous lateral motion stays disabled until
+  # lateral tracking and stopping have been measured on the physical robot.
+  supports_autonomous_lateral: false
+  supports_reverse_tracking: false
+
+turn:
+  # The factory interface accepts yaw with X=Y=0. Physical swept clearance
+  # still requires an unloaded real-robot validation before production use.
+  supports_zero_radius_yaw: true
+  stable_min_forward_mps: 0.0
+  stable_max_forward_mps: 0.45
+
+tracking:
+  deadband_linear_mps: 0.01
+  deadband_yaw_radps: 0.02
+  lateral_threshold_mps: 0.05
+  turn_yaw_threshold_radps: 0.25
+  in_place_linear_threshold_mps: 0.08
+  turn_curvature_threshold: 1.20
+  curvature_speed_floor_mps: 0.05
+  lateral_max_forward_mps: 0.10
+  course_yaw_gain: 1.20
+  turn_course_enter_rad: 0.25
+  turn_course_exit_rad: 0.08
+  turn_yaw_exit_radps: 0.20
+  turn_min_hold_sec: 0.50
+  cruise_yaw_deadband_radps: 0.02
+  cruise_yaw_filter_time_constant_sec: 0.12
+  output_linear_accel_mps2: 0.60
+  output_yaw_accel_radps2: 0.80
+  reverse_tracking_enter_angle_rad: 2.10
+  reverse_tracking_exit_angle_rad: 1.75
+  reverse_tracking_min_hold_sec: 0.80
+  reverse_tracking_entry_alignment_rad: 0.20
+  reverse_tracking_exit_alignment_rad: 0.35
+
+# Disabled reverse tracking still needs a complete schema. No empirical
+# compensation from the MuJoCo ONNX policy is copied into this real profile.
+reverse_compensation:
+  speed_offset_mps: 0.0
+  speed_gain: 1.0
+  yaw_offset_radps: 0.0
+  yaw_gain: 1.0
+
+# Factory-gait drift is unknown until measured. Zeros avoid pretending that
+# MuJoCo policy drift measurements apply to the physical controller.
+measured_drift:
+  positive_yaw_lateral_mps: 0.0
+  negative_yaw_lateral_mps: 0.0
+  opposite_lateral_uncertainty_mps: 0.0
+
+recovery:
+  forward_speed_mps: 0.20
+  lookahead_sec: 0.90
+  minimum_yaw_radps: 0.35
+  clear_confirm_sec: 0.30
+  rearm_clear_sec: 1.50
+  max_active_sec: 4.0
+  max_displacement_m: 0.50
+  progress_timeout_sec: 1.50
+  minimum_progress_m: 0.03
+
+feedback:
+  # basic_server MotionStatus and ROS /MOTION_INFO expose the same measured
+  # body-frame X/Y/Yaw contract to the common TwistStamped adapter.
+  measurement_source: factory_motion_status

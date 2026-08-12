@@ -1,0 +1,53 @@
+schema_version: 1
+baseline_id: m20_warehouse_rviz_v1
+release: '1.4.0'
+status: frozen
+frozen_on: '2026-08-11'
+revision_note: PCD-only maps with native SCAN planning and online point-cloud safety
+
+platform:
+  operating_system: ubuntu_22.04
+  ros_distribution: humble
+  simulation_backend: rviz_planar_kinematics
+  sensing_backend: deterministic_pcd_local_sensing
+
+dependency_lock: config/workspace_lock.yaml
+
+stable_profiles:
+  connected_baseline:
+    config: config/flat_multifloor_system.yaml
+    config_sha256: c757ccf4d4231e9bc0a83effd00aad7e8b1328c9baa446245bdd801956fc54d2
+    maps:
+      - pcd: maps/floor_1/floor_1.pcd
+        pcd_sha256: 1763a3ceefba9e7a480dc53077f822532e51aed841b707d4f7064b4f89b83054
+      - pcd: maps/floor_2/floor_2.pcd
+        pcd_sha256: 34ea9a1158dbc13a37a6150892a51d48f05da92aa71ccdfd0e980411e3fe7f8b
+  dense_four_corner:
+    config: config/dense_four_corner_system.yaml
+    config_sha256: 1dac577a86d186fc2a0398855a6d76db3988e65e4fe171bcde109967eb59b010
+    mission_id: dense_four_corner_patrol
+    mission_step_count: 11
+    maps:
+      - pcd: maps/dense_four_corner/scene_1/scene_1.pcd
+        pcd_sha256: 03ca6a784b712ecacb644bafaec2293acb3b7ba18a36b559d7de089ff910cc20
+      - pcd: maps/dense_four_corner/scene_2/scene_2.pcd
+        pcd_sha256: cf9b271878b6c8e9c90f6e342dfc408cbb827b573a6ad24c2227e3e71a16b720
+
+official_model:
+  package: m20_official_description
+  path: urdf/vendor/M20.urdf
+  urdf_sha256: 8202cee50ea319c4c238d0402d9291fa56138ca8e2ba795a3747738bd194d094
+
+frozen_contracts:
+  - m20_warehouse_interfaces/action/NavigateFloor
+  - m20_warehouse_interfaces/action/RunMission
+  - m20_warehouse_interfaces/action/SwitchFloor
+  - m20_warehouse_interfaces/action/ExecuteFloorTransfer
+  - floor_id_and_map_generation
+  - cmd_vel_raw_to_safety_to_cmd_vel_safe
+
+excluded_from_baseline:
+  - config/route_challenge_system.yaml
+  - gazebo
+  - mujoco
+  - real_m20_sdk

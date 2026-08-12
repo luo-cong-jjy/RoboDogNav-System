@@ -1,0 +1,13 @@
+scan_planner_node:
+  ros__parameters:
+    # Test-only narrow-aisle profile: 0.70 m preferred straight clearance.
+    grid_map.double_cylinder_radius: 0.25
+    grid_map.double_cylinder_offset: 0.18
+    optimization.dist0: 0.10
+
+m20_collision_guard:
+  ros__parameters:
+    # Never reduce the independent hard-stop envelope below 0.30 m.
+    footprint_radius: 0.25
+    footprint_offset: 0.18
+    safety_margin: 0.05

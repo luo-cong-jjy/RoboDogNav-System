@@ -1,0 +1,3210 @@
+diff --git a/src/M20_sdk_deploy/CMakeLists.txt b/src/M20_sdk_deploy/CMakeLists.txt
+index b6920de..60f6219 100644
+--- a/src/M20_sdk_deploy/CMakeLists.txt
++++ b/src/M20_sdk_deploy/CMakeLists.txt
+@@ -26,6 +26,7 @@ endif()
+ find_package(ament_cmake REQUIRED)
+ find_package(rclcpp REQUIRED)
+ find_package(drdds REQUIRED)
++find_package(geometry_msgs REQUIRED)
+ 
+ set(THIRD_PARTY ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+ 
+@@ -35,6 +36,7 @@ include_directories(
+   interface/robot
+   interface/user_command
+   interface/network
++  extensions
+   state_machine
+   run_policy
+   ${THIRD_PARTY}/eigen/
+@@ -59,6 +61,7 @@ set(CMAKE_INSTALL_RPATH
+ file(GLOB_RECURSE STATE_MACHINE_SRC "state_machine/*.c*")
+ 
+ add_executable(rl_deploy main.cpp ${STATE_MACHINE_SRC})
++add_executable(rl_deploy_cmdvel extensions/main_cmdvel.cpp ${STATE_MACHINE_SRC})
+ 
+ add_library(onnxruntime SHARED IMPORTED)
+ set_target_properties(onnxruntime PROPERTIES IMPORTED_LOCATION "${THIRD_PARTY}/onnxruntime//${BUILD_PLATFORM}/lib/libonnxruntime.so")
+@@ -67,6 +70,11 @@ ament_target_dependencies(rl_deploy
+   rclcpp
+   drdds
+ )
++ament_target_dependencies(rl_deploy_cmdvel
++  rclcpp
++  drdds
++  geometry_msgs
++)
+ if(BUILD_PLATFORM STREQUAL "arm")
+   target_link_libraries(rl_deploy
+     interface
+@@ -77,6 +85,15 @@ if(BUILD_PLATFORM STREQUAL "arm")
+     -ldl
+     -lstdc++
+   )
++  target_link_libraries(rl_deploy_cmdvel
++    interface
++    onnxruntime
++    -lpthread
++    -lm
++    -lrt
++    -ldl
++    -lstdc++
++  )
+ else()
+   target_link_libraries(rl_deploy
+     interface
+@@ -87,11 +104,20 @@ else()
+     -ldl
+     -lstdc++
+   )
++  target_link_libraries(rl_deploy_cmdvel
++    interface
++    onnxruntime
++    -lpthread
++    -lm
++    -lrt
++    -ldl
++    -lstdc++
++  )
+ endif()
+ 
+ 
+-install(TARGETS rl_deploy
++install(TARGETS rl_deploy rl_deploy_cmdvel
+   DESTINATION lib/${PROJECT_NAME}
+ )
+ 
+-ament_package()
+\ No newline at end of file
++ament_package()
+diff --git a/src/M20_sdk_deploy/NAVIGATION_CMDVEL_ADAPTER.md b/src/M20_sdk_deploy/NAVIGATION_CMDVEL_ADAPTER.md
+new file mode 100644
+index 0000000..b7ce430
+--- /dev/null
++++ b/src/M20_sdk_deploy/NAVIGATION_CMDVEL_ADAPTER.md
+@@ -0,0 +1,297 @@
++# M20 Navigation CmdVel Adapter Notes
++
++本文档记录当前本地 `M20_sdk_deploy` 包中相对 DeepRoboticsLab 官方 `sdk_deploy` 的导航适配内容。
++
++结论先写在前面：当前本地包里的 `extensions/rl_deploy_cmdvel` 是本地后续增加的适配层，不是官方最新版自带内容。它的目标不是改写 M20 底层关节控制，而是把 Nav2、SCAN-Planner 或其他上层规划器输出的 `geometry_msgs/msg/Twist` 转成 SDK 内部 `UserCommand`，再继续复用官方 M20 RL 控制链路。
++
++## 1. 适配目标
++
++官方 `M20_sdk_deploy` 的默认入口是：
++
++```text
++Keyboard/Gamepad
++  -> UserCommand
++  -> QwStateMachine
++  -> M20PolicyRunner(policy.onnx)
++  -> M20Interface
++  -> /JOINTS_CMD
++```
++
++本地导航适配入口是：
++
++```text
++Nav2 / SCAN-Planner / upper planner
++  -> geometry_msgs/msg/Twist
++  -> /cmd_vel
++  -> CmdVelInterface
++  -> UserCommand
++  -> QwCmdVelStateMachine
++  -> M20PolicyRunner(policy.onnx)
++  -> M20Interface
++  -> /JOINTS_CMD
++```
++
++因此它适合后续两类导航方案：
++
++- Nav2 + MPPI：Nav2 controller 输出 `cmd_vel`。
++- SCAN-Planner：当前 `m20_scan_planner` 的 closed-loop controller 也发布 `geometry_msgs/msg/Twist`。
++
++只要最终速度接口是 `geometry_msgs/msg/Twist`，就可以接到本适配层。
++
++## 2. 新增文件
++
++本地包新增目录：
++
++```text
++extensions/
++  cmd_vel_interface.hpp
++  main_cmdvel.cpp
++  qw_cmd_vel_state_machine.hpp
++```
++
++其中：
++
++- `cmd_vel_interface.hpp`：订阅 `/cmd_vel`，将 `linear.x`、`linear.y`、`angular.z` 映射为 `UserCommand.forward_vel_scale`、`side_vel_scale`、`turnning_vel_scale`。
++- `qw_cmd_vel_state_machine.hpp`：复用官方 M20 状态集合，只把用户命令来源从键盘/手柄换成 `CmdVelInterface`。
++- `main_cmdvel.cpp`：新增可执行入口，构造 `QwCmdVelStateMachine`。
++
++## 3. 构建文件差异
++
++本地 `CMakeLists.txt` 相对官方包增加了 `geometry_msgs` 和第二个可执行文件：
++
++```cmake
++find_package(geometry_msgs REQUIRED)
++
++include_directories(
++  extensions
++)
++
++add_executable(rl_deploy_cmdvel extensions/main_cmdvel.cpp ${STATE_MACHINE_SRC})
++
++ament_target_dependencies(rl_deploy_cmdvel
++  rclcpp
++  drdds
++  geometry_msgs
++)
++
++install(TARGETS rl_deploy rl_deploy_cmdvel
++  DESTINATION lib/${PROJECT_NAME}
++)
++```
++
++本地 `package.xml` 对应增加：
++
++```xml
++<depend>geometry_msgs</depend>
++```
++
++编译成功后应看到两个可执行程序：
++
++```bash
++ros2 pkg executables m20_sdk_deploy
++```
++
++期望：
++
++```text
++m20_sdk_deploy rl_deploy
++m20_sdk_deploy rl_deploy_cmdvel
++```
++
++## 4. 和官方包的关系
++
++已对比 DeepRoboticsLab 官方 `sdk_deploy` 当前 `main` 分支：
++
++- 官方当前 `src/M20_sdk_deploy` 没有 `extensions/` 目录。
++- 官方当前 `CMakeLists.txt` 只构建 `rl_deploy`。
++- 官方历史路径中没有发现 `src/M20_sdk_deploy/extensions`，所以它不是最近官方删除的内容。
++
++当前本地包的 git 基准较旧，约为官方 `ee289d4`，而官方当前 `main` 已更新到 `80e3d40` 附近。特别注意：
++
++- 本地 `policy/policy.onnx` 与官方当前模型 hash 不同。
++- 后续迁移到背部主机官方最新版时，不建议整包覆盖。
++- 推荐只迁移 `extensions/`、`CMakeLists.txt` 中 `rl_deploy_cmdvel` 相关片段、`package.xml` 中 `geometry_msgs` 依赖。
++
++## 5. 本地其他实质改动
++
++除 `extensions/` 外，本地 M20 包相对官方最新版还有不少差异。大部分是注释增强，不改变控制行为。需要特别知道的实质差异如下。
++
++### 5.1 RL 线程退出保护
++
++`state_machine/quadruped_wheel/rl_control_state.hpp` 中对 `run_policy_thread_` 增加了 `joinable()` 判断，析构和 `OnExit()` 时更稳：
++
++```text
++start_flag_ = false
++if (run_policy_thread_.joinable()) {
++  run_policy_thread_.join()
++}
++```
++
++这个改动对安全退出有利，适合保留。
++
++### 5.2 QwStateMachine Stop 顺序
++
++`state_machine/quadruped_wheel/qw_state_machine.hpp` 的 `Stop()` 中先调用当前状态 `OnExit()`，再停止安全控制、用户命令和机器人接口：
++
++```text
++current_controller_->OnExit()
++sc_ptr_->Stop()
++uc_ptr_->Stop()
++ri_ptr_->Stop()
++```
++
++这个改动可以减少退出时策略线程或状态残留，适合保留。
++
++### 5.3 M20_ACTION_CLIP
++
++`run_policy/m20_policy_runner.hpp` 增加了环境变量 `M20_ACTION_CLIP`，可临时收紧 ONNX 策略输出裁剪范围。
++
++默认仍为 `100.0`，保持接近训练侧配置。保守测试时可以使用：
++
++```bash
++export M20_ACTION_CLIP=1
++```
++
++但这会明显改变策略动作幅度，只适合排查和低风险验证，不应直接作为最终运动性能配置。
++
++### 5.4 MuJoCo 仿真稳定性改动
++
++`interface/robot/simulation/mujoco_simulation_ros2.py` 增加了力矩限幅、速度限幅和 float32 安全裁剪。这个只影响 MuJoCo 联调，不影响真机背部主机控制链路。
++
++## 6. 运行前安全边界
++
++`rl_deploy_cmdvel` 虽然订阅的是 `/cmd_vel`，但最终仍会通过官方链路发布：
++
++```text
++/JOINTS_CMD : drdds/msg/JointsDataCmd
++```
++
++所以它不是普通的差速车 `cmd_vel` 驱动插件，而是真机低层运动控制入口。真机运行前必须确认：
++
++```bash
++ros2 topic info /JOINTS_CMD -v
++ros2 topic hz /JOINTS_DATA
++ros2 topic hz /BATTERY_DATA
++```
++
++并且要确认没有另一个控制器同时发布 `/JOINTS_CMD`。同一时间多个 `/JOINTS_CMD` 发布者会导致底层命令竞争，风险很高。
++
++## 7. 背部主机上的关键前置条件
++
++官方 `M20Interface` 当前订阅：
++
++```text
++/JOINTS_DATA
++/IMU_DATA
++/BATTERY_DATA
++```
++
++发布：
++
++```text
++/JOINTS_CMD
++```
++
++这与 M20 Pro 官方“对外 ROS2 数据获取”说明不完全等价。官方对外建议使用的是：
++
++```text
++/IMU : sensor_msgs/msg/Imu, 约 200 Hz
++```
++
++官方资料同时说明系统内部还存在 `/IMU_YESENSE`、`/IMU_DATA`、`/IMU_DATA_10HZ` 等话题，这些属于内部调试或内部链路，不在对外接口清单中，不建议二次开发依赖。
++
++我们在背部主机上稳定实测到：
++
++```text
++/JOINTS_DATA
++/BATTERY_DATA
++/IMU
++```
++
++并且确认：
++
++```text
++/IMU_DATA 不可见
++/IMU 的类型是 sensor_msgs/msg/Imu
++```
++
++因此，在背部主机上直接运行公开版 `rl_deploy` 或本地 `rl_deploy_cmdvel` 不是官方最顺的用法。若一定要把控制入口放在背部主机，需要先做兼容层。可选路线有三种：
++
++- 按官方推荐，把 `sdk_deploy` 部署在 AOS 103，并在 AOS 的内部环境中运行。
++- 在背部主机做 `/IMU -> /IMU_DATA` 类型/字段桥接，仅用于兼容公开版 `M20Interface`。
++- 修改 `DdsInterface`，让真机模式直接订阅 `/IMU : sensor_msgs/msg/Imu`，仿真模式仍使用 `/IMU_DATA : drdds/msg/ImuData`。
++
++短期建议不要把高频底层控制闭环放在背部主机上。背部主机更适合作为 Nav2/SCAN-Planner、RViz、日志、任务监督和安全 mux 主机；底层 RL 控制优先尊重官方 AOS 部署边界。
++
++## 8. 推荐迁移方式
++
++如果后续决定把本地适配迁移到背部主机官方最新版包，建议只做最小迁移：
++
++```text
++copy:
++  src/third_party/sdk_deploy/src/M20_sdk_deploy/extensions/
++
++patch:
++  src/M20_sdk_deploy/CMakeLists.txt
++  src/M20_sdk_deploy/package.xml
++
++optional patch:
++  state_machine/quadruped_wheel/rl_control_state.hpp
++  state_machine/quadruped_wheel/qw_state_machine.hpp
++  run_policy/m20_policy_runner.hpp
++```
++
++不建议复制：
++
++```text
++policy/policy.onnx
++third_party/onnxruntime/
++third_party/eigen/
++drdds/
++整个 M20_sdk_deploy 包
++```
++
++原因是背部主机当前传入的是官方最新版，应尽量保留官方更新过的模型、第三方库和基础控制代码。
++
++## 9. 与 Nav2 / SCAN-Planner 的接法
++
++### Nav2
++
++Nav2 controller 通常输出：
++
++```text
++/cmd_vel : geometry_msgs/msg/Twist
++```
++
++可以直接让 `m20_cmd_vel_interface` 订阅 `/cmd_vel`。更稳的部署结构是：
++
++```text
++Nav2 /cmd_vel
++  -> safety mux / rate limit / deadman
++  -> /cmd_vel
++  -> rl_deploy_cmdvel
++```
++
++### SCAN-Planner
++
++当前本地 `m20_scan_planner` 的 closed-loop controller 发布 `geometry_msgs/msg/Twist`，真机模式下可以映射到 `/cmd_vel`。因此 SCAN-Planner 也能走同一套 `rl_deploy_cmdvel`。
++
++建议最终结构：
++
++```text
++SCAN-Planner trajectory/controller
++  -> Twist velocity command
++  -> safety mux
++  -> rl_deploy_cmdvel
++  -> /JOINTS_CMD
++```
++
++## 10. 当前建议
++
++当前阶段先不要把本地改动传到背部主机。建议先完成三件事：
++
++1. 在背部主机确认官方最新版 `rl_deploy` 的依赖和链接正常。
++2. 按官方对外接口继续使用 `/IMU`，不要把 `/IMU_DATA` 当作外接主机必须可见的话题。
++3. 再决定控制入口是回到 AOS 部署，还是在背部主机做 `/IMU` 兼容改造后按最小迁移方式加入 `rl_deploy_cmdvel`。
++
++这样可以把风险控制在“新增一个导航适配入口”，而不是把官方最新版控制栈整体替换成旧版。
+diff --git a/src/M20_sdk_deploy/README.md b/src/M20_sdk_deploy/README.md
+index 253e87c..d4ab852 100644
+--- a/src/M20_sdk_deploy/README.md
++++ b/src/M20_sdk_deploy/README.md
+@@ -1,5 +1,7 @@
+ # M20 SDK Deploy
+ 
++> Local note: this workspace contains a local navigation adapter (`extensions/rl_deploy_cmdvel`) that is not part of the upstream DeepRoboticsLab `sdk_deploy` package. See [NAVIGATION_CMDVEL_ADAPTER.md](NAVIGATION_CMDVEL_ADAPTER.md) before copying this package to a robot or backpack computer.
++
+ [![Discord](https://img.shields.io/badge/-Discord-5865F2?style=flat&logo=Discord&logoColor=white)](https://discord.gg/gdM9mQutC8)
+ ## Overview
+ This repository uses ROS2 to implement the entire Sim-to-sim and Sim-to-real workflow. Therefore, ROS2 must first be installed on your computer, such as installing [ROS2 Humble](https://docs.ros.org/en/humble/index.html) on Ubuntu 22.04. We've also released an introduction [video](https://www.youtube.com/watch?v=FNaxsDBtD7A), please check it out! Please go through the whole process on a Ubuntu system.
+@@ -143,10 +145,10 @@ ros2 run m20_sdk_deploy rl_deploy
+ ```
+ 
+ ### ⌨️ Keyboard Control
+-- z： default position
+-- c： rl control default position
+-- x： lie down
+-- wasd：forward/leftward/backward/rightward
++- z： default position-站立
++- c： rl control default position-进入强化学习控制
++- x： lie down -趴下
++- wasd：forward/leftward/backward/rightward 前、左、后、右
+ - qe：clockwise/counter clockwise
+ 
+ ### 🎮 Gamepad Control
+@@ -159,4 +161,3 @@ ros2 run m20_sdk_deploy rl_deploy
+ - R2： joint damping
+ - Left joystick：forward/leftward/backward/rightward
+ - Right joystick：clockwise/counter clockwise
+-
+diff --git a/src/M20_sdk_deploy/extensions/cmd_vel_interface.hpp b/src/M20_sdk_deploy/extensions/cmd_vel_interface.hpp
+new file mode 100644
+index 0000000..907e53b
+--- /dev/null
++++ b/src/M20_sdk_deploy/extensions/cmd_vel_interface.hpp
+@@ -0,0 +1,259 @@
++#pragma once
++
++#include <algorithm>
++#include <atomic>
++#include <chrono>
++#include <memory>
++#include <mutex>
++#include <string>
++#include <thread>
++
++#include "geometry_msgs/msg/twist.hpp"
++#include "rclcpp/rclcpp.hpp"
++#include "user_command_interface.h"
++
++using namespace interface;
++using namespace types;
++
++namespace m20_extensions {
++
++/**
++ * CmdVelInterface 把 ROS 标准 /cmd_vel 转换成 SDK 内部 UserCommand。
++ *
++ * 用途：
++ *   - 导航栈/Nav2 通常输出 geometry_msgs::msg::Twist；
++ *   - 官方 RL 策略需要的是 UserCommand.forward/side/yaw；
++ *   - 这个类就在两者之间做桥接。
++ *
++ * 它只处理“用户命令”，不直接控制关节。真正的关节命令仍由
++ * RLControlState -> M20PolicyRunner -> RobotInterface 生成和下发。
++ */
++class CmdVelInterface : public UserCommandInterface {
++public:
++    explicit CmdVelInterface(RobotName robot_name) : UserCommandInterface(robot_name) {
++        node_ = std::make_shared<rclcpp::Node>("m20_cmd_vel_interface");
++
++        // 参数都可以在 launch/ros2 param 中覆盖，便于和不同导航栈对接。
++        cmd_vel_topic_ = node_->declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
++        auto_start_ = node_->declare_parameter<bool>("auto_start", true);
++        standup_delay_sec_ = node_->declare_parameter<double>("standup_delay_sec", 3.3);
++        cmd_timeout_sec_ = node_->declare_parameter<double>("cmd_timeout_sec", 0.5);
++        max_forward_ = node_->declare_parameter<double>("max_forward", 0.7);
++        max_side_ = node_->declare_parameter<double>("max_side", 0.5);
++        max_yaw_ = node_->declare_parameter<double>("max_yaw", 0.7);
++        control_rate_hz_ = node_->declare_parameter<double>("control_rate_hz", 50.0);
++        debug_print_ = node_->declare_parameter<bool>("debug_print", true);
++
++        cmd_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
++            cmd_vel_topic_, 10, [this](const geometry_msgs::msg::Twist::SharedPtr msg) {
++                std::lock_guard<std::mutex> lock(cmd_mutex_);
++
++                // Twist 的线速度 x/y 和角速度 z 分别映射到策略的三维 command。
++                // Clamp 是保护层，防止导航栈输出超过策略训练范围太多。
++                desired_forward_ = Clamp(msg->linear.x, -max_forward_, max_forward_);
++                desired_side_ = Clamp(msg->linear.y, -max_side_, max_side_);
++                desired_yaw_ = Clamp(msg->angular.z, -max_yaw_, max_yaw_);
++                last_cmd_time_ = Clock::now();
++                has_cmd_ = true;
++            });
++
++        std::cout << "[CmdVelInterface] topic=" << cmd_vel_topic_
++                  << " auto_start=" << std::boolalpha << auto_start_
++                  << " timeout=" << cmd_timeout_sec_ << "s"
++                  << " limits(fwd/side/yaw)=" << max_forward_ << "/"
++                  << max_side_ << "/" << max_yaw_
++                  << " debug_print=" << debug_print_ << std::endl;
++    }
++
++    ~CmdVelInterface() override { Stop(); }
++
++    void Start() override {
++        if (running_) return;
++        running_ = true;
++        start_time_ = Clock::now();
++        standing_state_start_time_ = start_time_;
++        last_cmd_time_ = Clock::now();
++        last_debug_print_time_ = Clock::now();
++
++        executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
++        executor_->add_node(node_);
++
++        // 一个线程专门 spin ROS，另一个线程固定频率更新 UserCommand。
++        spin_thread_ = std::thread([this]() {
++            executor_->spin();
++        });
++        control_thread_ = std::thread(&CmdVelInterface::ControlLoop, this);
++    }
++
++    void Stop() override {
++        if (!running_) return;
++        running_ = false;
++
++        {
++            std::lock_guard<std::mutex> lock(cmd_mutex_);
++            // 停止时清空速度，避免退出前保留最后一次导航速度。
++            desired_forward_ = 0.0;
++            desired_side_ = 0.0;
++            desired_yaw_ = 0.0;
++        }
++
++        usr_cmd_->forward_vel_scale = 0.0f;
++        usr_cmd_->side_vel_scale = 0.0f;
++        usr_cmd_->turnning_vel_scale = 0.0f;
++
++        if (executor_) {
++            executor_->cancel();
++        }
++        if (control_thread_.joinable()) {
++            control_thread_.join();
++        }
++        if (spin_thread_.joinable()) {
++            spin_thread_.join();
++        }
++        if (executor_) {
++            executor_->remove_node(node_);
++            executor_.reset();
++        }
++    }
++
++    UserCommand* GetUserCommand() override { return usr_cmd_; }
++
++private:
++    using Clock = std::chrono::steady_clock;
++
++    static double Clamp(double value, double low, double high) {
++        return std::max(low, std::min(value, high));
++    }
++
++    static double ElapsedSec(const Clock::time_point& from, const Clock::time_point& to) {
++        return std::chrono::duration<double>(to - from).count();
++    }
++
++    static double NowMs() {
++        return std::chrono::duration<double, std::milli>(Clock::now().time_since_epoch()).count();
++    }
++
++    void ControlLoop() {
++        const double safe_rate = std::max(1.0, control_rate_hz_);
++        const auto period = std::chrono::duration<double>(1.0 / safe_rate);
++        auto next_wakeup = Clock::now();
++
++        while (running_) {
++            const auto now = Clock::now();
++            usr_cmd_->time_stamp = NowMs();
++
++            // 先更新目标状态，再根据当前状态决定速度命令是否允许输出。
++            UpdateMode(now);
++            UpdateVelocity(now);
++
++            next_wakeup += std::chrono::duration_cast<Clock::duration>(period);
++            std::this_thread::sleep_until(next_wakeup);
++        }
++    }
++
++    void UpdateMode(const Clock::time_point& now) {
++        if (!auto_start_) return;
++
++        // auto_start=true 时，这个接口会自动推进：
++        // Waiting/LieDown -> StandingUp -> RLControlMode。
++        // 这样导航启动后无需手动按键，但仍尊重 JointDamping 安全状态。
++        const uint8_t state = msfb_ ? msfb_->GetCurrentState() : uint8_t(RobotMotionState::WaitingForStand);
++
++        if (state != last_state_for_mode_) {
++            if (state == uint8_t(RobotMotionState::StandingUp)) {
++                standing_state_start_time_ = now;
++            }
++            last_state_for_mode_ = state;
++        }
++
++        if (state == uint8_t(RobotMotionState::JointDamping)) {
++            usr_cmd_->target_mode = uint8_t(RobotMotionState::JointDamping);
++            return;
++        }
++
++        if (state == uint8_t(RobotMotionState::WaitingForStand) ||
++            state == uint8_t(RobotMotionState::LieDown)) {
++            usr_cmd_->target_mode = uint8_t(RobotMotionState::StandingUp);
++            return;
++        }
++
++        if (state == uint8_t(RobotMotionState::StandingUp) &&
++            ElapsedSec(standing_state_start_time_, now) < standup_delay_sec_) {
++            usr_cmd_->target_mode = uint8_t(RobotMotionState::StandingUp);
++        } else {
++            usr_cmd_->target_mode = uint8_t(RobotMotionState::RLControlMode);
++        }
++    }
++
++    void UpdateVelocity(const Clock::time_point& now) {
++        double fwd = 0.0;
++        double side = 0.0;
++        double yaw = 0.0;
++        bool fresh_cmd = false;
++        const uint8_t state = msfb_ ? msfb_->GetCurrentState() : uint8_t(RobotMotionState::WaitingForStand);
++
++        {
++            std::lock_guard<std::mutex> lock(cmd_mutex_);
++            // 超过 cmd_timeout_sec 没收到 /cmd_vel，就认为命令失效并输出 0 速度。
++            fresh_cmd = has_cmd_ && ElapsedSec(last_cmd_time_, now) <= cmd_timeout_sec_;
++
++            // 只有真的处于 RLControlMode 时才把速度交给策略；
++            // 起立、趴下、阻尼等状态下速度保持 0。
++            if (fresh_cmd && state == uint8_t(RobotMotionState::RLControlMode)) {
++                fwd = desired_forward_;
++                side = desired_side_;
++                yaw = desired_yaw_;
++            }
++        }
++
++        usr_cmd_->forward_vel_scale = static_cast<float>(fwd);
++        usr_cmd_->side_vel_scale = static_cast<float>(side);
++        usr_cmd_->turnning_vel_scale = static_cast<float>(yaw);
++
++        DebugPrint(now, state, fresh_cmd, fwd, side, yaw);
++    }
++
++    void DebugPrint(const Clock::time_point& now, uint8_t state, bool fresh_cmd,
++                    double fwd, double side, double yaw) {
++        if (!debug_print_) return;
++        if (ElapsedSec(last_debug_print_time_, now) < 1.0) return;
++        last_debug_print_time_ = now;
++
++        std::cout << "[CmdVelInterface] state=" << int(state)
++                  << " target_mode=" << int(usr_cmd_->target_mode)
++                  << " fresh_cmd=" << std::boolalpha << fresh_cmd
++                  << " output(fwd/side/yaw)=" << fwd << "/"
++                  << side << "/" << yaw << std::endl;
++    }
++
++    rclcpp::Node::SharedPtr node_;
++    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_sub_;
++    std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
++
++    std::atomic<bool> running_{false};
++    std::thread spin_thread_;
++    std::thread control_thread_;
++    std::mutex cmd_mutex_;
++
++    std::string cmd_vel_topic_;
++    bool auto_start_ = true;
++    double standup_delay_sec_ = 3.3;
++    double cmd_timeout_sec_ = 0.5;
++    double max_forward_ = 0.7;
++    double max_side_ = 0.5;
++    double max_yaw_ = 0.7;
++    double control_rate_hz_ = 50.0;
++    bool debug_print_ = true;
++
++    Clock::time_point start_time_;
++    Clock::time_point standing_state_start_time_;
++    Clock::time_point last_cmd_time_;
++    Clock::time_point last_debug_print_time_;
++    uint8_t last_state_for_mode_ = uint8_t(RobotMotionState::WaitingForStand);
++    bool has_cmd_ = false;
++    double desired_forward_ = 0.0;
++    double desired_side_ = 0.0;
++    double desired_yaw_ = 0.0;
++};
++
++}  // namespace m20_extensions
+diff --git a/src/M20_sdk_deploy/extensions/main_cmdvel.cpp b/src/M20_sdk_deploy/extensions/main_cmdvel.cpp
+new file mode 100644
+index 0000000..2e75025
+--- /dev/null
++++ b/src/M20_sdk_deploy/extensions/main_cmdvel.cpp
+@@ -0,0 +1,25 @@
++#include "qw_cmd_vel_state_machine.hpp"
++
++MotionStateFeedback StateBase::msfb_ = MotionStateFeedback();
++
++int main(int argc, char** argv) {
++    rclcpp::init(argc, argv);
++
++    // 面向导航集成的入口：
++    //   Nav2/Gazebo/上层规划器 -> /cmd_vel
++    //   CmdVelInterface -> UserCommand
++    //   官方 M20 RL 策略 -> /JOINTS_CMD
++    //
++    // 和 main.cpp 的键盘版本相比，这里只替换“用户命令来源”，
++    // 底层 M20Interface、状态机状态和 policy.onnx 都继续复用。
++    auto fsm = std::make_shared<m20_extensions::QwCmdVelStateMachine>(RobotName::M20);
++
++    fsm->Start();
++    fsm->Run();
++    fsm->Stop();
++
++    if (rclcpp::ok()) {
++        rclcpp::shutdown();
++    }
++    return 0;
++}
+diff --git a/src/M20_sdk_deploy/extensions/qw_cmd_vel_state_machine.hpp b/src/M20_sdk_deploy/extensions/qw_cmd_vel_state_machine.hpp
+new file mode 100644
+index 0000000..0b76410
+--- /dev/null
++++ b/src/M20_sdk_deploy/extensions/qw_cmd_vel_state_machine.hpp
+@@ -0,0 +1,113 @@
++#pragma once
++
++#include "quadruped_wheel/idle_state.hpp"
++#include "quadruped_wheel/joint_damping_state.hpp"
++#include "quadruped_wheel/liedown_state.hpp"
++#include "quadruped_wheel/rl_control_state.hpp"
++#include "quadruped_wheel/standup_state.hpp"
++#include "cmd_vel_interface.hpp"
++#include "hardware/m20_interface.hpp"
++#include "safe_controller.hpp"
++#include "state_machine_base.h"
++
++namespace m20_extensions {
++
++/**
++ * QwCmdVelStateMachine 是面向导航集成的状态机版本。
++ *
++ * 与官方 qw::QwStateMachine 的主要区别：
++ *   - 用户命令来源不是键盘/手柄，而是 CmdVelInterface；
++ *   - CmdVelInterface 订阅 /cmd_vel，适合接 Nav2、Gazebo 导航或上层规划器；
++ *   - 机器人接口、起立/趴下/RL 控制/阻尼状态仍复用官方实现。
++ *
++ * 因此它是“导航速度命令 -> 官方 RL 运控部署”的桥。
++ */
++class QwCmdVelStateMachine : public StateMachineBase {
++public:
++    explicit QwCmdVelStateMachine(RobotName robot_name)
++        : StateMachineBase(RobotType::QuadrupedWheel), robot_name_(robot_name) {}
++
++    ~QwCmdVelStateMachine() override = default;
++
++    void Start() override {
++        // 用户命令接口换成 /cmd_vel 桥接器。
++        uc_ptr_ = std::make_shared<CmdVelInterface>(robot_name_);
++        uc_ptr_->SetMotionStateFeedback(&StateBase::msfb_);
++
++        if (robot_name_ == RobotName::M20) {
++            // 底层接口仍是官方 M20Interface，最终发布 /JOINTS_CMD。
++            ri_ptr_ = std::make_shared<M20Interface>("M20");
++            cp_ptr_ = std::make_shared<ControlParameters>(robot_name_);
++        } else {
++            std::cerr << "QwCmdVelStateMachine only supports M20 now." << std::endl;
++            exit(0);
++        }
++
++        auto data_ptr = std::make_shared<ControllerData>();
++        data_ptr->ri_ptr = ri_ptr_;
++        data_ptr->uc_ptr = uc_ptr_;
++        data_ptr->cp_ptr = cp_ptr_;
++
++        sc_ptr_ = std::make_shared<SafeController>(QuadrupedWheel, "");
++        sc_ptr_->SetRobotDataSource(ri_ptr_);
++        sc_ptr_->SetUserCommandDataSource(uc_ptr_);
++
++        // 状态集合与官方键盘/手柄版本一致：
++        // idle 检查传感器 -> standup 起立 -> rl_control 策略行走 -> liedown 趴下；
++        // joint_damping 是安全/急停状态。
++        idle_controller_ = std::make_shared<qw::IdleState>(robot_name_, "idle_state", data_ptr);
++        standup_controller_ = std::make_shared<qw::StandUpState>(robot_name_, "standup_state", data_ptr);
++        rl_controller_ = std::make_shared<qw::RLControlState>(robot_name_, "rl_control", data_ptr);
++        joint_damping_controller_ = std::make_shared<qw::JointDampingState>(robot_name_, "joint_damping", data_ptr);
++        liedown_controller_ = std::make_shared<qw::LieDownState>(robot_name_, "liedown_state", data_ptr);
++
++        current_controller_ = idle_controller_;
++        current_state_name_ = kIdle;
++        next_state_name_ = kIdle;
++
++        // 启动顺序很重要：先启动机器人接口和命令接口，再启动安全控制器，最后进入当前状态。
++        ri_ptr_->Start();
++        uc_ptr_->Start();
++        sc_ptr_->Start();
++        current_controller_->OnEnter();
++    }
++
++    std::shared_ptr<StateBase> GetStateControllerPtr(StateName state_name) override {
++        // 状态机基类只保存 StateName，这里负责把枚举映射回具体状态对象。
++        switch (state_name) {
++            case StateName::kInvalid:
++                return nullptr;
++            case StateName::kIdle:
++                return idle_controller_;
++            case StateName::kStandUp:
++                return standup_controller_;
++            case StateName::kRLControl:
++                return rl_controller_;
++            case StateName::kJointDamping:
++                return joint_damping_controller_;
++            case StateName::kLieDown:
++                return liedown_controller_;
++            default:
++                std::cerr << "error state name" << std::endl;
++                return joint_damping_controller_;
++        }
++    }
++
++    void Stop() override {
++        if (current_controller_) current_controller_->OnExit();
++        if (sc_ptr_) sc_ptr_->Stop();
++        if (uc_ptr_) uc_ptr_->Stop();
++        if (ri_ptr_) ri_ptr_->Stop();
++    }
++
++private:
++    const RobotName robot_name_;
++
++    std::shared_ptr<StateBase> idle_controller_;
++    std::shared_ptr<StateBase> standup_controller_;
++    std::shared_ptr<StateBase> rl_controller_;
++    std::shared_ptr<StateBase> joint_damping_controller_;
++    std::shared_ptr<StateBase> liedown_controller_;
++};
++
++}  // namespace m20_extensions
+diff --git a/src/M20_sdk_deploy/include/types/common_types.h b/src/M20_sdk_deploy/include/types/common_types.h
+index 362e42b..c520279 100644
+--- a/src/M20_sdk_deploy/include/types/common_types.h
++++ b/src/M20_sdk_deploy/include/types/common_types.h
+@@ -43,13 +43,30 @@ using MatXd = Eigen::MatrixXd;
+ 
+ const float gravity = 9.815;
+ 
++// 机器人本体状态。RL 策略只依赖本体感觉(proprioception)，不依赖雷达/相机。
++// 数据来源在仿真中是 MuJoCo 发布的 /IMU_DATA 和 /JOINTS_DATA；
++// 在真机中是官方底层驱动/DDS 发布的同类消息。
+ struct RobotBasicState {
++    // 机身姿态，单位 rad，顺序为 roll/pitch/yaw。
+     Vec3f base_rpy;
++
++    // 机身四元数，当前 M20PolicyRunner 主要使用 base_rot_mat。
+     Vec4f base_quat;
++
++    // 从机体系到世界系的旋转矩阵，用于计算 projected_gravity。
+     Mat3f base_rot_mat;
++
++    // 机体系角速度，单位 rad/s。
+     Vec3f base_omega;
++
++    // 机体系线加速度，单位 m/s^2。
+     Vec3f base_acc;
++
++    // 加速度历史缓存，预留给滤波/安全判断。
+     MatXf flt_base_acc_mat;
++
++    // 关节位置、速度、力矩，长度通常为 16。
++    // M20 每条腿的顺序是 hipx, hipy, knee, wheel。
+     VecXf joint_pos;
+     VecXf joint_vel;
+     VecXf joint_tau;
+@@ -67,6 +84,8 @@ struct RobotBasicState {
+     }
+ };
+ 
++// RL 策略或状态机输出的标准执行命令。
++// 它还不是 ROS 消息，而是 SDK 内部统一格式。
+ struct RobotAction {
+     VecXf goal_joint_pos;
+     VecXf goal_joint_vel;
+@@ -75,6 +94,8 @@ struct RobotAction {
+     VecXf tau_ff;
+ 
+     MatXf ConvertToMat() {
++        // 统一矩阵格式为 [kp, q_des, kd, dq_des, tau_ff]。
++        // 底层会按 tau = kp(q_des-q) + kd(dq_des-dq) + tau_ff 执行。
+         MatXf res(goal_joint_pos.rows(), 5);
+         res.col(0) = kp;
+         res.col(1) = goal_joint_pos;
+@@ -86,10 +107,18 @@ struct RobotAction {
+ };
+ 
+ 
++// 用户命令。键盘、手柄、/cmd_vel 最终都会被转换成这个结构体。
+ struct UserCommand {
+     double time_stamp;
+-        uint8_t safe_control_mode; //0 normal, 1 stand, 2 sit, 3 joint damping
++
++    // 0 表示正常；非 0 通常由安全控制器置位，状态机会优先进入阻尼/安全状态。
++    uint8_t safe_control_mode; //0 normal, 1 stand, 2 sit, 3 joint damping
++
++    // 目标运动状态，例如 StandingUp、RLControlMode、LieDown。
+     uint8_t target_mode;
++
++    // 策略跟踪的速度命令：前进、横移、偏航。
++    // 当前 M20PolicyRunner 直接把这三个值放进 57 维 observation。
+     float forward_vel_scale = 0;
+     float side_vel_scale = 0;
+     float turnning_vel_scale = 0;
+diff --git a/src/M20_sdk_deploy/include/types/custom_types.h b/src/M20_sdk_deploy/include/types/custom_types.h
+index 4d6520f..a4f58e1 100644
+--- a/src/M20_sdk_deploy/include/types/custom_types.h
++++ b/src/M20_sdk_deploy/include/types/custom_types.h
+@@ -3,14 +3,17 @@
+ #include "common_types.h"
+ 
+ namespace types{
++    // 当前部署包只启用了 M20。
+     enum RobotName{
+         M20 = 11,
+     };
+ 
++    // M20 是轮足四足：每条腿 3 个腿部关节 + 1 个轮子关节。
+     enum RobotType{
+         QuadrupedWheel = 1,
+     };
+ 
++    // 对外可见的机器人运动状态。UserCommand.target_mode 使用这些值。
+     enum RobotMotionState{
+         WaitingForStand = 0,
+         StandingUp      = 1,
+@@ -19,6 +22,7 @@ namespace types{
+         RLControlMode   = 6,
+     };
+ 
++    // 状态机内部状态名，与 RobotMotionState 基本对应。
+     enum StateName{
+         kInvalid      = -1,
+         kIdle         = 0,
+@@ -28,6 +32,7 @@ namespace types{
+         kRLControl    = 6,
+     };
+ 
++    // 用户命令来源：键盘或手柄。/cmd_vel 版本在 extensions 中单独实现。
+     enum RemoteCommandType{
+         kKeyBoard = 0,
+         kGamepad,
+diff --git a/src/M20_sdk_deploy/include/types/dds_types.h b/src/M20_sdk_deploy/include/types/dds_types.h
+index ae44e46..79101bb 100644
+--- a/src/M20_sdk_deploy/include/types/dds_types.h
++++ b/src/M20_sdk_deploy/include/types/dds_types.h
+@@ -1,6 +1,7 @@
+ #include "common_types.h"
+ 
+ namespace dds{
++    // 电池信息结构体，对应底层 DDS/ROS 电池消息中的主要字段。
+     typedef struct{      // BatterySensorData  BatteryBaseInfoTag
+         uint16_t voltage;             ///<总电压            单位10mV
+         int16_t  current;             ///<总电流            单位10mA
+@@ -21,12 +22,15 @@ namespace dds{
+         float battery_temperature[4];
+     }BatteryInfo_dds;
+ 
++    // 单个关节的底层数据缓存。当前代码主要直接使用 drdds ROS 消息，
++    // 该结构体保留为 DDS/硬件协议侧的类型说明。
+     typedef struct {
+         float pos, vel, tor, kp, kd;
+         float motor_temperature, driver_temperature;
+         uint16_t status_word, control_word, data_id;  
+     } JointData_dds;
+ 
++    // IMU 数据缓存，roll/pitch/yaw 通常为角度制，进入控制器前会转弧度。
+     struct ImuData_dds{
+         float roll, pitch, yaw;
+         float omega_x, omega_y, omega_z;
+@@ -34,7 +38,9 @@ namespace dds{
+         uint32_t timestamp;
+     };
+ 
+-    // 命令索引
++    // 命令索引 / control_word。
++    // SetJointCommand 使用 kIndexMotorControl 表示正常电机控制；
++    // ResetJointError 会依次发送 Disable、ErrorReset、Enable、GetStatusWord。
+     enum CommandIndex{
+         kIndexDisable = 1,
+         kIndexEnable = 2,
+@@ -66,4 +72,3 @@ namespace dds{
+         kIndexCalibReport = 31
+     };
+ }
+-    
+\ No newline at end of file
+diff --git a/src/M20_sdk_deploy/include/utils/basic_function.hpp b/src/M20_sdk_deploy/include/utils/basic_function.hpp
+index 0bf99ab..da596b1 100644
+--- a/src/M20_sdk_deploy/include/utils/basic_function.hpp
++++ b/src/M20_sdk_deploy/include/utils/basic_function.hpp
+@@ -15,14 +15,17 @@
+ using namespace types;
+ 
+ inline float Deg2Rad(float deg){
++    // 角度转弧度。底层消息中部分 IMU/offset 使用角度，控制内部统一用弧度。
+     return deg /180.f * M_PI;
+ }
+ 
+ inline float Rad2Deg(float rad){
++    // 弧度转角度，主要用于打印或和外部消息格式对齐。
+     return rad / M_PI * 180.;
+ }
+ 
+ inline float LimitNumber(float data, float limit){
++    // 对称限幅到 [-limit, limit]。
+     limit = fabs(limit);
+     if(data > limit) data = limit;
+     else if(data < -limit) data = -limit;
+@@ -30,6 +33,7 @@ inline float LimitNumber(float data, float limit){
+ }
+ 
+ inline float LimitNumber(float data, float low, float high){
++    // 非对称限幅到 [low, high]。
+     if(low > high){
+         std::cerr << "error limit range" << std::endl;
+         return data;
+@@ -40,6 +44,7 @@ inline float LimitNumber(float data, float low, float high){
+ }
+ 
+ inline Mat3f RpyToRm(const Vec3f &rpy){
++    // roll-pitch-yaw 转旋转矩阵，约定为 ZYX：R = Rz(yaw) * Ry(pitch) * Rx(roll)。
+     Eigen::AngleAxisf yawAngle(rpy(2), Vec3f::UnitZ());
+     Eigen::AngleAxisf pitchAngle(rpy(1), Vec3f::UnitY());
+     Eigen::AngleAxisf rollAngle(rpy(0), Vec3f::UnitX());
+@@ -48,6 +53,7 @@ inline Mat3f RpyToRm(const Vec3f &rpy){
+ }
+ 
+ inline float NormalizeAngle(float angle) {
++    // 将角度归一化到 [-pi, pi]，适合处理周期角。
+     float result = std::fmod(angle, 2 * M_PI);
+     if (result < 0) {
+         result += 2 * M_PI;
+@@ -69,6 +75,7 @@ inline float Sign(const float &i){
+ }
+ 
+ inline  double GetTimestampMs(){
++    // 返回从程序首次调用该函数开始经过的毫秒数，使用单调时钟避免系统时间跳变。
+     static timespec startup_timestamp;
+     timespec now_timestamp;
+     if (startup_timestamp.tv_sec + startup_timestamp.tv_nsec == 0) {
+@@ -79,6 +86,8 @@ inline  double GetTimestampMs(){
+ }
+ 
+ inline float GetCubicSplinePos(float x0, float v0, float xf, float vf, float t, float T){
++        // 三次多项式插值位置：给定起点/终点位置和速度，生成平滑轨迹。
++        // 起立和趴下状态用它来避免关节目标突变。
+         if(t >= T) return xf;
+         float a, b, c, d;
+         d = x0;
+@@ -89,6 +98,7 @@ inline float GetCubicSplinePos(float x0, float v0, float xf, float vf, float t,
+ }
+ 
+ inline float GetCubicSplineVel(float x0, float v0, float xf, float vf, float t, float T){
++    // 与 GetCubicSplinePos 对应的速度曲线。
+     if(t >= T) return 0;
+     float a, b, c;
+     c = v0;
+diff --git a/src/M20_sdk_deploy/include/utils/motion_state_feedback.hpp b/src/M20_sdk_deploy/include/utils/motion_state_feedback.hpp
+index 19ad710..f80877c 100644
+--- a/src/M20_sdk_deploy/include/utils/motion_state_feedback.hpp
++++ b/src/M20_sdk_deploy/include/utils/motion_state_feedback.hpp
+@@ -14,6 +14,7 @@
+ class MotionStateFeedback
+ {
+ private:
++    // 当前/上一运动状态。用户输入接口会读取 current_state_ 来判断哪些按键有效。
+     uint8_t current_state_;
+     uint8_t current_gait_;
+     uint8_t last_state_;
+@@ -33,6 +34,7 @@ private:
+     };
+ public:
+     MotionStateFeedback(/* args */){
++        // 简单清零初始化。这个对象作为 StateBase 的静态成员在全局共享。
+         memset(this, 0, sizeof(MotionStateFeedback));
+         std::cout << "Motion State Feedback" << std::endl;
+     }
+@@ -41,6 +43,7 @@ public:
+     }
+ 
+     void UpdateCurrentState(int state){
++        // 只在状态变化时更新 last_state_，便于外部判断状态切换。
+         if(uint8_t(state) != current_state_){
+             last_state_ = current_state_;
+             current_state_ = uint8_t(state);
+@@ -48,6 +51,7 @@ public:
+     }
+ 
+     void UpdateCurrentGait(uint8_t gait){
++        // 当前 M20 部署示例主要使用运动状态，步态字段预留。
+         if(gait != current_gait_){
+             last_gait_ = current_gait_;
+             current_gait_ = gait;
+diff --git a/src/M20_sdk_deploy/include/utils/safe_controller.hpp b/src/M20_sdk_deploy/include/utils/safe_controller.hpp
+index 48e3d3f..8d09387 100644
+--- a/src/M20_sdk_deploy/include/utils/safe_controller.hpp
++++ b/src/M20_sdk_deploy/include/utils/safe_controller.hpp
+@@ -56,6 +56,8 @@ private:
+     RobotType robot_type_;
+     std::shared_ptr<interface::RobotInterface> ri_ptr_;
+     std::shared_ptr<interface::UserCommandInterface> uc_ptr_;
++
++    // 安全检查独立线程运行，不阻塞主状态机和策略推理。
+     std::thread judge_thread_;
+     int run_cnt_ = 0;
+ 
+@@ -87,6 +89,7 @@ private:
+ 
+ 
+     bool IsImuDataNormal() {
++        // 检查 IMU 是否出现 NaN，或者时间戳长期不更新。
+         double current_imu_ts_ = ri_ptr_->GetImuTimestamp();
+         Vec3f rpy = ri_ptr_->GetImuRpy();
+         Vec3f acc = ri_ptr_->GetImuAcc();
+@@ -118,6 +121,7 @@ private:
+     }
+ 
+     bool IsJointDataNormal() {
++        // 检查关节位置/速度/力矩是否为 NaN，并记录数据是否长时间不变化。
+         double ri_ts_ = ri_ptr_->GetInterfaceTimeStamp();
+         VecXf joint_pos = ri_ptr_->GetJointPosition();
+         VecXf joint_vel = ri_ptr_->GetJointVelocity();
+@@ -171,6 +175,7 @@ private:
+     }
+ 
+     bool IsDriverStatusNormal() {
++        // 驱动器状态字不为 1 时认为有故障。
+         std::vector<uint16_t> status_word = ri_ptr_->GetDriverStatusWord();
+         bool res = true;
+         robot_error_state_.driver_error = 0;
+@@ -188,6 +193,7 @@ private:
+     }
+ 
+     bool IsMotorTempertureNormal() {
++        // 电机温度超过阈值时触发保护。
+         VecXf m_t = ri_ptr_->GetMotorTemperture();
+         VecXf::Index max_idx, min_idx;
+         float max_temp = m_t.maxCoeff(&max_idx);
+@@ -210,6 +216,7 @@ private:
+     }
+ 
+     bool IsBatteryNormal() {
++        // 当前只检查电量百分比，电压/温度等可继续扩展。
+         std::vector<uint16_t> battery_data = ri_ptr_->GetBatteryData();
+         if (battery_data[0] < 10) {
+             robot_error_state_.battery_low_warn = 1;
+@@ -221,6 +228,7 @@ private:
+     }
+ 
+     bool IsUserCommandNormal() {
++        // 用户命令时间戳长时间不更新，说明遥控/上位机可能断连。
+         double cmd_ts_ = uc_ptr_->GetUserCommand()->time_stamp;
+         if (cmd_check_flag_) {
+             cmd_check_flag_ = false;
+@@ -309,21 +317,25 @@ public:
+     }
+ 
+     void SetRobotDataSource(std::shared_ptr<interface::RobotInterface> ri) {
++        // 绑定机器人数据源。安全控制器只读状态，不直接发关节命令。
+         ri_ptr_ = ri;
+         joint_data_same_cnt_.resize(ri_ptr_->dof_num_, 0);
+     }
+ 
+     void SetUserCommandDataSource(std::shared_ptr<interface::UserCommandInterface> uc) {
++        // 绑定用户命令缓存。发生安全问题时，会写 safe_control_mode。
+         uc_ptr_ = uc;
+         usr_cmd_ = uc_ptr_->GetUserCommand();
+     }
+ 
+     void Start() {
++        // 启动安全检查线程。
+         start_thread_flag_ = true;
+         judge_thread_ = std::thread(std::bind(&SafeController::Run, this));
+     }
+ 
+     void Run() {
++        // 通过 timerfd 建立周期性检查。这里的定时逻辑独立于状态机 5 ms tick。
+         int tfd;    //定时器描述符
+         int efd;    //epoll描述符
+         int fds;
+@@ -365,6 +377,7 @@ public:
+             run_cnt_++;
+             current_time_ = GetTimestampMs() / 1000;
+             if (!IsDriverStatusNormal()) {
++                // safe_control_mode 非 0 后，状态机会优先转入 JointDamping。
+                 usr_cmd_->safe_control_mode = 2; 
+                 driver_error_ts_ = current_time_;
+                 std::cout << "Driver status error!" << std::endl;
+@@ -401,4 +414,3 @@ public:
+     }
+ 
+ };
+-
+diff --git a/src/M20_sdk_deploy/include/utils/thread_pool.hpp b/src/M20_sdk_deploy/include/utils/thread_pool.hpp
+index dd54389..6a72c8c 100644
+--- a/src/M20_sdk_deploy/include/utils/thread_pool.hpp
++++ b/src/M20_sdk_deploy/include/utils/thread_pool.hpp
+@@ -20,12 +20,14 @@
+ class ThreadPool {
+ public:
+     ThreadPool(size_t numThreads) : stop(false) {
++        // 创建固定数量的工作线程。UDP server 用它异步处理协议解析和响应。
+         for (size_t i = 0; i < numThreads; ++i) {
+             workers.emplace_back([this]() {
+                 while (true) {
+                     std::function<void()> task;
+                     {
+                         std::unique_lock<std::mutex> lock(this->queueMutex);
++                        // 没有任务时阻塞等待；stop=true 时允许线程退出。
+                         this->condition.wait(lock, [this] { return this->stop || !this->tasks.empty(); });
+                         if (this->stop && this->tasks.empty()) return;
+                         task = std::move(this->tasks.front());
+@@ -38,6 +40,7 @@ public:
+     }
+ 
+     ~ThreadPool() {
++        // 析构时通知所有线程退出，并等待线程 join。
+         {
+             std::unique_lock<std::mutex> lock(queueMutex);
+             stop = true;
+@@ -47,6 +50,7 @@ public:
+     }
+ 
+     void enqueue(std::function<void()> task) {
++        // 投递一个异步任务，唤醒一个等待中的 worker。
+         {
+             std::unique_lock<std::mutex> lock(queueMutex);
+             tasks.emplace(task);
+diff --git a/src/M20_sdk_deploy/interface/network/heartbeat.hpp b/src/M20_sdk_deploy/interface/network/heartbeat.hpp
+index b2d0aeb..5071578 100644
+--- a/src/M20_sdk_deploy/interface/network/heartbeat.hpp
++++ b/src/M20_sdk_deploy/interface/network/heartbeat.hpp
+@@ -17,6 +17,7 @@
+ class Heartbeat {
+ public:
+     Heartbeat() {
++        // 后台线程周期性检查最近一次心跳时间，判断手柄/上位机是否还在线。
+         mIsRunning_ = true;
+         heartbeatCheckThread_ = std::make_unique<std::thread>(&Heartbeat::heartbeatCheckThread, this);
+     }
+@@ -26,6 +27,7 @@ public:
+     }
+ 
+     void wakeUp(const NetInfo& netInfo) {
++        // 收到心跳或有效数据时刷新客户端状态。
+         std::lock_guard<std::mutex> lock(mutex_);
+         for (auto& clientInfo : clientInfoList_) {
+             if (clientInfo.ip == netInfo.ip && clientInfo.port == netInfo.port) {
+@@ -43,6 +45,7 @@ public:
+     }
+ 
+     void GetLiveList(std::list<NetInfo>& netInfos) {
++        // 返回当前记录的在线客户端列表。
+         netInfos.clear();
+         std::lock_guard<std::mutex> lock(mutex_);
+         for (auto& clientInfo : clientInfoList_) {
+@@ -67,6 +70,7 @@ public:
+ 
+ private:
+     void heartbeatCheckThread() {
++        // 每 2 秒检查一次。如果超过 2 秒没有新心跳，就认为连接断开。
+         bool flag = false;
+         while (mIsRunning_) {
+             std::this_thread::sleep_for(std::chrono::seconds(2));
+diff --git a/src/M20_sdk_deploy/interface/network/udp_server.hpp b/src/M20_sdk_deploy/interface/network/udp_server.hpp
+index c3ff112..8daad84 100644
+--- a/src/M20_sdk_deploy/interface/network/udp_server.hpp
++++ b/src/M20_sdk_deploy/interface/network/udp_server.hpp
+@@ -38,6 +38,8 @@ class GamepadInterface;
+ class UdpServer {
+ public:
+     UdpServer(GamepadInterface* gp) : mGamepadInterface_(gp) {
++        // UDP 服务器只用于手柄/上位机输入通道。
++        // 收到数据后交给 GamepadInterface 解析，最后写入 UserCommand。
+         mThreadPool_ = std::make_unique<ThreadPool>(10);
+ 
+         if (!Init()) {
+@@ -65,6 +67,7 @@ public:
+ 
+ private:
+     bool Init() {
++        // 创建 UDP socket，并绑定到 0.0.0.0:30000。
+         mFd = socket(AF_INET, SOCK_DGRAM, 0);
+         if (mFd < 0) {
+             perror("Create socket failed");
+@@ -102,6 +105,7 @@ private:
+     }
+ 
+     void RecvLoop() {
++        // 接收线程：收到一帧 UDP 后先校验协议头，再交给线程池处理。
+         struct sockaddr_in client_addr;
+         socklen_t client_addr_len = sizeof(client_addr);
+ 
+@@ -125,6 +129,7 @@ private:
+     }
+ 
+     void dataHandle(int socket, std::shared_ptr<std::vector<char>> data, int dataLen, const sockaddr_in& clientAddr) {
++        // 解析和响应放到线程池，避免 RecvLoop 长时间阻塞。
+         mThreadPool_->enqueue([=]() {
+             FromType from_type;
+             bool ret = false;
+@@ -148,6 +153,7 @@ private:
+             }
+ 
+             if (res.length() > 0) {
++                // GamepadInterface 生成 JSON 响应后，这里补协议头再发回客户端。
+                 std::string Response;
+                 mGamepadInterface_->AddDataHeader(res, Response, dataId, dataInfo);
+                 sendData(socket, Response.c_str(), Response.length(), clientAddr);
+@@ -156,6 +162,7 @@ private:
+     }
+ 
+     void sendData(int socket, const char* data, int dataLen, const sockaddr_in& clientAddr) {
++        // UDP sendto 理论上一次即可发送完整报文，这里循环写是更稳妥的通用写法。
+         if (dataLen > 0) {
+             ssize_t sentBytes = 0;
+             while (sentBytes < dataLen) {
+@@ -177,4 +184,4 @@ private:
+ 
+     std::unique_ptr<ThreadPool> mThreadPool_;
+     std::unique_ptr<GamepadInterface> mGamepadInterface_;
+-};
+\ No newline at end of file
++};
+diff --git a/src/M20_sdk_deploy/interface/robot/hardware/dds_interface.hpp b/src/M20_sdk_deploy/interface/robot/hardware/dds_interface.hpp
+index fdee0c7..4bb3c63 100644
+--- a/src/M20_sdk_deploy/interface/robot/hardware/dds_interface.hpp
++++ b/src/M20_sdk_deploy/interface/robot/hardware/dds_interface.hpp
+@@ -24,11 +24,27 @@
+ using namespace dds;
+ 
+ struct JointConfig {
++    // dir 用于处理关节正方向差异；offset 用于处理零位差异。
++    // SDK 统一坐标 <-> 底层电机/仿真坐标 都依赖这两个量。
+     float dir;
+     float offset;
+ };
+ 
+ 
++/**
++ * DdsInterface 通过 ROS2 topic 模拟/承接 DeepRobotics DDS 数据通道。
++ *
++ * 订阅：
++ *   /JOINTS_DATA  -> 当前关节位置/速度/力矩
++ *   /IMU_DATA     -> 当前 IMU 姿态、角速度、加速度
++ *   /BATTERY_DATA -> 电池状态
++ *
++ * 发布：
++ *   /JOINTS_CMD   -> 关节控制命令
++ *
++ * 这里同时支持 MuJoCo 联调：MuJoCo 节点发布 /IMU_DATA、/JOINTS_DATA，
++ * rl_deploy 节点再把 /JOINTS_CMD 发回 MuJoCo。
++ */
+ class DdsInterface : public RobotInterface{
+ protected:
+     double ri_ts_, imu_ts_;
+@@ -56,6 +72,7 @@ protected:
+ 
+ 
+     bool IsDataUpdatedFinished() {
++        // 启动时需要等所有关节都收到过有效数据，防止拿 0/NaN 做零位判断。
+         bool res = data_updated_[0];
+         for (int i = 0; i < dof_num_; ++i) {
+             res = res & data_updated_[i];
+@@ -64,6 +81,8 @@ protected:
+     }
+ 
+     void ResetPositionOffset() {
++        // 默认实现会先下发零命令，然后等待关节状态开始刷新。
++        // M20Interface 覆盖了这个函数，以适配 M20 更具体的关节范围判断。
+         memset(data_updated_, 0, dof_num_ * sizeof(bool));
+         this->SetJointCommand(MatXf::Zero(dof_num_, 5));
+         usleep(100 * 1000);
+@@ -108,6 +127,8 @@ public:
+ 
+     DdsInterface(const std::string &robot_name, const int &dof_num) : RobotInterface(robot_name, dof_num) {
+         std::cout << robot_name << " is using Ecan Hardware Interface" << std::endl;
++
++        // 所有状态量先置零，后续由 Handler/HandlerIMU 回调刷新。
+         joint_pos_ = VecXf::Zero(dof_num_);
+         joint_vel_ = VecXf::Zero(dof_num_);
+         joint_tau_ = VecXf::Zero(dof_num_);
+@@ -124,6 +145,7 @@ public:
+         joint_data_id_.resize(dof_num_);
+         battery_data_.resize(BATTERY_DATA_SIZE);
+ 
++        // ROS2 topic 名称与官方部署示例保持一致。
+         joint_cmd_pub_ = node_->create_publisher<drdds::msg::JointsDataCmd>("/JOINTS_CMD", 10);
+         joint_data_sub_ = node_->create_subscription<drdds::msg::JointsData>("/JOINTS_DATA", 10,
+                                     std::bind(&DdsInterface::Handler, this,std::placeholders::_1));
+@@ -134,6 +156,7 @@ public:
+         
+         sleep(1);
+ 
++        // 电机控制字：disable -> reset error -> enable -> get status。
+         control_word[0] = kIndexDisable;
+         control_word[1] = kIndexErrorReset;
+         control_word[2] = kIndexEnable;
+@@ -183,10 +206,13 @@ public:
+     }
+ 
+     virtual VecXf GetContactForce() {
++        // 当前接口没有足端/轮端力传感器数据，因此返回 0。
++        // 这也解释了该部署包主要是位置/速度 PD 执行，而不是显式力控。
+         return VecXf::Zero(4);
+     }
+ 
+     virtual void ResetJointError() {
++        // 启动时依次发送控制字，让驱动器从错误/禁用状态恢复到可控状态。
+         auto msg = drdds::msg::JointsDataCmd();
+ 
+         for (int j = 0; j < 4; ++j) {
+@@ -209,6 +235,7 @@ public:
+         auto msg = drdds::msg::JointsDataCmd();
+ 
+         for (int i = 0; i < dof_num_; ++i) {
++            // 上层输入是 SDK 统一坐标。发布到底层前，需要减零位 offset 并乘方向 dir。
+             msg.data.joints_data[i].position =
+                     (input(i, 1) - joint_config_[i].offset) * joint_config_[i].dir;
+             msg.data.joints_data[i].velocity = input(i, 3) * joint_dir_[i];
+@@ -251,6 +278,8 @@ public:
+     virtual void Handler(const drdds::msg::JointsData::SharedPtr msg) {
+         ++run_cnt_;
+         for (int i = 0; i < dof_num_; ++i) {
++            // 底层/仿真发布坐标 -> SDK 统一坐标。
++            // 与 SetJointCommand 中的转换正好相反。
+             joint_pos_(i) = msg->data.joints_data[i].position * joint_dir_[i] + pos_offset_[i] / 180. * M_PI;
+             joint_vel_(i) = msg->data.joints_data[i].velocity * joint_dir_[i];
+             joint_tau_(i) = msg->data.joints_data[i].torque * joint_dir_[i];
+@@ -263,6 +292,7 @@ public:
+     }
+ 
+     void HandlerIMU(const drdds::msg::ImuData::SharedPtr msg) {
++        // IMU 消息里 roll/pitch/yaw 是角度制，控制内部统一使用弧度制。
+         rpy_ = Vec3f(Deg2Rad(msg->data.roll), Deg2Rad(msg->data.pitch), Deg2Rad(msg->data.yaw));
+         acc_ << msg->data.acc_x, msg->data.acc_y, msg->data.acc_z;
+         omega_body_ << msg->data.omega_x, msg->data.omega_y, msg->data.omega_z;
+@@ -270,6 +300,7 @@ public:
+     }
+ 
+     void HandlerHealth(const drdds::msg::BatteryData::SharedPtr msg) {
++        // 当前安全控制主要使用电量百分比；更多电池字段可按需扩展。
+         battery_data_[0] = uint8_t(msg->data[0].battery_level);
+         remain_bat = battery_data_[0] / 100;
+         battery_info_[0].battery_level = msg->data[0].battery_level;
+diff --git a/src/M20_sdk_deploy/interface/robot/hardware/m20_interface.hpp b/src/M20_sdk_deploy/interface/robot/hardware/m20_interface.hpp
+index bbf39b0..04a7c47 100644
+--- a/src/M20_sdk_deploy/interface/robot/hardware/m20_interface.hpp
++++ b/src/M20_sdk_deploy/interface/robot/hardware/m20_interface.hpp
+@@ -6,10 +6,12 @@
+ class M20Interface : public DdsInterface {
+ protected:
+     void ResetPositionOffset() {
++        // M20 专用零位修正：
++        // 关节编码器/仿真 raw 坐标可能跨过 +-pi 边界，导致同一个物理姿态出现不同角度表示。
++        // 启动时先等待所有关节数据更新，再根据关节范围把 offset 调整到连续合理的区间。
+         memset(data_updated_, 0, dof_num_ * sizeof(bool));
+         this->SetJointCommand(MatXf::Zero(dof_num_, 5));
+ 
+-        VecXf last_joint_pos = this->GetJointPosition();
+         VecXf current_joint_pos = this->GetJointPosition();
+         int cnt = 0;
+         while (!IsDataUpdatedFinished()) {
+@@ -19,14 +21,12 @@ protected:
+             rclcpp::spin_some(this->get_node());
+             current_joint_pos = this->GetJointPosition();
+             for (int i = 0; i < dof_num_; ++i) {
+-                if (!data_updated_[i] && current_joint_pos(i) != last_joint_pos(i) &&
++                if (!data_updated_[i] && joint_data_id_[i] > 0 &&
+                     !std::isnan(current_joint_pos(i))) {
+                     data_updated_[i] = true;
+                     std::cout << "joint " << i << " data updated at " << cnt << " cnt!" << std::endl;
+                 }
+             }
+-            last_joint_pos = current_joint_pos;
+-
+             if (cnt > 10000) {
+                 for (int i = 0; i < dof_num_; ++i) {
+                     std::cout << i << " :" << data_updated_[i] << std::endl;
+@@ -34,6 +34,8 @@ protected:
+                 std::cout << "joint data update is not finished\n";
+             }
+         }
++
++        // hipy 关节如果读数越过阈值，说明角度绕了一圈，需要修正 360 度。
+         for (int i = 1; i < dof_num_; i += 4) {
+             if (current_joint_pos(i) < -140. / 180. * M_PI) {
+                 pos_offset_[i] = pos_offset_[i] + 360.;
+@@ -43,6 +45,8 @@ protected:
+                 std::cout << "joint " << i << " offset is changed to " << pos_offset_[i] << "\n";
+             }
+         }
++
++        // knee 关节同样做绕圈修正。
+         for (int i = 2; i < dof_num_; i += 4) {
+             if (current_joint_pos(i) < -164. / 180. * M_PI) {
+                 pos_offset_[i] = pos_offset_[i] + 360.;
+@@ -52,6 +56,8 @@ protected:
+                 std::cout << "joint " << i << " offset is changed to " << pos_offset_[i] << "\n";
+             }
+         }
++
++        // 最终写入每个关节的方向和零位，供 SetJointCommand/Handler 使用。
+         for (int i = 0; i < dof_num_; ++i) {
+             joint_config_[i].dir = joint_dir_[i];
+             joint_config_[i].offset = Deg2Rad(pos_offset_[i]);
+@@ -62,6 +68,14 @@ public:
+     M20Interface(const std::string &robot_name) : DdsInterface(robot_name, 16) {
+         battery_data_.resize(2 * BATTERY_DATA_SIZE);
+ 
++        // M20 的 16 个执行器顺序：
++        // FL: hipx hipy knee wheel
++        // FR: hipx hipy knee wheel
++        // HL: hipx hipy knee wheel
++        // HR: hipx hipy knee wheel
++        //
++        // init_pos_offset 是每个关节的机械零位补偿，单位 deg。
++        // joint_dir 表示该关节在 SDK 坐标和底层坐标之间是否反向。
+         float init_pos_offset[16] = {-25, -131, 160, 0.,
+                                      25, -131, 160, 0,
+                                      -25, 131, -160, 0,
+@@ -84,6 +98,7 @@ public:
+ 
+     virtual void Start() {
+         time_stamp_ = GetTimestampMs();
++        // 启动时必须先完成零位修正，否则 RL 策略看到的关节角会整体偏移。
+         ResetPositionOffset();
+     }
+ 
+@@ -102,12 +117,15 @@ public:
+     virtual void SetJointCommand(Eigen::Matrix<float, Eigen::Dynamic, 5> input) {
+         auto msg = drdds::msg::JointsDataCmd();
+         for (int i = 0; i < dof_num_; ++i) {
++            // 输入矩阵仍然是 SDK 统一坐标，发布前转成 M20 底层坐标。
+             msg.data.joints_data[i].position =
+                     (input(i, 1) - joint_config_[i].offset) * joint_config_[i].dir;
+             msg.data.joints_data[i].velocity = input(i, 3) * joint_dir_[i];
+             msg.data.joints_data[i].torque = input(i, 4) * joint_dir_[i];
+             msg.data.joints_data[i].kp = input(i, 0);
+             if (i % 4 == 3) {
++                // 每条腿第 4 个关节是轮子。轮子连续旋转，不适合位置 Kp 锁住，
++                // 因此强制 kp=0，让轮子主要按速度/阻尼项工作。
+                 msg.data.joints_data[i].kp = 0;
+             }
+             msg.data.joints_data[i].kd = input(i, 2);
+@@ -118,4 +136,3 @@ public:
+     }
+ 
+ };
+-
+diff --git a/src/M20_sdk_deploy/interface/robot/robot_interface.h b/src/M20_sdk_deploy/interface/robot/robot_interface.h
+index 7f2fc5e..01fec0d 100644
+--- a/src/M20_sdk_deploy/interface/robot/robot_interface.h
++++ b/src/M20_sdk_deploy/interface/robot/robot_interface.h
+@@ -18,6 +18,16 @@ using namespace types;
+ namespace interface{
+ const int BATTERY_DATA_SIZE=8;
+ 
++/**
++ * RobotInterface 是上层控制器和真实/仿真机器人之间的抽象层。
++ *
++ * 上层状态机只关心：
++ *   - 读取 IMU、关节位置/速度/力矩；
++ *   - 下发统一格式的关节命令矩阵 [kp, pos, kd, vel, tau_ff]。
++ *
++ * 至于这些数据来自 MuJoCo、DDS、CAN 还是其他硬件协议，都由派生类处理。
++ * M20 当前派生类是 M20Interface -> DdsInterface。
++ */
+ class RobotInterface{
+ private:
+     /* data */
+@@ -30,6 +40,8 @@ public:
+     RobotInterface(const std::string& robot_name, int dof_num):robot_name_(robot_name), dof_num_(dof_num){
+         start_flag_ = true;
+         joint_cmd_ = Eigen::Matrix<float, Eigen::Dynamic, 5>::Zero(dof_num_, 5);
++
++        // 这个节点名为 rl_deploy，负责订阅仿真/真机状态并发布 /JOINTS_CMD。
+         node_ = std::make_shared<rclcpp::Node>("rl_deploy");
+ 
+     }
+@@ -100,6 +112,11 @@ public:
+      * @brief Set the joint command in standard form
+      *                  torque = kp * (qDes - q) + kd * (vDes - v) + tff
+      * @param  input       a dof_num*5 matrix and each column represent kp, goal_angle_pos, kd, goal_vel, torque_feedforward
++     *
++     * 对初学者可以这样理解：
++     *   - RL 策略通常不直接输出最终电机力矩；
++     *   - 策略输出目标关节位置/轮速；
++     *   - 底层 PD 执行器再根据误差计算力矩。
+      */
+     virtual void SetJointCommand(Eigen::Matrix<float, Eigen::Dynamic, 5> input) = 0;
+ 
+diff --git a/src/M20_sdk_deploy/interface/robot/simulation/mujoco_simulation_ros2.py b/src/M20_sdk_deploy/interface/robot/simulation/mujoco_simulation_ros2.py
+index 05488c5..93b7f00 100644
+--- a/src/M20_sdk_deploy/interface/robot/simulation/mujoco_simulation_ros2.py
++++ b/src/M20_sdk_deploy/interface/robot/simulation/mujoco_simulation_ros2.py
+@@ -14,14 +14,12 @@ import socket
+ import struct
+ import threading
+ from pathlib import Path
+-from scipy.spatial.transform import Rotation
+ import numpy as np
+ import mujoco
+ import mujoco.viewer
+ 
+ import rclpy
+ from rclpy.node import Node
+-from builtin_interfaces.msg import Time
+ from drdds.msg import ImuData, JointsData, JointsDataCmd, MetaType, ImuDataValue, JointsDataValue, JointData, JointDataCmd
+ 
+ 
+@@ -30,20 +28,31 @@ MODEL_NAME = "M20"
+ # Get the directory of the current Python file
+ CURRENT_DIR = Path(__file__).resolve().parent
+ 
+-# Define the XML path relative to the Python file
++# 默认加载楼梯场景。M20_stair.xml 会 include M20 本体、scene 和 stair。
++# 这个脚本用于部署联调/效果验证，不是强化学习训练环境。
+ XML_PATH = CURRENT_DIR / ".." / ".." / ".." / "M20_description" / "m20_mjcf" / "mjcf" / "M20_stair.xml"
+ 
+ # Convert to absolute path as string
+ XML_PATH = str(XML_PATH.resolve())
+ USE_VIEWER = True
++
++# MuJoCo 物理积分步长为 1 ms；控制命令由 /JOINTS_CMD 异步更新。
+ DT = 0.001
++
++# viewer 不需要每 1 ms 刷新，50 步同步一次约等于 20 FPS。
+ RENDER_INTERVAL = 50
++FLOAT32_SAFE_LIMIT = np.finfo(np.float32).max * 0.5
+ 
+-# Calibaration parameters (for sim-to-real consistency)
++# Calibration parameters (for sim-to-real consistency).
++# MuJoCo 内部关节方向/零位不一定和 SDK 发布的关节方向/零位一致，
++# 因此收命令和发状态时都要做 dir + offset 的变换。
+ JOINT_DIR = np.array([1, 1, -1, 1, 1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, -1], dtype=np.float32)
+ POS_OFFSET_DEG = np.array([-25, 229, 160, 0, 25, -131, -200, 0, -25, -229, -160, 0, 25, 131, 200, 0], dtype=np.float32)
+ POS_OFFSET_RAD = POS_OFFSET_DEG / 180.0 * np.pi
++JOINT_VEL_LIMIT = np.array([45.0, 22.4, 22.4, 100.0] * 4, dtype=np.float64)
++WHEEL_INDICES = np.array([3, 7, 11, 15], dtype=np.int64)
+ 
++# 仿真初始姿态是 MuJoCo/raw 坐标下的关节角。
+ JOINT_INIT = {
+     "M20": np.array([-0.438, -1.16, 2.76, 0,
+                      0.438, -1.16, 2.76, 0,
+@@ -59,7 +68,7 @@ class MuJoCoSimulationNode(Node):
+ 
+         super().__init__('mujoco_simulation')
+ 
+-        # 加载 MJCF
++        # 加载 MJCF。MJCF 里定义了刚体、关节、执行器、传感器和楼梯环境。
+         if not os.path.isfile(xml_path):
+             raise FileNotFoundError(f"Cannot find MJCF: {xml_path}")
+ 
+@@ -67,15 +76,21 @@ class MuJoCoSimulationNode(Node):
+         self.model.opt.timestep = DT
+         self.data = mujoco.MjData(self.model)
+ 
+-        # 机器人自由度列表
++        # 机器人执行器列表。M20 是 4 条腿 * 4 个关节 = 16 个执行器。
+         self.actuator_ids = [a for a in range(self.model.nu)]  # 0..15
+         self.dof_num = len(self.actuator_ids)
+         assert self.dof_num == 16, "Expected 16 DOF for M20"
++        ctrl_range = self.model.actuator_ctrlrange[self.actuator_ids]
++        self.ctrl_low = ctrl_range[:, 0].reshape(-1, 1).astype(np.float64)
++        self.ctrl_high = ctrl_range[:, 1].reshape(-1, 1).astype(np.float64)
++        self._last_torque_clip_warn_time = 0.0
++        self._last_velocity_clip_warn_time = 0.0
+ 
+-        # 初始化站立姿态
++        # 初始化站立姿态，避免仿真一启动就从零位突然掉落。
+         self._set_initial_pose(model_key)
+ 
+-        # 缓存
++        # 命令缓存。收到 /JOINTS_CMD 后更新这些数组，物理循环每 1 ms 使用一次。
++        # 其中 pos_cmd/vel_cmd 是 MuJoCo raw 坐标；kp/kd/tau_ff 来自部署控制器。
+         self.kp_cmd = np.zeros((self.dof_num, 1), np.float32)
+         self.kd_cmd = np.zeros_like(self.kp_cmd)
+         self.pos_cmd = np.zeros_like(self.kp_cmd)
+@@ -89,11 +104,14 @@ class MuJoCoSimulationNode(Node):
+ 
+         self.get_logger().info(f"[INFO] MuJoCo model loaded, dof = {self.dof_num}")
+ 
+-        # ROS Publishers
++        # ROS Publishers:
++        # /IMU_DATA 和 /JOINTS_DATA 的消息类型与官方 DDS/硬件接口保持一致，
++        # 这样 rl_deploy 在仿真和真机之间可以复用同一套上层控制逻辑。
+         self.imu_pub = self.create_publisher(ImuData, '/IMU_DATA', 200)
+         self.joints_pub = self.create_publisher(JointsData, '/JOINTS_DATA', 200)
+ 
+-        # ROS Subscriber
++        # ROS Subscriber:
++        # RLControlState -> RobotInterface::SetJointCommand -> /JOINTS_CMD -> 本回调。
+         self.cmd_sub = self.create_subscription(
+             JointsDataCmd,
+             '/JOINTS_CMD',
+@@ -107,7 +125,12 @@ class MuJoCoSimulationNode(Node):
+             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
+ 
+     def _set_initial_pose(self, key: str):
+-        """关节位置设置为与 PyBullet 脚本一致的初始角度"""
++        """关节位置设置为初始站姿，同时设置机身初始位姿。
++
++        MuJoCo 的 qpos 前 7 维是 floating base:
++        qpos[0:3] = base position, qpos[3:7] = base quaternion(w, x, y, z)。
++        从 qpos[7] 开始才是 16 个关节角。
++        """
+         qpos0 = self.data.qpos.copy()
+         qpos0[7:7 + self.dof_num] = JOINT_INIT[key]  # ,3-6 basequat，0-2 basepos
+         qpos0[:3] = np.array([0, 0, 0.2])
+@@ -116,7 +139,13 @@ class MuJoCoSimulationNode(Node):
+         mujoco.mj_forward(self.model, self.data)
+ 
+     def _cmd_callback(self, msg: JointsDataCmd):
+-        """Convert received (published) positions/velocities to internal (raw)"""
++        """接收 SDK 标准关节命令，并转换为 MuJoCo 内部坐标。
++
++        JointsDataCmd 里每个关节的含义是：
++        kp, position, kd, velocity, torque_ff。
++        物理环节稍后使用：
++        tau = kp * (q_des - q) + kd * (dq_des - dq) + tau_ff。
++        """
+         if len(msg.data.joints_data) != 16:
+             self.get_logger().warn("Received JointsDataCmd with incorrect number of joints")
+             return
+@@ -132,11 +161,14 @@ class MuJoCoSimulationNode(Node):
+             self.tau_ff[i] = joint_cmd.torque  # tau_ff no processing
+ 
+         # Convert: raw = published * dir + offset_rad
++        # 这里的 published 是 SDK 统一坐标，raw 是 MuJoCo XML 中定义的关节坐标。
+         self.pos_cmd.flat = pub_pos * JOINT_DIR + POS_OFFSET_RAD
+         self.vel_cmd.flat = pub_vel * JOINT_DIR
+ 
+     def start(self):
+-        # 主模拟循环
++        # 主模拟循环：
++        # 1 ms 做一次 PD 力矩计算和 MuJoCo 积分；
++        # 每 5 步发布一次传感器数据，即 200 Hz。
+         step = 0
+         last_time = time.time()
+         while rclpy.ok():
+@@ -147,6 +179,7 @@ class MuJoCoSimulationNode(Node):
+                 self._apply_joint_torque()
+                 # 模拟一步
+                 mujoco.mj_step(self.model, self.data)
++                self._limit_joint_velocity()
+ 
+                 self.timestamp = step * DT
+ 
+@@ -159,21 +192,65 @@ class MuJoCoSimulationNode(Node):
+                     self.viewer.sync()
+ 
+             # Handle ROS callbacks
++            # 非阻塞处理 /JOINTS_CMD，避免 ROS spin 阻塞物理仿真循环。
+             rclpy.spin_once(self, timeout_sec=0.0)
+ 
+     def _apply_joint_torque(self):
+-        # 当前关节状态
++        # 当前关节状态。floating base 的 qvel 前 6 维是机身速度，所以关节速度从 qvel[6] 开始。
+         q = self.data.qpos[7:7 + self.dof_num].reshape(-1, 1)
+         dq = self.data.qvel[6:6 + self.dof_num].reshape(-1, 1)
+-        self.input_tq = (
++
++        # 底层执行器模型：标准 PD + 前馈力矩。
++        # 这就是部署包里“把策略输出变成动力学输入”的地方。
++        raw_tq = (
+                 self.kp_cmd * (self.pos_cmd - q) +
+                 self.kd_cmd * (self.vel_cmd - dq) +
+                 self.tau_ff
+         )
+ 
++        # MuJoCo XML 里每个 actuator 都有 ctrlrange。真实硬件底层也会做力矩限幅，
++        # 仿真里同样需要先限幅，否则 RL 刚进入控制或发生接触冲击时，
++        # 原始 PD 力矩可能变成超大有限值，发布 JointsData.torque 时会超过 float32 范围。
++        raw_tq = np.asarray(raw_tq, dtype=np.float64)
++        finite_tq = np.where(np.isfinite(raw_tq), raw_tq, 0.0)
++        clipped_tq = np.clip(finite_tq, self.ctrl_low, self.ctrl_high)
++        if np.any(np.abs(finite_tq - clipped_tq) > 1e-4):
++            now = time.time()
++            if now - self._last_torque_clip_warn_time > 1.0:
++                max_raw = float(np.max(np.abs(finite_tq)))
++                max_clip = float(np.max(np.abs(clipped_tq)))
++                self.get_logger().warn(
++                    f"Joint torque command clipped by MuJoCo ctrlrange: "
++                    f"max_raw={max_raw:.3g}, max_clipped={max_clip:.3g}"
++                )
++                self._last_torque_clip_warn_time = now
++
++        self.input_tq = clipped_tq.astype(np.float32)
++
+         # 写入 control 缓冲区
+         self.data.ctrl[:] = self.input_tq.flatten()
+ 
++    @staticmethod
++    def _safe_msg_array(values):
++        values = np.asarray(values, dtype=np.float64)
++        values = np.nan_to_num(values, nan=0.0, posinf=FLOAT32_SAFE_LIMIT, neginf=-FLOAT32_SAFE_LIMIT)
++        return np.clip(values, -FLOAT32_SAFE_LIMIT, FLOAT32_SAFE_LIMIT)
++
++    def _limit_joint_velocity(self):
++        dq = self.data.qvel[6:6 + self.dof_num]
++        clipped_dq = np.clip(dq, -JOINT_VEL_LIMIT, JOINT_VEL_LIMIT)
++        if np.any(np.abs(dq - clipped_dq) > 1e-4):
++            now = time.time()
++            if now - self._last_velocity_clip_warn_time > 1.0:
++                max_raw = float(np.max(np.abs(dq)))
++                max_clip = float(np.max(np.abs(clipped_dq)))
++                self.get_logger().warn(
++                    f"Joint velocity limited for simulation stability: "
++                    f"max_raw={max_raw:.3g}, max_limited={max_clip:.3g}"
++                )
++                self._last_velocity_clip_warn_time = now
++            self.data.qvel[6:6 + self.dof_num] = clipped_dq
++
+     # --------------------------------------------------------
+     def quaternion_to_euler(self, q):
+         """
+@@ -202,6 +279,8 @@ class MuJoCoSimulationNode(Node):
+ 
+     def _publish_robot_state(self, step: int):
+         # ----- IMU -----
++        # MJCF 中的 sensor 输出顺序需要与 XML 对照。
++        # 这里假定 sensordata[:4] 是 base quaternion，后续是 body acceleration 和 angular velocity。
+         q_world = self.data.sensordata[:4]  # quaternion (w, x, y, z) in MuJoCo convention
+         rpy_rad = self.quaternion_to_euler(q_world)  # returns [roll, pitch, yaw] in radians
+ 
+@@ -214,12 +293,10 @@ class MuJoCoSimulationNode(Node):
+         imu_msg = ImuData()
+         imu_msg.header = MetaType()
+         imu_msg.header.frame_id = 0
+-        stamp = Time()
+         sec = int(self.timestamp)
+         nanosec = int((self.timestamp - sec) * 1e9)
+-        stamp.sec = sec
+-        stamp.nanosec = nanosec
+-        imu_msg.header.stamp = stamp
++        imu_msg.header.stamp.sec = sec
++        imu_msg.header.stamp.nanosec = nanosec
+         imu_msg.data = ImuDataValue()
+         imu_msg.data.roll = float(rpy_deg[0])
+         imu_msg.data.pitch = float(rpy_deg[1])
+@@ -233,24 +310,28 @@ class MuJoCoSimulationNode(Node):
+         self.imu_pub.publish(imu_msg)
+ 
+         # ----- 关节 -----
++        # 从 MuJoCo raw 坐标读出关节位置/速度/力矩，再转换回 SDK 统一坐标发布。
+         q = self.data.qpos[7:7 + self.dof_num]
+         dq = self.data.qvel[6:6 + self.dof_num]
+         tau = self.input_tq.flatten()
+ 
+         # Convert raw to published: published = (raw - offset_rad) * dir
++        # 发布后的关节顺序和 rl_deploy/M20PolicyRunner 使用的 robot_order 一致。
+         pub_pos = (q - POS_OFFSET_RAD) * JOINT_DIR
+-        pub_vel = dq * JOINT_DIR
++        pub_pos[WHEEL_INDICES] = (pub_pos[WHEEL_INDICES] + np.pi) % (2.0 * np.pi) - np.pi
++        pub_vel = np.clip(dq * JOINT_DIR, -JOINT_VEL_LIMIT, JOINT_VEL_LIMIT)
+         pub_tau = tau * JOINT_DIR  # Torque also needs direction flip
++        pub_pos = self._safe_msg_array(pub_pos)
++        pub_vel = self._safe_msg_array(pub_vel)
++        pub_tau = self._safe_msg_array(pub_tau)
+         
+         joints_msg = JointsData()
+         joints_msg.header = MetaType()
+         joints_msg.header.frame_id = 0
+-        stamp = Time()
+         sec = int(self.timestamp)
+         nanosec = int((self.timestamp - sec) * 1e9)
+-        stamp.sec = sec
+-        stamp.nanosec = nanosec
+-        joints_msg.header.stamp = stamp
++        joints_msg.header.stamp.sec = sec
++        joints_msg.header.stamp.nanosec = nanosec
+         joints_msg.data = JointsDataValue()
+         joints_msg.data.joints_data = [JointData() for _ in range(self.dof_num)]
+         for i in range(self.dof_num):
+@@ -272,4 +353,4 @@ if __name__ == "__main__":
+     sim_node = MuJoCoSimulationNode()
+     sim_node.start()
+     sim_node.destroy_node()
+-    rclpy.shutdown()
+\ No newline at end of file
++    rclpy.shutdown()
+diff --git a/src/M20_sdk_deploy/interface/user_command/gamepad_interface.hpp b/src/M20_sdk_deploy/interface/user_command/gamepad_interface.hpp
+index ce630b4..4b15c97 100644
+--- a/src/M20_sdk_deploy/interface/user_command/gamepad_interface.hpp
++++ b/src/M20_sdk_deploy/interface/user_command/gamepad_interface.hpp
+@@ -41,6 +41,8 @@ public:
+     GamepadInterface(RobotName robot_name) : UserCommandInterface(robot_name) {
+         mHeartbeat_ = std::make_unique<Heartbeat>();
+ 
++        // type/command -> handler 的分发表。
++        // 不同 UDP JSON 指令会被路由到心跳、摇杆速度或按键模式处理函数。
+         mHandleMap_[100][100] = std::bind(&GamepadInterface::Handle_Heartbeat, this, std::placeholders::_1,
+                                           std::placeholders::_2, std::placeholders::_3);
+         mHandleMap_[2][21] = std::bind(&GamepadInterface::Handle_Steer, this, std::placeholders::_1,
+@@ -64,6 +66,7 @@ public:
+     void Stop() override {}
+     UserCommand* GetUserCommand() override { return usr_cmd_; }
+     int ParseHeader(const char* buffer, int len) {
++        // 第一遍解析只判断一帧 UDP 数据长度是否完整。
+         const int headerSize = 16;
+         if (len < headerSize) return -1;
+ 
+@@ -80,6 +83,7 @@ public:
+     }
+ 
+     bool ParseHeader(const char* buffer, int len, int& data_id, char* body, FromType& fromType) {
++        // 第二遍解析提取 data_id、来源类型和 JSON body。
+         const int headerSize = 16;
+         if (len < headerSize) return false;
+ 
+@@ -116,6 +120,7 @@ public:
+     }
+ 
+     bool ParseData(const DataInfo& dataInfo, std::string& response) {
++        // 收到任何有效数据都刷新心跳，表示手柄/上位机仍在线。
+         int type = 0, command = 0;
+         bool ret = false;
+ 
+@@ -140,6 +145,7 @@ public:
+         cmd_info.command = command;
+ 
+         if (mHandleMap_[type][command]) {
++            // 根据协议字段调用对应处理函数。
+             mHandleMap_[type][command](items, response, cmd_info);
+         } else {
+             response = buildResponse(cmd_info, 1, "Unknown command");
+@@ -148,6 +154,7 @@ public:
+     }
+ 
+     void AddDataHeader(const std::string& in, std::string& out, int data_id = 0, NetInfo perNetInfo = {0}) {
++        // 给响应 JSON 重新封装 16 字节协议头。
+         out.resize(16);
+ 
+         out[0] = 0xeb;
+@@ -182,6 +189,7 @@ private:
+     std::unordered_map<int, std::unordered_map<int, HANDLE_FUNC>> mHandleMap_;
+ 
+     bool ParseJson(const char* buf, int len, json& document, int& type, int& command, json& items) {
++        // 协议 body 是 JSON，根字段为 PatrolDevice。
+         if (!buf || len == 0) return false;
+ 
+         try {
+@@ -244,6 +252,7 @@ private:
+     }
+ 
+     void Handle_Heartbeat(json& items, std::string& res, const CmdInfo& cmd_info) {
++        // 心跳只维护连接列表，不改变机器人运动命令。
+         NetInfo netInfo;
+         netInfo.ip = cmd_info.ip;
+         netInfo.port = cmd_info.port;
+@@ -254,6 +263,8 @@ private:
+     }
+ 
+     void Handle_Steer(json& items, std::string& res, const CmdInfo& cmd_info) {
++        // 摇杆速度命令。X/Y/Yaw 最终直接写入 UserCommand，
++        // 后续由 M20PolicyRunner 放进 RL observation 的 command 三维量。
+         if (!items.contains("X") || !items.contains("Y")) {
+             res = buildResponse(cmd_info, 2, "Missing fields");
+             return;
+@@ -288,6 +299,8 @@ private:
+     }
+ 
+     void Handle_Key(json& items, std::string& res, const CmdInfo& cmd_info) {
++        // 手柄按键负责模式切换：
++        // L1 起立，L2 进入 RL 控制，R1 趴下，R2 阻尼。
+         static std::unordered_map<std::string, KeyCode> keyMap = {{"G20_KEY_L1", KeyCode::L1},
+                                                                   {"G20_KEY_L2", KeyCode::L2},
+                                                                   {"G20_KEY_R1", KeyCode::R1},
+diff --git a/src/M20_sdk_deploy/interface/user_command/keyboard_interface.hpp b/src/M20_sdk_deploy/interface/user_command/keyboard_interface.hpp
+index 732a037..f46e5ed 100644
+--- a/src/M20_sdk_deploy/interface/user_command/keyboard_interface.hpp
++++ b/src/M20_sdk_deploy/interface/user_command/keyboard_interface.hpp
+@@ -22,14 +22,17 @@ using namespace types;
+ class KeyboardInterface : public UserCommandInterface
+ {
+ private:
++    // 键盘读取单独放在线程里，避免阻塞状态机。
+     std::atomic<bool> running_{false};
+     std::thread kb_thread_;
+     mutable std::mutex keys_mutex_;
+ 
++    // 速度命令上限，需要和策略训练范围大致匹配。
+     float max_forward_ = 0.7f;
+     float max_side_    = 0.5f;
+     float max_yaw_     = 0.7f;
+ 
++    // 用“最近一次看到按键”的时间来近似判断按键是否仍被按住。
+     std::unordered_set<char> held_keys_;
+     std::unordered_map<char, double> last_seen_time_;
+     
+@@ -51,6 +54,7 @@ private:
+ 
+     static void setup_raw_mode()
+     {
++        // 终端 raw mode：按键不需要回车即可被 read() 读到。
+         termios t{};
+         tcgetattr(STDIN_FILENO, &t);
+         termios raw = t;
+@@ -73,6 +77,8 @@ private:
+ 
+     void compute_velocity_from_held_keys(float& fwd, float& side, float& yaw)
+     {
++        // 多键组合映射为三维速度命令：
++        // w/s -> 前后，a/d -> 横移，q/e -> 偏航。
+         fwd = 0.0f;
+         side = 0.0f;
+         yaw = 0.0f;
+@@ -93,6 +99,7 @@ private:
+ 
+     void process_mode_command(char k)
+     {
++        // 模式切换命令会先检查当前状态，避免从不合理状态直接跳转。
+         if (k == 'r') {
+             usr_cmd_->target_mode = uint8_t(RobotMotionState::JointDamping);
+             std::cout << "[MODE] Joint Damping\n";
+@@ -169,6 +176,8 @@ private:
+             // Compute velocity from all currently held keys
+             float fwd = 0.0f, side = 0.0f, yaw = 0.0f;
+             
++            // 只有进入 RLControlMode 后，速度按键才真正生效。
++            // 起立/趴下/阻尼状态下保持速度命令为 0。
+             if (msfb_->GetCurrentState() == RobotMotionState::RLControlMode) {
+                 compute_velocity_from_held_keys(fwd, side, yaw);
+             }
+@@ -233,4 +242,4 @@ public:
+                   << " side=" << max_side_ 
+                   << " yaw=" << max_yaw_ << "\n";
+     }
+-};
+\ No newline at end of file
++};
+diff --git a/src/M20_sdk_deploy/interface/user_command/keyboard_interface_sim.hpp b/src/M20_sdk_deploy/interface/user_command/keyboard_interface_sim.hpp
+index 9b953e1..3e963ac 100644
+--- a/src/M20_sdk_deploy/interface/user_command/keyboard_interface_sim.hpp
++++ b/src/M20_sdk_deploy/interface/user_command/keyboard_interface_sim.hpp
+@@ -23,12 +23,17 @@
+ using namespace interface;
+ using namespace types;
+ 
++// 备用键盘接口：直接读取 Linux /dev/input/event* 设备，需要 libevdev 和输入设备权限。
++// 与 keyboard_interface.hpp 相比，它能更准确地区分按下/释放事件，
++// 但部署时需要确保用户属于 input 组，且运行环境能访问 /dev/input。
+ class KeyboardInterface : public UserCommandInterface
+ {
+ private:
++    // 读取 evdev 事件的线程。
+     std::atomic<bool> running_{false};
+     std::thread kb_thread_;
+ 
++    // 速度上限，与策略训练命令范围保持接近。
+     float max_forward_ = 0.7f;
+     float max_side_    = 0.5f;
+     float max_yaw_     = 0.7f;
+@@ -61,6 +66,7 @@ private:
+     // Called on press (value=1) and repeat (value=2)
+     void apply_key_direction(int keycode)
+     {
++        // 长按按键时逐步增加速度，形成 ramp-up 效果。
+         const float step = 0.1f;
+ 
+         if (keycode == KEY_W)       fwd  +=  step * max_forward_;
+@@ -78,6 +84,7 @@ private:
+     // Called exactly on key release (value=0)
+     void handle_key_release(int keycode)
+     {
++        // 某个方向轴上两个相反按键都松开后，该轴速度立即归零。
+         if ((keycode == KEY_W || keycode == KEY_S) &&
+             !isKeyPressed(KEY_W) && !isKeyPressed(KEY_S)) {
+             fwd = 0.0f;
+@@ -94,6 +101,7 @@ private:
+ 
+     void process_mode_key(int keycode)
+     {
++        // 模式键：R 阻尼，Z 起立，C 进入 RL 控制。
+         if (keycode == KEY_R) {
+             usr_cmd_->target_mode = uint8_t(RobotMotionState::JointDamping);
+             std::cout << "[MODE] Joint Damping\n";
+@@ -110,6 +118,7 @@ private:
+ 
+     bool init_all_keyboards()
+     {
++        // 扫描 /dev/input/event*，筛选出看起来像键盘的设备。
+         DIR* dir = opendir("/dev/input");
+         if (!dir) return false;
+ 
+@@ -222,6 +231,7 @@ private:
+             }
+ 
+             // ─────── CRITICAL: ALWAYS publish current values every loop ───────
++            // 每轮都发布当前速度命令，状态机/策略读取的是 usr_cmd_ 缓存。
+             usr_cmd_->forward_vel_scale  = fwd;
+             usr_cmd_->side_vel_scale     = side;
+             usr_cmd_->turnning_vel_scale = yaw;
+@@ -281,4 +291,4 @@ public:
+                   << " side:" << max_side_
+                   << " yaw:" << max_yaw_ << "\n";
+     }
+-};
+\ No newline at end of file
++};
+diff --git a/src/M20_sdk_deploy/interface/user_command/user_command_interface.h b/src/M20_sdk_deploy/interface/user_command/user_command_interface.h
+index 774cd3a..c45164b 100644
+--- a/src/M20_sdk_deploy/interface/user_command/user_command_interface.h
++++ b/src/M20_sdk_deploy/interface/user_command/user_command_interface.h
+@@ -18,6 +18,8 @@ using namespace types;
+ 
+ namespace interface{
+ 
++// 用户命令接口基类。
++// 键盘、手柄、/cmd_vel 都会派生它，并把外部输入统一转换为 UserCommand。
+ class UserCommandInterface{
+ private:
+     /* data */
+@@ -50,13 +52,19 @@ public:
+     /**
+      * @brief set the motion state feedback 
+      * @param  msfb         motion state feedback
++     *
++     * 输入接口需要知道机器人当前状态，才能决定哪些命令有效。
++     * 例如只有 StandingUp 后才允许切到 RLControlMode。
+      */
+     virtual void SetMotionStateFeedback(MotionStateFeedback* msfb){
+         msfb_ = msfb;
+     }
+ 
++    // msfb_ 指向全局运动状态反馈，由 StateBase::msfb_ 维护。
+     MotionStateFeedback *msfb_;
+     RobotName robot_name_;
++
++    // usr_cmd_ 是状态机读取的最终命令缓存。
+     UserCommand *usr_cmd_;
+ };
+ };
+diff --git a/src/M20_sdk_deploy/main.cpp b/src/M20_sdk_deploy/main.cpp
+index e5ffaa0..e296019 100644
+--- a/src/M20_sdk_deploy/main.cpp
++++ b/src/M20_sdk_deploy/main.cpp
+@@ -14,11 +14,23 @@ MotionStateFeedback StateBase::msfb_ = MotionStateFeedback();
+ int main(){
+     std::cout << "State Machine Start Running" << std::endl;
+     rclcpp::init(0, 0);
+-    //KeyBoard control
++
++    // 官方默认入口：键盘/手柄直接控制 M20。
++    // 数据流：
++    //   Keyboard/Gamepad -> UserCommand
++    //   StateMachine -> StandUp/RLControl/LieDown
++    //   M20PolicyRunner(policy.onnx) -> RobotAction
++    //   M20Interface -> /JOINTS_CMD -> MuJoCo 或真实底层
++    //
++    // 键盘常用按键：
++    //   z: 起立, c: 进入 RL 控制, x: 趴下, r: 关节阻尼
++    //   w/s/a/d/q/e: 前后/横移/转向速度命令
++    // KeyBoard control
+     std::shared_ptr<StateMachineBase> fsm = std::make_shared<qw::QwStateMachine>(RobotName::M20, RemoteCommandType::kKeyBoard);
+-    //Gamepad control
++    // Gamepad control
+     // std::shared_ptr<StateMachineBase> fsm = std::make_shared<qw::QwStateMachine>(RobotName::M20, RemoteCommandType::kGamepad);
+     
++    // Start 创建接口和状态对象；Run 进入 ROS spin + 5 ms 状态机循环；Stop 做资源释放。
+     fsm->Start();
+     fsm->Run();
+     fsm->Stop();
+diff --git a/src/M20_sdk_deploy/package.xml b/src/M20_sdk_deploy/package.xml
+index a29ae6c..25f8039 100755
+--- a/src/M20_sdk_deploy/package.xml
++++ b/src/M20_sdk_deploy/package.xml
+@@ -10,6 +10,7 @@
+ 
+   <depend>rclcpp</depend>
+   <depend>drdds</depend>
++  <depend>geometry_msgs</depend>
+ 
+   <test_depend>ament_lint_auto</test_depend>
+   <test_depend>ament_lint_common</test_depend>
+diff --git a/src/M20_sdk_deploy/run_policy/m20_policy_runner.hpp b/src/M20_sdk_deploy/run_policy/m20_policy_runner.hpp
+index f2cbaf1..8164122 100644
+--- a/src/M20_sdk_deploy/run_policy/m20_policy_runner.hpp
++++ b/src/M20_sdk_deploy/run_policy/m20_policy_runner.hpp
+@@ -15,30 +15,64 @@
+ #include "policy_runner_base.hpp"
+ #include <ctime>
+ #include <cmath>
++#include <cstdlib>
++#include <string>
+ #include <utility>
+ #include <onnxruntime_cxx_api.h>
+ #include <onnxruntime_c_api.h>
+ 
++/**
++ * M20PolicyRunner 是 M20 强化学习策略的部署执行器。
++ *
++ * 它只负责一件核心事情：
++ *   1. 从 RobotBasicState 读取机器人本体观测：IMU 角速度、机体姿态、16 个关节位置/速度；
++ *   2. 从 UserCommand 读取人为给定的速度指令：前后、左右、偏航；
++ *   3. 按训练时约定的顺序和尺度拼成 57 维 observation；
++ *   4. 调用 policy.onnx 得到 16 维 action；
++ *   5. 将 action 还原为底层关节命令 RobotAction。
++ *
++ * 对 M20 这种轮足机器人来说，16 个自由度按每条腿 4 个排列：
++ *   hipx, hipy, knee, wheel
++ * 前 3 个是腿部关节，最后 1 个是轮子关节。
++ */
+ class M20PolicyRunner : public PolicyRunnerBase {
+ private:
++    // 每个关节的 PD 增益。腿部关节主要走位置 PD，轮子关节主要走速度阻尼。
+     VecXf kp_, kd_;
++
++    // 默认站立姿态。policy 顺序和 robot/DDS 顺序不同，因此分别保存。
+     VecXf dof_default_eigen_policy, dof_default_eigen_robot;
++
++    // 训练策略里常用的重力方向。通过 R^T * g 得到机体系下的“投影重力”。
+     Vec3f max_cmd_vel_, gravity_direction = Vec3f(0., 0., -1.);
+     VecXf dof_pos_default_;
+     timespec system_time;
+ 
++    // M20 每条腿 4 个关节，共 16 个执行器。
+     const int motor_num = 16;
++
++    // observation = 3(base omega) + 3(projected gravity) + 3(command)
++    //             + 16(joint pos error) + 16(joint vel) + 16(last action) = 57。
+     const int observation_dim = 57;
++
++    // policy 输出 16 维 action，对应 12 个腿部关节目标 + 4 个轮子速度目标。
+     const int action_dim = 16;
++
++    // 策略实际推理周期约为 20 ms。状态机 5 ms 跑一次，decimation=4 时调用一次 policy。
+     float agent_timestep = 0.02;
+     float current_time;
+     bool is_fallen = true;
++    // 与 rl_training 的 DeeproboticsM20RoughPPORunnerCfg.clip_actions=100 对齐。
++    // 如果需要排查安全性，可以启动前设置环境变量 M20_ACTION_CLIP=1 临时收紧。
++    float action_clip_ = 100.0f;
+ 
++    // 存成训练时使用的 policy 顺序，而不是硬件 DDS 顺序。
+     VecXf joint_pos_rl = VecXf(action_dim);// in rl squenece
+     VecXf joint_vel_rl = VecXf(action_dim);
+     
+     const std::string policy_path_;
+ 
++    // 观测归一化/缩放系数，需要和训练导出时保持一致。
+     float omega_scale_ = 0.25;
+     float dof_vel_scale_ = 0.05;
+     VecXf imu_w_eigen, base_acc_eigen, motor_p_eigen, motor_v_eigen,
+@@ -46,13 +80,17 @@ private:
+           tmp_action_eigen;
+ 
+     RobotAction robot_action;
++
++    // 机器人实际接口顺序：每条腿按 hipx, hipy, knee, wheel 交错排列。
++    // 这个顺序和 /JOINTS_DATA、/JOINTS_CMD 的 16 个关节索引一致。
+     std::vector<std::string> robot_order = {
+         "fl_hipx_joint", "fl_hipy_joint", "fl_knee_joint", "fl_wheel_joint",
+         "fr_hipx_joint", "fr_hipy_joint", "fr_knee_joint", "fr_wheel_joint",
+         "hl_hipx_joint", "hl_hipy_joint", "hl_knee_joint", "hl_wheel_joint",
+         "hr_hipx_joint", "hr_hipy_joint", "hr_knee_joint", "hr_wheel_joint"};
+ 
+-
++    // 强化学习训练/ONNX 模型使用的顺序：先放 12 个腿部关节，再放 4 个轮子关节。
++    // 如果这里和训练时不一致，策略会把“某个关节的观测/动作”误认为另一个关节。
+     std::vector<std::string> policy_order = {
+         "fl_hipx_joint", "fl_hipy_joint", "fl_knee_joint",
+         "fr_hipx_joint", "fr_hipy_joint", "fr_knee_joint",
+@@ -61,7 +99,8 @@ private:
+         "fl_wheel_joint", "fr_wheel_joint", "hl_wheel_joint", "hr_wheel_joint",
+     };
+ 
+-
++    // action 是神经网络输出的归一化量，不是直接的物理量。
++    // 腿部三个关节缩放成位置增量(rad)，轮子缩放成速度目标(rad/s)。
+     std::vector<float> action_scale_robot = {0.125, 0.25, 0.25, 5,
+                                              0.125, 0.25, 0.25, 5,
+                                              0.125, 0.25, 0.25, 5,
+@@ -74,6 +113,7 @@ private:
+     Ort::Env env_;
+     std::vector<int> robot2policy_idx, policy2robot_idx;
+ 
++    // ONNX 输入/输出名字必须和导出模型时设置的名字一致。
+     const char* input_names_[1] = {"obs"}; // must keep the same as model export
+     const char* output_names_[1] = {"actions"};
+     VecXf command;
+@@ -90,6 +130,7 @@ public:
+             session_{nullptr},
+             memory_info(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)) {
+ 
++        // policy 顺序：FL/FR/HL/HR 的 12 个腿部关节，然后 4 个轮子。
+         dof_default_eigen_policy.setZero(action_dim);
+         dof_default_eigen_robot.setZero(action_dim);
+         dof_default_eigen_policy << 0.0, -0.3,  0.6, 
+@@ -97,11 +138,33 @@ public:
+                                     0.0,  0.3, -0.6,  
+                                     0.0,  0.3, -0.6, 
+                                     0.0, 0.0, 0.0, 0.0;
++
++        // robot 顺序：每条腿 4 个连续关节，包含 wheel。
+         dof_default_eigen_robot << 0.0, -0.3,  0.6, 0.0,
+                                    0.0, -0.3,  0.6, 0.0,
+                                    0.0,  0.3, -0.6, 0.0,
+                                    0.0,  0.3, -0.6, 0.0;
++
++        // 状态机默认 5 ms 一次，decimation=4 表示 20 ms 做一次神经网络推理。
+         SetDecimation(4);
++
++        const char* action_clip_env = std::getenv("M20_ACTION_CLIP");
++        if (action_clip_env != nullptr) {
++            try {
++                float parsed_clip = std::stof(action_clip_env);
++                if (std::isfinite(parsed_clip) && parsed_clip > 0.0f) {
++                    action_clip_ = parsed_clip;
++                } else {
++                    std::cerr << "Invalid M20_ACTION_CLIP, keep default 100: "
++                              << action_clip_env << std::endl;
++                }
++            } catch (const std::exception& e) {
++                std::cerr << "Failed to parse M20_ACTION_CLIP, keep default 100: "
++                          << action_clip_env << " (" << e.what() << ")" << std::endl;
++            }
++        }
++
++        // ONNX Runtime 设置：使用 4 个线程，并开启扩展图优化。
+         session_options_.SetIntraOpNumThreads(4);
+         session_options_.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+         
+@@ -112,9 +175,12 @@ public:
+ 
+         // 加载模型
+         session_ = Ort::Session(env_, policy_path_.c_str(), session_options_);
++
++        // 腿部关节给较大的位置/速度 PD；轮子位置 Kp=0，轮子主要使用速度项 Kd。
+         kp_ = Vec4f(80, 80, 80, 0.).replicate(4, 1);
+         kd_ = Vec4f(2, 2, 2, 0.6).replicate(4, 1);
+         
++        // 生成两个重排序表，避免在主循环里用字符串查找。
+         robot2policy_idx = generate_permutation(robot_order, policy_order);
+         policy2robot_idx = generate_permutation(policy_order, robot_order);
+         // for (int i = 0; i < action_dim; ++i){
+@@ -124,11 +190,13 @@ public:
+ 
+         robot_action.kp = kp_;
+         robot_action.kd = kd_;
++
++        // tau_ff 预留给前馈力矩。当前策略主要输出位置/速度目标，因此默认为 0。
+         robot_action.tau_ff = VecXf::Zero(motor_num);
+         robot_action.goal_joint_pos = VecXf::Zero(motor_num);
+         robot_action.goal_joint_vel = VecXf::Zero(motor_num);
+ 
+-
++        // 缓存向量提前分配，减少控制循环中的动态内存抖动。
+         current_observation_.setZero(observation_dim);
+         last_action_eigen.setZero(action_dim);
+         tmp_action_eigen.setZero(action_dim);
+@@ -144,6 +212,9 @@ public:
+         const std::vector<std::string>& to, 
+         int default_index = 0) 
+     {
++        // 返回 perm，使得 target(i) = source(perm[i])。
++        // 例如从 robot_order 转到 policy_order 时：
++        // joint_pos_rl(i) = robot_joint_pos(robot2policy_idx[i])。
+         std::unordered_map<std::string, int> idx_map;
+         for (int i = 0; i < from.size(); ++i) {
+             idx_map[from[i]] = i;
+@@ -165,6 +236,8 @@ public:
+     void DisplayPolicyInfo(){}
+ 
+     void OnEnter() {
++        // 每次进入 RL 控制状态时清空历史 action 和命令缓存。
++        // last_action 是 observation 的一部分，如果不清零会把上一次状态残留带入策略。
+         run_cnt_ = 0;
+         cmd_vel_input_.setZero();
+         last_action_eigen.setZero(action_dim);
+@@ -174,7 +247,8 @@ public:
+     }
+ 
+     VecXf Onnx_infer(VecXf current_observation){
+-        
++        // ONNX Runtime 直接复用 Eigen 向量的数据指针构造输入张量：
++        // shape = [1, 57]，batch 维固定为 1。
+         Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
+             memory_info,
+             current_observation.data(),
+@@ -186,6 +260,7 @@ public:
+         std::vector<Ort::Value> inputs;
+         inputs.emplace_back(std::move(input_tensor));  // 避免拷贝构造
+         
++        // 前向推理：obs -> actions。
+         auto outputs = session_.Run(
+             Ort::RunOptions{nullptr},
+             input_names_,
+@@ -196,23 +271,40 @@ public:
+         );
+ 
+         float* action_data = outputs[0].GetTensorMutableData<float>();
++
++        // ONNX 输出内存映射为 Eigen 向量，再复制返回，避免输出对象析构后悬空。
+         Eigen::Map<Eigen::VectorXf> action_map(action_data, action_dim);
+         return VecXf(action_map);  // 返回一个Eigen向量的副本
+     }
+ 
+     RobotAction getRobotAction(const RobotBasicState &ro, const UserCommand &uc) {
+ 
++        // 1. 构造策略观测中的机体部分。
++        // base_omega：机体系角速度，乘以训练时使用的缩放系数。
+         Vec3f base_omgea = ro.base_omega * omega_scale_;
++
++        // projected_gravity：世界系重力方向投影到机体系。
++        // 它让策略知道机身是否倾斜，比直接给 roll/pitch/yaw 更常见、更稳定。
+         Vec3f projected_gravity = ro.base_rot_mat.inverse() * gravity_direction;
++
++        // 人的速度命令，通常由键盘、手柄或 /cmd_vel 转换而来。
++        // 三个分量分别表示 forward、side、yaw。
+         Vec3f command = Vec3f(uc.forward_vel_scale, uc.side_vel_scale, uc.turnning_vel_scale);
+ 
++        // 2. 关节数据从 robot/DDS 顺序重排到 policy 顺序。
+         for (int i = 0; i < action_dim; ++i){
+             joint_pos_rl(i) = ro.joint_pos(robot2policy_idx[i]);
+             joint_vel_rl(i) = ro.joint_vel(robot2policy_idx[i]) * dof_vel_scale_;
+         }
++
++        // 轮子是连续旋转关节，绝对角度本身没有物理意义。
++        // 因此观测里只保留轮速，不使用轮子 position，避免角度无限累积干扰策略。
+         joint_pos_rl.segment(12, 4).setZero();
+ 
++        // 训练时给策略的是“相对默认站姿的关节偏差”，不是绝对角度。
+         joint_pos_rl -= dof_default_eigen_policy;
++
++        // 3. 拼接 57 维 observation，顺序必须和训练/导出时完全一致。
+         current_observation_<<base_omgea, 
+                               projected_gravity, 
+                               command, 
+@@ -220,16 +312,28 @@ public:
+                               joint_vel_rl, 
+                               last_action_eigen;
+ 
++        // 4. 神经网络推理，得到归一化 action。
+         current_action_eigen = Onnx_infer(current_observation_);
++        // 部署裁剪默认使用训练侧 clip_actions=100，保持和 rl_training 行为一致。
++        // 需要做保守安全测试时，可设置 M20_ACTION_CLIP=1 临时缩小动作范围。
++        current_action_eigen = current_action_eigen.cwiseMax(-action_clip_).cwiseMin(action_clip_);
++
++        // 5. 将当前 action 作为下一帧 observation 的 last_action。
+         last_action_eigen = current_action_eigen;
+ 
+-        
++        // 6. action 从 policy 顺序转回 robot 顺序，并缩放成物理量。
+         for (int i = 0; i < action_dim; ++i){
+             tmp_action_eigen(i) = current_action_eigen(policy2robot_idx[i]);
+             tmp_action_eigen(i) *= action_scale_robot[i];
+         }
++
++        // 腿部关节 action 表示相对默认姿态的位置增量，因此要加回默认姿态。
++        // 轮子默认值为 0，因此加不加都等价，但保留统一处理。
+         tmp_action_eigen += dof_default_eigen_robot;
+         
++        // 7. 拆成底层可执行命令：
++        //    每条腿前三个关节使用 goal_joint_pos；
++        //    第四个 wheel 关节使用 goal_joint_vel。
+         for (int i = 0; i < 4; ++i){
+             robot_action.goal_joint_pos.segment(i*4, 3) = tmp_action_eigen.segment(i*4, 3);
+             robot_action.goal_joint_vel(i*4+3) = tmp_action_eigen(i*4+3);
+@@ -242,6 +346,8 @@ public:
+     }
+ 
+     void setDefaultJointPos(const VecXf& pos){
++        // 预留接口：允许外部覆盖默认关节位置。
++        // 当前 getRobotAction 使用的是 dof_default_eigen_*，这里暂未参与主流程。
+         dof_pos_default_.setZero(motor_num); 
+         for(int i=0;i<motor_num;++i) {
+             dof_pos_default_(i) = pos(i);
+diff --git a/src/M20_sdk_deploy/run_policy/policy_runner_base.hpp b/src/M20_sdk_deploy/run_policy/policy_runner_base.hpp
+index e8c9da3..8971271 100644
+--- a/src/M20_sdk_deploy/run_policy/policy_runner_base.hpp
++++ b/src/M20_sdk_deploy/run_policy/policy_runner_base.hpp
+@@ -17,6 +17,8 @@
+ 
+ using namespace types;
+ 
++// 策略执行器基类。不同机器人可以派生自己的 PolicyRunner，
++// 但都遵守“RobotBasicState + UserCommand -> RobotAction”的接口。
+ class PolicyRunnerBase{
+ public:
+     PolicyRunnerBase(std::string policy_name):policy_name_(policy_name){
+@@ -45,14 +47,22 @@ public:
+     /**
+      * @brief Set the decimation
+      * @param  d decimation
++     *
++     * decimation 表示状态机每跑 d 次才调用一次策略。
++     * 例如状态机 5 ms tick，decimation=4，则策略约 20 ms 推理一次。
+      */
+     virtual void SetDecimation(int d){
+         decimation_ = d;
+     }
+ 
+     const std::string policy_name_;
++
++    // 推理降采样系数。
+     int decimation_;
++
++    // 策略内部运行计数，具体派生类可用于调试或时序控制。
+     int run_cnt_;
++
++    // 预留速度命令平滑参数。M20 当前部署版本直接使用 UserCommand 中的速度值。
+     Vec3f vel_delta_const_, cmd_vel_input_;
+ };
+-
+diff --git a/src/M20_sdk_deploy/scripts/pt_to_onnx.py b/src/M20_sdk_deploy/scripts/pt_to_onnx.py
+index 163ba2b..98575ee 100644
+--- a/src/M20_sdk_deploy/scripts/pt_to_onnx.py
++++ b/src/M20_sdk_deploy/scripts/pt_to_onnx.py
+@@ -6,6 +6,14 @@ import numpy as np
+ # ------------------------------------------------------------------
+ # Configuration
+ # ------------------------------------------------------------------
++# 这是一个 TorchScript -> ONNX 的通用示例脚本。
++# 注意：当前 M20PolicyRunner 部署代码期望：
++#   input_names  = ["obs"]
++#   output_names = ["actions"]
++#   obs shape    = [1, 57]
++#   action shape = [1, 16]
++# 如果你要重新导出当前 M20 策略，需要把下面 MODEL_PATH、ONNX_PATH、
++# 输入维度、input_names/output_names 调整到和 C++ 推理器完全一致。
+ MODEL_PATH = "/path/to/your/policy/example.pt"   # <-- Change this
+ ONNX_PATH = "m20_platform4.onnx"
+ 
+@@ -21,6 +29,7 @@ model = torch.jit.load(MODEL_PATH)
+ model.eval()  # Important: switch to evaluation mode
+ 
+ # Test forward pass (optional, just to verify loading)
++# 先用 PyTorch 跑一遍，确认模型能正常加载和前向计算。
+ with torch.no_grad():
+     torch_output = model(state)
+     print(f"Torch forward output shape: {torch_output.shape}")
+@@ -36,6 +45,8 @@ torch.onnx.export(
+     export_params=True,        # store trained weights
+     opset_version=17,          # recent stable opset
+     do_constant_folding=True,  # optimize constants
++    # 这里的名字必须和部署端 C++ 里的 input_names_/output_names_ 一致。
++    # 当前示例使用 state/output；M20PolicyRunner 使用 obs/actions。
+     input_names=["state"],     # name of input node
+     output_names=["output"],   # name of output node
+     dynamic_axes={             # optional: support variable batch size
+@@ -67,6 +78,7 @@ print("Creating ONNX Runtime session...")
+ ort_session = onnxruntime.InferenceSession(ONNX_PATH)
+ 
+ # Prepare input dict
++# ONNX Runtime 输入字典的 key 也必须和导出时 input_names 一致。
+ ort_inputs = {"state": state.numpy()}
+ 
+ # Run inference
+@@ -78,6 +90,7 @@ print(f"ONNX Runtime output (first 5 elements): {ort_outputs[0].flat[:5]}")
+ # ------------------------------------------------------------------
+ # 5. Compare Torch vs ONNX outputs (sanity check)
+ # ------------------------------------------------------------------
++# 导出后用同一组输入比较 PyTorch 和 ONNX 输出，误差很小才说明转换基本正确。
+ torch_out_np = torch_output.numpy()
+ onnx_out_np = ort_outputs[0]
+ 
+@@ -87,4 +100,4 @@ print(f"Max difference between Torch and ONNX: {max_diff:.2e}")
+ if max_diff < 1e-5:
+     print("Torch and ONNX outputs match perfectly!")
+ else:
+-    print("Outputs differ slightly (normal for float32 precision)")
+\ No newline at end of file
++    print("Outputs differ slightly (normal for float32 precision)")
+diff --git a/src/M20_sdk_deploy/state_machine/parameters/control_parameters.h b/src/M20_sdk_deploy/state_machine/parameters/control_parameters.h
+index 6cec6ab..4d360bc 100644
+--- a/src/M20_sdk_deploy/state_machine/parameters/control_parameters.h
++++ b/src/M20_sdk_deploy/state_machine/parameters/control_parameters.h
+@@ -31,12 +31,17 @@ public:
+ 
+     /**
+      * @brief robot link length
++     *
++     * 这些几何参数用于起立/趴下时的简单二连杆反解，
++     * 不是完整 URDF 动力学参数。
+      */
+     float body_len_x_, body_len_y_;
+     float hip_len_, thigh_len_, shank_len_;
+ 
+     /**
+      * @brief stand height configure
++     *
++     * pre_height_ 是起立中间高度，stand_height_ 是最终站立高度。
+      */
+     float pre_height_, stand_height_; 
+ 
+@@ -47,6 +52,8 @@ public:
+ 
+     /**
+      * @brief joint position limitation
++     *
++     * 以前左腿 FL 为基准，其它腿通过符号变换得到范围。
+      */
+     Vec3f fl_joint_lower_, fl_joint_upper_;
+ 
+@@ -86,4 +93,3 @@ public:
+     std::string common_policy_path_;
+     Vec3f common_policy_p_gain_, common_policy_d_gain_;
+ };
+-
+diff --git a/src/M20_sdk_deploy/state_machine/parameters/m20_control_parameters.cpp b/src/M20_sdk_deploy/state_machine/parameters/m20_control_parameters.cpp
+index b828cae..be8c05c 100644
+--- a/src/M20_sdk_deploy/state_machine/parameters/m20_control_parameters.cpp
++++ b/src/M20_sdk_deploy/state_machine/parameters/m20_control_parameters.cpp
+@@ -1,18 +1,26 @@
+ #include "control_parameters.h"
+ 
+ void ControlParameters::GenerateM20Parameters(){
++    // M20 机身和腿部几何尺寸，单位 m。
+     body_len_x_ = 0.3095*2;
+     body_len_y_ = 0.065*2;
+     hip_len_ = 0.104;
+     thigh_len_ = 0.25;
+     shank_len_ = 0.25;
++
++    // 起立流程使用的中间高度和最终站立高度。
+     pre_height_ = 0.12;
+     stand_height_ = 0.48;
++
++    // 起立/趴下等非 RL 状态使用的腿部 PD 参数。
+     swing_leg_kp_ << 200., 200., 200.;
+     swing_leg_kd_ << 4., 4., 4.;
+ 
++    // 前左腿三个腿部关节的角度范围(rad)。其它腿在状态里通过符号调整。
+     fl_joint_lower_ << -0.4363, -2.443, -2.758;
+     fl_joint_upper_ << 0.6109, 2.443, 2.758;
++
++    // 速度/力矩限幅参数，主要供状态检查或后续安全控制扩展使用。
+     joint_vel_limit_ << 45, 22.4, 22.4;
+     torque_limit_ << 32.4, 76.4, 76.4;
+-}
+\ No newline at end of file
++}
+diff --git a/src/M20_sdk_deploy/state_machine/quadruped_wheel/idle_state.hpp b/src/M20_sdk_deploy/state_machine/quadruped_wheel/idle_state.hpp
+index 17af514..d8b4f53 100644
+--- a/src/M20_sdk_deploy/state_machine/quadruped_wheel/idle_state.hpp
++++ b/src/M20_sdk_deploy/state_machine/quadruped_wheel/idle_state.hpp
+@@ -25,6 +25,7 @@ namespace qw {
+         double last_print_time = 0;
+ 
+         void GetProprioceptiveData() {
++            // idle 状态不运动，但会持续读取本体状态，确认传感器数据是否可用。
+             joint_pos_ = ri_ptr_->GetJointPosition();
+             joint_vel_ = ri_ptr_->GetJointVelocity();
+             joint_tau_ = ri_ptr_->GetJointTorque();
+@@ -34,6 +35,8 @@ namespace qw {
+         }
+ 
+         int JointDataNormalCheck() {
++            // 检查关节位置/速度是否在合理范围内。
++            // 这里主要用于启动前的粗略保护，避免 NaN 或明显越界的数据进入起立流程。
+             VecXf joint_pos_lower(16), joint_pos_upper(16);
+             Vec4f fl_lower, fl_upper;
+             fl_lower << cp_ptr_->fl_joint_lower_, -INFINITY;
+@@ -66,6 +69,7 @@ namespace qw {
+         }
+ 
+         int ImuDataNormalCheck() {
++            // IMU 检查当前未在 Run() 中使用，但保留为启动健康检查的扩展点。
+             for (int i = 0; i < 3; ++i) {
+                 if (std::isnan(rpy_(i)) || fabs(rpy_(i)) > M_PI) {
+                     return 1;
+@@ -128,6 +132,7 @@ namespace qw {
+         ~IdleState() {}
+ 
+         virtual void OnEnter() {
++            // WaitingForStand 表示“等待起立命令”的空闲状态。
+             StateBase::msfb_.UpdateCurrentState(RobotMotionState::WaitingForStand);
+             enter_state_time_ = ri_ptr_->GetInterfaceTimeStamp();
+         };
+@@ -145,6 +150,8 @@ namespace qw {
+                 DisplayAxisValue();
+                 last_print_time = ri_ptr_->GetInterfaceTimeStamp();
+             }
++
++            // idle 状态下发送全 0 命令，相当于不主动给位置/速度/力矩目标。
+             MatXf cmd = MatXf::Zero(16, 5);
+             ri_ptr_->SetJointCommand(cmd);
+         }
+@@ -154,6 +161,7 @@ namespace qw {
+         }
+ 
+         virtual StateName GetNextStateName() {
++            // 关节数据异常时留在 idle，不允许进入起立状态。
+             if ((joint_normal_flag_ != 0)) {
+                 std::cout << "========== warning ========>> "
+                           << "joint status: " << joint_normal_flag_
+@@ -164,6 +172,7 @@ namespace qw {
+                 return StateName::kIdle;
+             }
+ 
++            // 用户命令请求 StandingUp 后，状态机切到 StandUpState。
+             if (uc_ptr_->GetUserCommand()->target_mode == uint8_t(RobotMotionState::StandingUp))
+                 return StateName::kStandUp;
+             return StateName::kIdle;
+@@ -171,4 +180,3 @@ namespace qw {
+     };
+ 
+ };
+-
+diff --git a/src/M20_sdk_deploy/state_machine/quadruped_wheel/joint_damping_state.hpp b/src/M20_sdk_deploy/state_machine/quadruped_wheel/joint_damping_state.hpp
+index 12f8b5b..006946b 100644
+--- a/src/M20_sdk_deploy/state_machine/quadruped_wheel/joint_damping_state.hpp
++++ b/src/M20_sdk_deploy/state_machine/quadruped_wheel/joint_damping_state.hpp
+@@ -20,6 +20,8 @@ private:
+ public:
+     JointDampingState(const RobotName& robot_name, const std::string& state_name, 
+         std::shared_ptr<ControllerData> data_ptr):StateBase(robot_name, state_name, data_ptr){
++            // 阻尼状态不追踪目标位置，只给 Kd。
++            // 腿部关节使用 swing_leg_kd_，轮子给 1.0 的速度阻尼。
+             Vec4f one_leg_kd;
+             one_leg_kd << cp_ptr_->swing_leg_kd_, 1.;
+             VecXf kd_ = one_leg_kd.replicate(4, 1);
+@@ -29,6 +31,7 @@ public:
+     ~JointDampingState(){}
+ 
+     virtual void OnEnter() {
++        // 进入阻尼状态后至少保持 3 秒，再回到 idle。
+         time_record_ = ri_ptr_->GetInterfaceTimeStamp();
+         run_time_ = ri_ptr_->GetInterfaceTimeStamp();
+         msfb_.UpdateCurrentState(RobotMotionState::JointDamping);
+@@ -38,6 +41,7 @@ public:
+     }
+     virtual void Run() {
+         run_time_ = ri_ptr_->GetInterfaceTimeStamp();
++        // 下发 [0,0,kd,0,0]，底层力矩约为 -kd * 当前关节速度。
+         ri_ptr_->SetJointCommand(joint_cmd_);
+     }
+     virtual bool LoseControlJudge() {
+@@ -47,10 +51,10 @@ public:
+         if(run_time_ - time_record_ < 3.){
+             return StateName::kJointDamping;
+         }
++        // 阻尼结束后回到 idle，等待重新起立。
+         return StateName::kIdle;
+     }
+ };
+ 
+ 
+ };
+-
+diff --git a/src/M20_sdk_deploy/state_machine/quadruped_wheel/liedown_state.hpp b/src/M20_sdk_deploy/state_machine/quadruped_wheel/liedown_state.hpp
+index ae20e36..8ca87a8 100644
+--- a/src/M20_sdk_deploy/state_machine/quadruped_wheel/liedown_state.hpp
++++ b/src/M20_sdk_deploy/state_machine/quadruped_wheel/liedown_state.hpp
+@@ -25,18 +25,21 @@ private:
+     const float set_wheel_kd_ = 1.;
+ 
+     void GetRobotJointValue(){
++        // 读取当前状态，用于从“当前姿态”平滑趴下。
+         current_joint_pos_ = ri_ptr_->GetJointPosition();
+         current_joint_vel_ = ri_ptr_->GetJointVelocity();
+         run_time_ = ri_ptr_->GetInterfaceTimeStamp();
+     }
+ 
+     void RecordJointData(){
++        // 记录趴下动作开始时的关节状态。
+         init_joint_pos_ = current_joint_pos_;
+         init_joint_vel_ = current_joint_vel_;
+         time_stamp_record_ = run_time_;
+     }
+     
+     float GetHipYPosByHeight(float h){
++        // 与 StandUpState 相同：用二连杆几何关系，根据目标高度反解 hipy。
+         float l1 = cp_ptr_->thigh_len_;
+         float l2 = cp_ptr_->shank_len_;
+         float default_pos = (cp_ptr_->fl_joint_lower_(1)+cp_ptr_->fl_joint_upper_(1)) / 2.;
+@@ -50,6 +53,7 @@ private:
+     }
+ 
+     float GetKneePosByHeight(float h){
++        // 根据目标高度反解 knee 角，用于生成趴下目标姿态。
+         float l1 = cp_ptr_->thigh_len_;
+         float l2 = cp_ptr_->shank_len_;
+         float default_pos = (cp_ptr_->fl_joint_lower_(2)+cp_ptr_->fl_joint_upper_(2)) / 2.;
+@@ -70,6 +74,7 @@ public:
+             current_joint_pos_ = VecXf::Zero(16);
+             current_joint_vel_ = VecXf::Zero(16);
+             
++            // 趴下目标高度接近地面，这里 h=0.03 m。
+             goal_joint_pos_ = Vec4f(init_hipx_pos_, GetHipYPosByHeight(0.03), GetKneePosByHeight(0.03), 0).replicate(4, 1);
+             goal_joint_pos_(4) = -init_hipx_pos_; goal_joint_pos_(12) = -init_hipx_pos_;
+ 
+@@ -89,6 +94,7 @@ public:
+     ~LieDownState(){}
+ 
+     virtual void OnEnter() {
++        // 趴下前重新初始化命令矩阵，并记录当前姿态。
+         joint_cmd_ = MatXf::Zero(16, 5);
+         joint_cmd_.col(0) = kp_;
+         joint_cmd_.col(2) = kd_;
+@@ -105,6 +111,7 @@ public:
+         VecXf planning_joint_pos(current_joint_pos_.rows());
+         VecXf planning_joint_vel(current_joint_pos_.rows());
+         if(run_time_ - time_stamp_record_ <= liedown_duration_){
++            // 第一阶段：从当前姿态平滑插值到趴下目标姿态。
+             for(int i=0;i<current_joint_pos_.rows();++i){
+                 planning_joint_pos(i) = GetCubicSplinePos(init_joint_pos_(i), init_joint_vel_(i), goal_joint_pos_(i), 0, 
+                                                 run_time_ - time_stamp_record_, liedown_duration_);
+@@ -120,11 +127,13 @@ public:
+             joint_cmd_.col(2) = kd_;
+             ri_ptr_->SetJointCommand(joint_cmd_);
+         } else if (run_time_ - time_stamp_record_ <=  2.0 * liedown_duration_){
++            // 第二阶段：保持阻尼，逐步让机器人稳定下来。
+             joint_cmd_ = MatXf::Zero(16, 5);
+             joint_cmd_.col(2) = kd_;
+             
+             ri_ptr_->SetJointCommand(joint_cmd_);
+         } else {
++            // 最后阶段：全部命令清零，交给底层安全状态。
+             joint_cmd_ = MatXf::Zero(16, 5);
+             ri_ptr_->SetJointCommand(joint_cmd_);
+         }
+@@ -139,9 +148,11 @@ public:
+         } 
+         
+         if(run_time_ - time_stamp_record_ <= 2.*liedown_duration_){
++            // 趴下动作还没结束，继续留在 LieDownState。
+             return StateName::kLieDown;
+         }else{
+             if(uc_ptr_->GetUserCommand()->target_mode == uint8_t(RobotMotionState::StandingUp)){
++                // 趴下结束后，如果用户再次请求起立，可以回到 StandUpState。
+                 return StateName::kStandUp;
+             }
+         }
+diff --git a/src/M20_sdk_deploy/state_machine/quadruped_wheel/qw_state_machine.hpp b/src/M20_sdk_deploy/state_machine/quadruped_wheel/qw_state_machine.hpp
+index 1ddb710..4a7f2f5 100644
+--- a/src/M20_sdk_deploy/state_machine/quadruped_wheel/qw_state_machine.hpp
++++ b/src/M20_sdk_deploy/state_machine/quadruped_wheel/qw_state_machine.hpp
+@@ -44,6 +44,7 @@ public:
+     ~QwStateMachine(){}
+ 
+     void Start(){
++        // 选择用户命令来源：键盘适合 MuJoCo 本地调试，手柄适合真实机器人/远程控制。
+         if(remote_cmd_type_ == RemoteCommandType::kKeyBoard){
+             uc_ptr_ = std::make_shared<KeyboardInterface>(robot_name_);
+         }else if(remote_cmd_type_ == RemoteCommandType::kGamepad){
+@@ -57,9 +58,10 @@ public:
+         uc_ptr_->SetMotionStateFeedback(&StateBase::msfb_);
+ 
+         if(robot_name_ == RobotName::M20){
+-   
++            // M20Interface 负责订阅状态、发布关节命令，并处理 M20 关节方向/零位。
+             ri_ptr_ = std::make_shared<M20Interface>("M20");
+             
++            // ControlParameters 保存 M20 起立/趴下/安全检查需要的几何和限位参数。
+             cp_ptr_ = std::make_shared<ControlParameters>(robot_name_);
+         }
+ 
+@@ -72,6 +74,12 @@ public:
+         sc_ptr_->SetRobotDataSource(ri_ptr_);
+         sc_ptr_->SetUserCommandDataSource(uc_ptr_);
+ 
++        // 这些状态构成 M20 部署控制流程：
++        // idle: 检查传感器并等待起立命令；
++        // standup: 用三次样条把当前姿态平滑过渡到站立；
++        // rl_control: 调用 policy.onnx 输出关节命令；
++        // joint_damping: 安全阻尼/急停；
++        // liedown: 平滑趴下并卸力。
+         idle_controller_ = std::make_shared<IdleState>(robot_name_, "idle_state", data_ptr);
+         standup_controller_ = std::make_shared<StandUpState>(robot_name_, "standup_state", data_ptr);
+         rl_controller_ = std::make_shared<RLControlState>(robot_name_, "rl_control", data_ptr);
+@@ -82,6 +90,7 @@ public:
+         current_state_name_ = kIdle;
+         next_state_name_ = kIdle;
+ 
++        // 启动接口/安全线程后再进入 idle 状态。
+         ri_ptr_->Start();
+         uc_ptr_->Start();
+         sc_ptr_->Start();
+@@ -90,6 +99,7 @@ public:
+ 
+ 
+     std::shared_ptr<StateBase> GetStateControllerPtr(StateName state_name){
++        // StateMachineBase 只知道枚举，这里返回对应的具体控制器对象。
+         switch(state_name){
+             case StateName::kInvalid:{
+                 return nullptr;
+@@ -119,6 +129,7 @@ public:
+     }
+ 
+     void Stop(){
++        if (current_controller_) current_controller_->OnExit();
+         sc_ptr_->Stop();
+         uc_ptr_->Stop();
+         ri_ptr_->Stop();
+diff --git a/src/M20_sdk_deploy/state_machine/quadruped_wheel/rl_control_state.hpp b/src/M20_sdk_deploy/state_machine/quadruped_wheel/rl_control_state.hpp
+index 84084fe..578628c 100644
+--- a/src/M20_sdk_deploy/state_machine/quadruped_wheel/rl_control_state.hpp
++++ b/src/M20_sdk_deploy/state_machine/quadruped_wheel/rl_control_state.hpp
+@@ -20,28 +20,40 @@
+ namespace qw {
+     class RLControlState : public StateBase {
+     private:
++        // 双缓冲保存机器人状态：
++        // 主状态机线程写入最新观测，策略线程读取上一份完整观测。
++        // 这样可以减少读写同一个 RobotBasicState 时的数据撕裂风险。
+         RobotBasicState rbs_[2];
+         std::atomic<int> rbs_write_index_{0};
+         int getrbsReadIndex() const { return 1 - rbs_write_index_.load(std::memory_order_acquire); }
+ 
++        // 状态机 Run() 的计数器。PolicyRunner 根据 decimation_ 判断是否做一次推理。
+         int state_run_cnt_;
+ 
++        // 基类指针用于统一调用策略；M20 当前实际绑定 M20PolicyRunner。
+         std::shared_ptr<PolicyRunnerBase> policy_ptr_;
+         std::shared_ptr<M20PolicyRunner> m20_policy_;
+ 
++        // 策略推理单独放在线程里，避免 ONNX 推理阻塞 5 ms 状态机主循环。
+         std::thread run_policy_thread_;
+         bool start_flag_ = true;
+ 
++        // 记录一次 ONNX 推理和命令下发耗时，单位 ms，便于调试实时性。
+         float policy_cost_time_ = 1;
+ 
++        // IMU 加速度历史缓存。当前版本只记录，后续可用于滤波或姿态安全判断。
+         Eigen::MatrixXf acc_rot = Eigen::MatrixXf::Zero(20, 3);
+         int acc_rot_count = 0;
+ 
+         void UpdateRobotObservation() {
++            // 从 RobotInterface 读取传感器数据。
++            // 在 MuJoCo 仿真中，这些数据来自 /IMU_DATA 和 /JOINTS_DATA；
++            // 在真机部署时，这些数据来自官方 DDS/底层驱动发布的同名消息。
+             int write_idx = rbs_write_index_.load(std::memory_order_relaxed);
+             RobotBasicState& buffer = rbs_[write_idx];
+ 
+             buffer.base_rpy = ri_ptr_->GetImuRpy();
++            // 策略用 projected_gravity 时需要机体旋转矩阵。
+             buffer.base_rot_mat = RpyToRm(buffer.base_rpy);
+             buffer.base_omega = ri_ptr_->GetImuOmega();
+             buffer.base_acc = ri_ptr_->GetImuAcc();
+@@ -60,11 +72,18 @@ namespace qw {
+         void PolicyRunner() {
+             int run_cnt_record = -1;
+             while (start_flag_) {
++                // decimation_ 控制策略频率：
++                // 状态机约 5 ms 一次，M20PolicyRunner 设置 decimation=4，
++                // 所以 policy 约 20 ms 推理一次。
+                 if (state_run_cnt_ % policy_ptr_->decimation_ == 0 && state_run_cnt_ != run_cnt_record) {
+                     timespec start_timestamp, end_timestamp;
+                     clock_gettime(CLOCK_MONOTONIC, &start_timestamp);
++
++                    // getRobotAction 是 RL 部署核心：观测 + 用户速度命令 -> 16 关节动作。
+                     auto ra = policy_ptr_->getRobotAction(rbs_[getrbsReadIndex()], *(uc_ptr_->GetUserCommand()));
+                     
++                    // RobotAction 转成统一矩阵格式 [kp, pos, kd, vel, tau_ff]。
++                    // 之后 RobotInterface 负责把它发布到 /JOINTS_CMD 或真实底层。
+                     MatXf res = ra.ConvertToMat();
+ 
+                     ri_ptr_->SetJointCommand(res);
+@@ -82,6 +101,8 @@ namespace qw {
+         RLControlState(const RobotName &robot_name, const std::string &state_name,
+                        std::shared_ptr<ControllerData> data_ptr) : StateBase(robot_name, state_name, data_ptr) {
+             if (robot_name_ == RobotName::M20) {
++                // policy.onnx 放在 M20_sdk_deploy/policy 下。
++                // 这里用 __FILE__ 推出相对路径，避免依赖启动时的工作目录。
+                 namespace fs = std::filesystem;
+                 fs::path base = fs::path(__FILE__).parent_path();
+                 auto model_path = fs::canonical(base / ".." / ".." / "policy" / "policy.onnx");
+@@ -96,9 +117,15 @@ namespace qw {
+             policy_ptr_->DisplayPolicyInfo();
+         }
+ 
+-        ~RLControlState() {}
++        ~RLControlState() {
++            start_flag_ = false;
++            if (run_policy_thread_.joinable()) {
++                run_policy_thread_.join();
++            }
++        }
+ 
+         virtual void OnEnter() {
++            // 进入 RL 控制状态时启动策略线程，并通知用户命令接口当前已经是 RLControlMode。
+             state_run_cnt_ = -1;
+             start_flag_ = true;
+             run_policy_thread_ = std::thread(std::bind(&RLControlState::PolicyRunner, this));
+@@ -107,22 +134,29 @@ namespace qw {
+         };
+ 
+         virtual void OnExit() {
++            // 离开 RL 状态必须先停止策略线程，避免线程继续向底层发运动命令。
+             start_flag_ = false;
+-            run_policy_thread_.join();
++            if (run_policy_thread_.joinable()) {
++                run_policy_thread_.join();
++            }
+             state_run_cnt_ = -1;
+         }
+ 
+         virtual void Run() {
++            // 主循环只做轻量级观测刷新，策略线程按 decimation 消费最新观测。
+             UpdateRobotObservation();
+             state_run_cnt_++;
+         }
+ 
+         virtual bool LoseControlJudge() {
++            // 用户主动切到阻尼，或者姿态安全检查失败时，状态机会离开 RL 控制。
+             if (uc_ptr_->GetUserCommand()->target_mode == uint8_t(RobotMotionState::JointDamping)) return true;
+             return PostureUnsafeCheck();
+         }
+ 
+         bool PostureUnsafeCheck() {
++            // 这里预留了姿态保护逻辑。当前官方示例把阈值判断注释掉了，
++            // 因此实际是否安全主要交给 SafeController 和底层保护。
+             // Vec3f rpy = ri_ptr_->GetImuRpy();
+             // if(rpy(0) > 30./180*M_PI || rpy(1) > 45./180*M_PI){
+             //     std::cout << "posture value: " << 180./M_PI*rpy.transpose() << std::endl;
+@@ -132,6 +166,8 @@ namespace qw {
+         }
+ 
+         virtual StateName GetNextStateName() {
++            // safe_control_mode 由 SafeController 或外部安全逻辑置位，
++            // 一旦非 0，优先进入关节阻尼，降低继续运动的风险。
+             if (uc_ptr_->GetUserCommand()->safe_control_mode != 0) 
+                 return StateName::kJointDamping;
+             if (uc_ptr_->GetUserCommand()->target_mode == uint8_t(RobotMotionState::LieDown))
+@@ -140,4 +176,4 @@ namespace qw {
+             return StateName::kRLControl;
+         }
+     };
+-};
+\ No newline at end of file
++};
+diff --git a/src/M20_sdk_deploy/state_machine/quadruped_wheel/standup_state.hpp b/src/M20_sdk_deploy/state_machine/quadruped_wheel/standup_state.hpp
+index c2f4265..b0c443a 100644
+--- a/src/M20_sdk_deploy/state_machine/quadruped_wheel/standup_state.hpp
++++ b/src/M20_sdk_deploy/state_machine/quadruped_wheel/standup_state.hpp
+@@ -25,18 +25,22 @@ private:
+     const float set_wheel_kd_ = 1.;
+ 
+     void GetRobotJointValue(){
++        // 读取当前关节状态和接口时间。起立规划以“进入状态时刻”为起点。
+         current_joint_pos_ = ri_ptr_->GetJointPosition();
+         current_joint_vel_ = ri_ptr_->GetJointVelocity();
+         run_time_ = ri_ptr_->GetInterfaceTimeStamp();
+     }
+ 
+     void RecordJointData(){
++        // 记录起立开始时的关节位置/速度，后续三次样条从这里平滑过渡。
+         init_joint_pos_ = current_joint_pos_;
+         init_joint_vel_ = current_joint_vel_;
+         time_stamp_record_ = run_time_;
+     }
+ 
+     float GetHipYPosByHeight(float h){
++        // 给定腿长投影高度 h，用二连杆几何关系反解 hipy 角。
++        // 这里只用于起立/趴下的简单姿态规划，不是完整足端轨迹规划器。
+         float l1 = cp_ptr_->thigh_len_;
+         float l2 = cp_ptr_->shank_len_;
+         float default_pos = (cp_ptr_->fl_joint_lower_(1)+cp_ptr_->fl_joint_upper_(1)) / 2.;
+@@ -50,6 +54,8 @@ private:
+     }
+ 
+     float GetKneePosByHeight(float h){
++        // 根据余弦定理反解 knee 角。
++        // l1/l2 分别是大腿/小腿长度，h 是期望竖直高度。
+         float l1 = cp_ptr_->thigh_len_;
+         float l2 = cp_ptr_->shank_len_;
+         float default_pos = (cp_ptr_->fl_joint_lower_(2)+cp_ptr_->fl_joint_upper_(2)) / 2.;
+@@ -65,6 +71,7 @@ private:
+ public:
+     StandUpState(const RobotName& robot_name, const std::string& state_name, 
+         std::shared_ptr<ControllerData> data_ptr):StateBase(robot_name, state_name, data_ptr){
++            // 起立目标的第一阶段姿态：从当前姿态过渡到 pre_height 对应的半站立姿态。
+             goal_joint_pos_ = Vec4f(init_hipx_pos_, GetHipYPosByHeight(cp_ptr_->pre_height_), GetKneePosByHeight(cp_ptr_->pre_height_), 0).replicate(4, 1);
+             goal_joint_pos_(4) = -init_hipx_pos_; goal_joint_pos_(12) = -init_hipx_pos_;
+             // 后髋膝取反
+@@ -76,6 +83,7 @@ public:
+             Vec4f one_leg_kp, one_leg_kd;
+             one_leg_kp << cp_ptr_->swing_leg_kp_, 0;
+             one_leg_kd << cp_ptr_->swing_leg_kd_, 0;
++            // 腿部关节使用位置 PD，轮子起立第一阶段不锁位置。
+             kp_ = one_leg_kp.replicate(4, 1);
+             kd_ = one_leg_kd.replicate(4, 1);
+             joint_cmd_ = MatXf::Zero(16, 5);
+@@ -86,6 +94,7 @@ public:
+     ~StandUpState(){}
+ 
+     virtual void OnEnter() {
++        // 每次进入起立状态都重新记录当前姿态，避免从固定姿态硬拉。
+         GetRobotJointValue();
+         RecordJointData();
+         StateBase::msfb_.UpdateCurrentState(RobotMotionState::StandingUp);
+@@ -97,6 +106,7 @@ public:
+         VecXf planning_joint_pos(current_joint_pos_.rows());
+         VecXf planning_joint_vel(current_joint_pos_.rows());
+         if(run_time_ - time_stamp_record_ <= stand_duration_){
++            // 第一阶段：每个关节从当前角度平滑插值到 pre_height 对应目标角。
+             for(int i=0;i<current_joint_pos_.rows();++i){
+                 planning_joint_pos(i) = GetCubicSplinePos(init_joint_pos_(i), init_joint_vel_(i), goal_joint_pos_(i), 0, 
+                                                 run_time_ - time_stamp_record_, stand_duration_);
+@@ -108,6 +118,8 @@ public:
+             }
+             
+         }else{
++            // 第二阶段：机身高度从 pre_height 继续升到 stand_height。
++            // 通过相邻时刻角度差估计目标速度，让 PD 目标更平滑。
+             float new_time = run_time_ - time_stamp_record_ - stand_duration_;
+             float dt = 0.001;
+             float plan_height = GetCubicSplinePos(cp_ptr_->pre_height_, 0, cp_ptr_->stand_height_, 0, 
+@@ -134,10 +146,12 @@ public:
+             planning_joint_vel(14) = -planning_joint_vel(14);
+ 
+             for(int i=3;i<16;i+=4){
++                // 起立完成后给轮子一定速度阻尼，防止轮子自由旋转。
+                 kd_(i) = set_wheel_kd_;
+             }
+         }
+ 
++        // 下发标准关节命令矩阵：[kp, pos, kd, vel, tau_ff]。
+         joint_cmd_.col(1) = planning_joint_pos;
+         joint_cmd_.col(3) = planning_joint_vel;
+         joint_cmd_.col(2) = kd_;
+@@ -150,9 +164,11 @@ public:
+     virtual StateName GetNextStateName() {
+         if(uc_ptr_->GetUserCommand()->safe_control_mode!=0) return StateName::kJointDamping;
+         if(run_time_ - time_stamp_record_ <= 2.*stand_duration_){
++            // 两阶段起立未结束前，保持 StandUpState。
+             return StateName::kStandUp;
+         }else{
+             if(uc_ptr_->GetUserCommand()->target_mode == uint8_t(RobotMotionState::RLControlMode)){
++                // 起立完成且用户请求 RLControlMode 后，进入强化学习运动控制。
+                 return StateName::kRLControl;
+             }else if(uc_ptr_->GetUserCommand()->target_mode == uint8_t(RobotMotionState::LieDown)){
+                 return StateName::kLieDown;
+diff --git a/src/M20_sdk_deploy/state_machine/state_base.h b/src/M20_sdk_deploy/state_machine/state_base.h
+index a16bf11..3985490 100644
+--- a/src/M20_sdk_deploy/state_machine/state_base.h
++++ b/src/M20_sdk_deploy/state_machine/state_base.h
+@@ -23,12 +23,19 @@ using namespace interface;
+ 
+ 
+ struct ControllerData{
++    // RobotInterface：机器人数据和关节命令接口。
+     std::shared_ptr<RobotInterface> ri_ptr;
++
++    // UserCommandInterface：键盘/手柄/cmd_vel 等用户命令来源。
+     std::shared_ptr<UserCommandInterface> uc_ptr;
++
++    // ControlParameters：机器人几何、限位、PD 参数等。
+     std::shared_ptr<ControlParameters> cp_ptr;
+ };
+ 
+ 
++// 所有运动状态的共同接口。
++// 每个状态都实现 OnEnter/Run/OnExit，并告诉状态机下一步该切到哪个状态。
+ class StateBase{
+ private:
+ 
+@@ -38,6 +45,7 @@ public:
+         robot_name_(robot_name),
+         state_name_(state_name),
+         data_ptr_(data_ptr){
++            // 将共享数据源缓存成成员变量，避免每个状态反复从 data_ptr_ 取。
+             ri_ptr_ = data_ptr_->ri_ptr;
+             uc_ptr_ = data_ptr_->uc_ptr;
+             cp_ptr_ = data_ptr_->cp_ptr;
+@@ -91,4 +99,3 @@ public:
+ 
+     static MotionStateFeedback msfb_;               //robot current motion state
+ };
+-
+diff --git a/src/M20_sdk_deploy/state_machine/state_machine_base.h b/src/M20_sdk_deploy/state_machine/state_machine_base.h
+index dc8ed52..18f0a5c 100644
+--- a/src/M20_sdk_deploy/state_machine/state_machine_base.h
++++ b/src/M20_sdk_deploy/state_machine/state_machine_base.h
+@@ -107,6 +107,8 @@ public:
+     virtual void Start() = 0;
+ 
+     virtual void Run() {
++        // 状态机逻辑放在独立线程，ROS2 回调放在当前线程 spin。
++        // 这样 /IMU_DATA、/JOINTS_DATA 的回调能持续更新 RobotInterface。
+         run_thread_ = std::thread(&StateMachineBase::RunThread, this);
+         rclcpp::spin(ri_ptr_->get_node());
+ 
+@@ -115,15 +117,20 @@ public:
+     }
+ 
+     virtual void RunThread() {
++        // 5 ms 一次状态机 tick。RL 策略不一定每 tick 推理，
++        // 具体推理频率由 PolicyRunnerBase::decimation_ 控制。
+         set_timer.time_init(5);
+         startTime = set_timer.get_start_time();
+ 
+         while (rclcpp::ok()) {
+             if (set_timer.time_interrupt()) {
++                // 对 DDS/硬件接口来说可用于主动刷新；当前 ROS topic 版本主要依赖回调。
+                 ri_ptr_->RefreshRobotData();
+ 
++                // 运行当前状态：例如 idle 检查数据、standup 规划起立、rl_control 刷新观测。
+                 current_controller_->Run();
+ 
++                // 如果当前状态判断失控，强制转入关节阻尼；否则按状态自身规则选择下一个状态。
+                 if (current_controller_->LoseControlJudge()){
+                     next_state_name_ = StateName::kJointDamping;
+                 } 
+@@ -132,6 +139,7 @@ public:
+                 }
+ 
+                 if (next_state_name_ != current_state_name_) {
++                    // 状态切换标准流程：旧状态 OnExit -> 新状态 OnEnter。
+                     current_controller_->OnExit();
+                     std::cout << current_controller_->state_name_ << " ------------> ";
+                     current_controller_ = GetStateControllerPtr(next_state_name_);
+@@ -164,4 +172,3 @@ public:
+ 
+     std::thread run_thread_;
+ };
+-

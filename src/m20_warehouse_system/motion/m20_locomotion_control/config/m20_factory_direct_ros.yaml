@@ -1,0 +1,40 @@
+m20_locomotion_manager:
+  ros__parameters:
+    input_topic: /m20/control/cmd_vel_safe
+    output_topic: /m20/locomotion/cmd_vel_sdk
+    mode_topic: /m20/locomotion/mode
+    backend_ready_topic: /m20/locomotion/backend_ready
+    backend_fault_topic: /m20/locomotion/backend_fault
+    safety_state_topic: /m20/control/safety_state
+    require_backend_ready: true
+    rolling_navigation_enabled: false
+    allow_manual_lateral: true
+    command_timeout_sec: 0.30
+
+m20_direct_ros_backend:
+  ros__parameters:
+    input_topic: /m20/locomotion/cmd_vel_sdk
+    e_stop_topic: /m20/control/e_stop
+    ready_topic: /m20/locomotion/backend_ready
+    fault_topic: /m20/locomotion/backend_fault
+    status_topic: /m20/locomotion/backend_status
+    measured_twist_topic: /m20/locomotion/measured_twist
+    enable_service: /m20/hardware/enable_motion
+    nav_cmd_topic: /NAV_CMD
+    motion_info_topic: /MOTION_INFO
+    motion_state_topic: /MOTION_STATE
+    gait_topic: /GAIT
+    hard_estop_topic: /HES_STATUS
+    # The guide recommends at least 10 Hz and separately advises keeping
+    # 20 Hz; 300 ms freshness stays below the documented 500 ms watchdog.
+    command_rate_hz: 20.0
+    command_timeout_sec: 0.30
+    status_timeout_sec: 1.25
+    # The factory HES topic is documented at 1 Hz. Missing status is unsafe.
+    hard_estop_timeout_sec: 2.50
+    state_command_period_sec: 1.0
+    requested_gait: 12290
+    auto_enable_motion: false
+    lie_down_on_disable: false
+    command_ownership_confirmed: false
+    subthreshold_policy: zero

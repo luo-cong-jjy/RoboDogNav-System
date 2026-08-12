@@ -1,0 +1,60 @@
+m20_navigation_adapter:
+  ros__parameters:
+    input_topic: /m20/navigation/cmd_vel_raw
+    output_topic: /m20/navigation/cmd_vel_candidate
+    mode_topic: /m20/navigation/candidate_mode
+    command_timeout_sec: 0.30
+    # All body, command, rolling-turn and drift values are injected from the
+    # selected versioned M20 capability profile by the parent launch.
+    # Inner velocity feedback is staged off until the same MuJoCo navigation
+    # task has passed open-loop/closed-loop A/B acceptance. It consumes the
+    # base_link twist from Odometry and corrects this pre-safety candidate, so
+    # every corrected output remains subject to the collision guard.
+    velocity_feedback_enabled: false
+    velocity_feedback_source: odometry
+    velocity_feedback_odometry_topic: /m20/sim/body_pose
+    velocity_feedback_twist_topic: /m20/locomotion/measured_twist
+    velocity_feedback_expected_child_frame: base_link
+    velocity_feedback_execution_hold_topic: /m20/control/execution_hold
+    velocity_feedback_state_topic: /m20/navigation/velocity_feedback_state
+    velocity_feedback_timeout_sec: 0.15
+    # The current MuJoCo A/B showed improved straight-line accuracy but extra
+    # turn overshoot. Reset and bypass PI during coordinated/lateral maneuvers.
+    velocity_feedback_cruise_only: true
+    velocity_feedback_max_abs_yaw_reference: 0.08
+    velocity_feedback_linear_kp: 0.30
+    velocity_feedback_linear_ki: 0.08
+    velocity_feedback_yaw_kp: 0.20
+    velocity_feedback_yaw_ki: 0.05
+    velocity_feedback_linear_error_deadband: 0.03
+    velocity_feedback_yaw_error_deadband: 0.04
+    velocity_feedback_linear_integral_limit: 0.20
+    velocity_feedback_yaw_integral_limit: 0.25
+    velocity_feedback_linear_correction_limit: 0.10
+    velocity_feedback_yaw_correction_limit: 0.12
+
+m20_locomotion_manager:
+  ros__parameters:
+    input_topic: /m20/control/cmd_vel_safe
+    output_topic: /m20/locomotion/cmd_vel_sdk
+    mode_topic: /m20/locomotion/mode
+    # Canonical backend health contract. Simulation launches override these
+    # with the MuJoCo-specific source topics.
+    backend_ready_topic: /m20/locomotion/backend_ready
+    backend_fault_topic: /m20/locomotion/backend_fault
+    safety_state_topic: /m20/control/safety_state
+    require_backend_ready: false
+    # Autonomous commands were already adapted before collision prediction.
+    # Keep this final backend gate from applying the transformation twice.
+    rolling_navigation_enabled: false
+    allow_manual_lateral: true
+    command_timeout_sec: 0.30
+
+m20_cmd_vel_interface:
+  ros__parameters:
+    cmd_vel_topic: /m20/locomotion/cmd_vel_sdk
+    auto_start: true
+    standup_delay_sec: 3.3
+    cmd_timeout_sec: 0.5
+    control_rate_hz: 50.0
+    debug_print: false
