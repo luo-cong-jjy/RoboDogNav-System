@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "suite": "smoke",
+  "requested_cases": [
+    "yaw_005"
+  ],
+  "completed_cases": 1,
+  "thresholds": {
+    "stable_tilt_rad": 0.25,
+    "stable_height_m": 0.48,
+    "abort_tilt_rad": 0.5,
+    "abort_height_m": 0.4
+  },
+  "all_stable": true,
+  "results": [
+    {
+      "name": "yaw_005",
+      "command": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "wz": 0.05
+      },
+      "status": "PASS",
+      "stable": true,
+      "fault": "",
+      "safety_abort": "",
+      "sample_count": 105,
+      "peak_abs_tilt_rad": 0.009640566269967031,
+      "minimum_base_height_m": 0.5592906710666079,
+      "mean_hold_body_vx_mps": 0.041899573343029135,
+      "mean_hold_body_vy_mps": 0.00011002345705077787,
+      "mean_hold_body_wz_radps": -0.032090014878350816,
+      "planar_displacement_m": 0.1325041760223943,
+      "yaw_change_rad": -0.07821685544681019,
+      "maximum_abs_torque": 16.578058721513365,
+      "obstacle_contact_event_count": 0
+    }
+  ]
+}

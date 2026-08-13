@@ -1,0 +1,7 @@
+#!/usr/bin/python3
+
+from m20_mujoco_backend.backend_node import main
+
+
+if __name__ == '__main__':
+    main()

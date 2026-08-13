@@ -1,0 +1,385 @@
+#!/usr/bin/python3
+
+import math
+from enum import Enum
+
+import rclpy
+from action_msgs.msg import GoalStatus
+from geometry_msgs.msg import Point, PoseStamped
+from nav2_msgs.action import NavigateToPose
+from rclpy.action import ActionClient
+from rclpy.node import Node
+from std_msgs.msg import String
+from visualization_msgs.msg import Marker
+
+
+def quaternion_from_yaw(yaw):
+    half_yaw = yaw * 0.5
+    return {
+        "z": math.sin(half_yaw),
+        "w": math.cos(half_yaw),
+    }
+
+
+class MissionState(Enum):
+    WAITING_START = "waiting_start"
+    WAITING_SERVER = "waiting_nav2_server"
+    DISPATCHING = "dispatching_goal"
+    NAVIGATING = "navigating"
+    DWELL = "dwell"
+    FINISHED = "finished"
+    FAILED = "failed"
+    PAUSED = "paused"
+    STOPPED = "stopped"
+
+
+class FactoryInspectionNav2Mission(Node):
+    def __init__(self):
+        super().__init__("factory_inspection_nav2_mission")
+
+        self.mission_name = self.declare_parameter(
+            "mission_name", "factory_snake_midpoints"
+        ).value
+        self.action_name = self.declare_parameter(
+            "action_name", "navigate_to_pose"
+        ).value
+        self.frame_id = self.declare_parameter("frame_id", "map").value
+        self.status_topic = self.declare_parameter(
+            "status_topic", "/m20_factory_inspection/status"
+        ).value
+        self.route_marker_topic = self.declare_parameter(
+            "route_marker_topic", "/m20_factory_inspection/route_marker"
+        ).value
+        self.current_goal_topic = self.declare_parameter(
+            "current_goal_topic", "/m20_factory_inspection/current_goal"
+        ).value
+        self.current_goal_marker_topic = self.declare_parameter(
+            "current_goal_marker_topic", "/m20_factory_inspection/current_goal_marker"
+        ).value
+
+        self.start_immediately = bool(
+            self.declare_parameter("start_immediately", True).value
+        )
+        self.start_delay_sec = float(
+            self.declare_parameter("start_delay_sec", 3.0).value
+        )
+        self.start_index = int(self.declare_parameter("start_index", 0).value)
+        self.loop_route = bool(self.declare_parameter("loop_route", False).value)
+        self.default_dwell_sec = float(
+            self.declare_parameter("default_dwell_sec", 1.0).value
+        )
+        self.goal_response_timeout_sec = float(
+            self.declare_parameter("goal_response_timeout_sec", 10.0).value
+        )
+        self.goal_timeout_sec = float(
+            self.declare_parameter("goal_timeout_sec", 180.0).value
+        )
+        self.continue_on_failure = bool(
+            self.declare_parameter("continue_on_failure", False).value
+        )
+        self.publish_rate_hz = float(
+            self.declare_parameter("publish_rate_hz", 2.0).value
+        )
+
+        self.point_names = list(
+            self.declare_parameter("point_names", ["inspection_point_1"]).value
+        )
+        self.point_x = list(self.declare_parameter("point_x", [0.0]).value)
+        self.point_y = list(self.declare_parameter("point_y", [0.0]).value)
+        self.declare_parameter("point_yaw", [0.0])
+        self.point_yaw = list(self.get_parameter("point_yaw").value)
+        self.declare_parameter("point_dwell_sec", [0.0])
+        self.point_dwell_sec = list(self.get_parameter("point_dwell_sec").value)
+
+        self._validate_points()
+        self.first_goal_index = max(0, min(self.start_index, len(self.point_x) - 1))
+
+        self.action_client = ActionClient(self, NavigateToPose, self.action_name)
+        self.status_pub = self.create_publisher(String, self.status_topic, 10)
+        self.route_marker_pub = self.create_publisher(Marker, self.route_marker_topic, 10)
+        self.current_goal_pub = self.create_publisher(PoseStamped, self.current_goal_topic, 10)
+        self.current_goal_marker_pub = self.create_publisher(
+            Marker, self.current_goal_marker_topic, 10
+        )
+
+        self.state = MissionState.WAITING_START
+        self.current_index = self.first_goal_index
+        self.goal_handle = None
+        self.goal_send_time = None
+        self.dwell_start_time = None
+        self.start_time = self.get_clock().now()
+        self.active_goal_pose = None
+        self.last_feedback_distance = None
+        self.last_server_wait_log_time = None
+
+        period = 1.0 / max(self.publish_rate_hz, 0.5)
+        self.timer = self.create_timer(period, self._on_timer)
+
+        self.get_logger().info(
+            f"工厂巡检任务已启动: mission={self.mission_name}, "
+            f"points={len(self.point_x)}, action={self.action_name}"
+        )
+        if self.first_goal_index > 0:
+            self.get_logger().info(
+                f"跳过前 {self.first_goal_index} 个起始点，"
+                f"首个导航目标: {self._current_name()}"
+            )
+
+    def _validate_points(self):
+        if not self.point_x or len(self.point_x) != len(self.point_y):
+            raise ValueError("point_x and point_y must be non-empty arrays of equal length")
+
+        if not self.point_yaw:
+            self.point_yaw = [0.0] * len(self.point_x)
+        if len(self.point_yaw) != len(self.point_x):
+            raise ValueError("point_yaw must be empty or the same length as point_x")
+
+        if not self.point_dwell_sec:
+            self.point_dwell_sec = [self.default_dwell_sec] * len(self.point_x)
+        if len(self.point_dwell_sec) != len(self.point_x):
+            raise ValueError("point_dwell_sec must be empty or the same length as point_x")
+
+        if len(self.point_names) != len(self.point_x):
+            self.point_names = [f"inspection_point_{i + 1}" for i in range(len(self.point_x))]
+
+    def _on_timer(self):
+        now = self.get_clock().now()
+        self._publish_route_marker(now)
+        self._publish_current_goal_marker(now)
+        self._publish_status()
+
+        if self.state == MissionState.WAITING_START:
+            if not self.start_immediately:
+                return
+            if (now - self.start_time).nanoseconds / 1.0e9 < self.start_delay_sec:
+                return
+            self.state = MissionState.WAITING_SERVER
+
+        if self.state == MissionState.WAITING_SERVER:
+            if not self.action_client.server_is_ready():
+                if self._should_log_server_wait(now):
+                    self.get_logger().info("等待 Nav2 NavigateToPose action server...")
+                return
+            self._send_current_goal()
+            return
+
+        if self.state == MissionState.DISPATCHING and self.goal_send_time is not None:
+            elapsed = (now - self.goal_send_time).nanoseconds / 1.0e9
+            if elapsed > self.goal_response_timeout_sec:
+                self.get_logger().error(
+                    f"Nav2 action 响应超时: {self._current_name()} "
+                    f"elapsed={elapsed:.1f}s"
+                )
+                self._handle_goal_failure()
+                return
+
+        if self.state == MissionState.NAVIGATING and self.goal_send_time is not None:
+            elapsed = (now - self.goal_send_time).nanoseconds / 1.0e9
+            if elapsed > self.goal_timeout_sec:
+                self.get_logger().error(
+                    f"巡检点超时: {self._current_name()} elapsed={elapsed:.1f}s"
+                )
+                self.state = MissionState.FAILED
+                if self.goal_handle is not None:
+                    self.goal_handle.cancel_goal_async()
+
+        if self.state == MissionState.DWELL:
+            dwell_elapsed = (now - self.dwell_start_time).nanoseconds / 1.0e9
+            if dwell_elapsed >= self.point_dwell_sec[self.current_index]:
+                self._advance_goal()
+
+    def _send_current_goal(self):
+        pose = self._make_goal_pose(self.current_index)
+        self.active_goal_pose = pose
+        self.current_goal_pub.publish(pose)
+
+        goal = NavigateToPose.Goal()
+        goal.pose = pose
+        self.state = MissionState.DISPATCHING
+        self.goal_send_time = self.get_clock().now()
+        self.last_feedback_distance = None
+
+        self.get_logger().info(
+            f"下发巡检点 {self.current_index + 1}/{len(self.point_x)}: "
+            f"{self._current_name()} x={pose.pose.position.x:.2f} y={pose.pose.position.y:.2f}"
+        )
+        future = self.action_client.send_goal_async(goal, feedback_callback=self._on_feedback)
+        future.add_done_callback(self._on_goal_response)
+
+    def _on_goal_response(self, future):
+        try:
+            goal_handle = future.result()
+        except Exception as exc:
+            self.get_logger().error(
+                f"Nav2 action 目标响应异常: {self._current_name()} error={exc!r}"
+            )
+            self._handle_goal_failure()
+            return
+
+        if not goal_handle.accepted:
+            self.get_logger().error(f"Nav2 拒绝巡检点: {self._current_name()}")
+            self._handle_goal_failure()
+            return
+
+        self.goal_handle = goal_handle
+        self.state = MissionState.NAVIGATING
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self._on_result)
+
+    def _on_feedback(self, feedback_msg):
+        feedback = feedback_msg.feedback
+        if hasattr(feedback, "distance_remaining"):
+            self.last_feedback_distance = feedback.distance_remaining
+
+    def _on_result(self, future):
+        try:
+            result = future.result()
+        except Exception as exc:
+            self.get_logger().error(
+                f"Nav2 action 结果异常: {self._current_name()} error={exc!r}"
+            )
+            self._handle_goal_failure()
+            return
+
+        if result.status == GoalStatus.STATUS_SUCCEEDED:
+            self.get_logger().info(f"到达巡检点: {self._current_name()}")
+            self.state = MissionState.DWELL
+            self.dwell_start_time = self.get_clock().now()
+            self.goal_handle = None
+            return
+
+        status_name = self._goal_status_name(result.status)
+        self.get_logger().error(f"巡检点失败: {self._current_name()} status={status_name}")
+        self._handle_goal_failure()
+
+    def _handle_goal_failure(self):
+        self.goal_handle = None
+        if self.continue_on_failure:
+            self._advance_goal()
+        else:
+            self.state = MissionState.FAILED
+
+    def _advance_goal(self):
+        self.goal_handle = None
+        self.current_index += 1
+        if self.current_index >= len(self.point_x):
+            if self.loop_route:
+                self.current_index = self.first_goal_index
+            else:
+                self.state = MissionState.FINISHED
+                self.get_logger().info("工厂巡检路线完成。")
+                return
+
+        self.state = MissionState.WAITING_SERVER
+
+    def _make_goal_pose(self, index):
+        pose = PoseStamped()
+        pose.header.frame_id = self.frame_id
+        pose.header.stamp = self.get_clock().now().to_msg()
+        pose.pose.position.x = float(self.point_x[index])
+        pose.pose.position.y = float(self.point_y[index])
+        pose.pose.position.z = 0.0
+        q = quaternion_from_yaw(float(self.point_yaw[index]))
+        pose.pose.orientation.z = q["z"]
+        pose.pose.orientation.w = q["w"]
+        return pose
+
+    def _publish_status(self):
+        msg = String()
+        distance = -1.0 if self.last_feedback_distance is None else self.last_feedback_distance
+        msg.data = (
+            f"mission={self.mission_name};state={self.state.value};"
+            f"index={self.current_index + 1};total={len(self.point_x)};"
+            f"name={self._current_name()};distance_remaining={distance:.3f}"
+        )
+        self.status_pub.publish(msg)
+
+    def _publish_route_marker(self, now):
+        marker = Marker()
+        marker.header.frame_id = self.frame_id
+        marker.header.stamp = now.to_msg()
+        marker.ns = "factory_inspection_route"
+        marker.id = 0
+        marker.type = Marker.LINE_STRIP
+        marker.action = Marker.ADD
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = 0.08
+        marker.color.r = 0.1
+        marker.color.g = 0.45
+        marker.color.b = 1.0
+        marker.color.a = 0.9
+        for x, y in zip(self.point_x, self.point_y):
+            point = Point()
+            point.x = float(x)
+            point.y = float(y)
+            point.z = 0.08
+            marker.points.append(point)
+        self.route_marker_pub.publish(marker)
+
+    def _publish_current_goal_marker(self, now):
+        if self.active_goal_pose is None:
+            return
+
+        marker = Marker()
+        marker.header.frame_id = self.frame_id
+        marker.header.stamp = now.to_msg()
+        marker.ns = "factory_inspection_current_goal"
+        marker.id = 0
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+        marker.pose = self.active_goal_pose.pose
+        marker.pose.position.z = 0.25
+        marker.scale.x = 0.35
+        marker.scale.y = 0.35
+        marker.scale.z = 0.35
+        marker.color.r = 1.0
+        marker.color.g = 0.35
+        marker.color.b = 0.1
+        marker.color.a = 0.9
+        self.current_goal_marker_pub.publish(marker)
+
+    def _current_name(self):
+        if not self.point_names:
+            return "none"
+        index = min(self.current_index, len(self.point_names) - 1)
+        return self.point_names[index]
+
+    def _should_log_server_wait(self, now):
+        if self.last_server_wait_log_time is None:
+            self.last_server_wait_log_time = now
+            return True
+        elapsed = (now - self.last_server_wait_log_time).nanoseconds / 1.0e9
+        if elapsed >= 2.0:
+            self.last_server_wait_log_time = now
+            return True
+        return False
+
+    @staticmethod
+    def _goal_status_name(status):
+        names = {
+            GoalStatus.STATUS_UNKNOWN: "UNKNOWN",
+            GoalStatus.STATUS_ACCEPTED: "ACCEPTED",
+            GoalStatus.STATUS_EXECUTING: "EXECUTING",
+            GoalStatus.STATUS_CANCELING: "CANCELING",
+            GoalStatus.STATUS_SUCCEEDED: "SUCCEEDED",
+            GoalStatus.STATUS_CANCELED: "CANCELED",
+            GoalStatus.STATUS_ABORTED: "ABORTED",
+        }
+        return names.get(status, str(status))
+
+
+def main():
+    rclpy.init()
+    node = FactoryInspectionNav2Mission()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

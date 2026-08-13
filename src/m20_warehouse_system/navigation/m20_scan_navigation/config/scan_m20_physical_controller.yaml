@@ -1,0 +1,13 @@
+closed_loop_controller:
+  ros__parameters:
+    # M20 execution override. SCAN planning and trajectory generation remain
+    # vendor-equivalent; only physical path tracking is made non-holonomic.
+    #
+    # Keep ordinary SCAN curvature continuous, but stop translation before a
+    # replan asks the physical chassis to change heading by more than 31.5 deg.
+    # Resume below about 11.5 deg; between 8.6 and 31.5 deg progressively
+    # reduce translation so the body does not cut an obstacle corner.
+    heading_error_threshold: 0.55
+    heading_error_resume_threshold: 0.20
+    heading_slowdown_threshold: 0.15
+    heading_alignment_min_hold_sec: 0.40

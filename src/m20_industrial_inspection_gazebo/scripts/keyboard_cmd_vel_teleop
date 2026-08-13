@@ -1,0 +1,125 @@
+#!/usr/bin/python3
+
+import select
+import sys
+import termios
+import tty
+
+import rclpy
+from geometry_msgs.msg import Twist
+from rclpy.node import Node
+
+
+HELP_TEXT = """
+键盘遥控 /cmd_vel
+
+  w/s : 前进 / 后退
+  a/d : 左转 / 右转
+  q/e : 加速 / 减速
+  x   : 停止
+  空格: 停止
+  Ctrl+C 退出
+
+请保持这个终端窗口获得键盘焦点。
+如果通过 ros2 launch 启动，程序会自动尝试从 /dev/tty 读取按键。
+"""
+
+
+class KeyboardCmdVelTeleop(Node):
+    def __init__(self):
+        super().__init__("keyboard_cmd_vel_teleop")
+        self.cmd_topic = self.declare_parameter("cmd_topic", "/cmd_vel").value
+        self.linear_step = float(self.declare_parameter("linear_step", 0.05).value)
+        self.angular_step = float(self.declare_parameter("angular_step", 0.10).value)
+        self.max_linear = float(self.declare_parameter("max_linear", 0.45).value)
+        self.max_angular = float(self.declare_parameter("max_angular", 0.95).value)
+        self.publish_rate_hz = float(self.declare_parameter("publish_rate_hz", 20.0).value)
+
+        self.publisher = self.create_publisher(Twist, self.cmd_topic, 10)
+        self.linear_x = 0.0
+        self.angular_z = 0.0
+        self.timer = self.create_timer(1.0 / self.publish_rate_hz, self._publish)
+        self.get_logger().info(f"键盘遥控已启动，发布到 {self.cmd_topic}")
+
+    def handle_key(self, key):
+        if key == "w":
+            self.linear_x += self.linear_step
+        elif key == "s":
+            self.linear_x -= self.linear_step
+        elif key == "a":
+            self.angular_z += self.angular_step
+        elif key == "d":
+            self.angular_z -= self.angular_step
+        elif key == "q":
+            self.linear_x *= 1.2
+            self.angular_z *= 1.2
+        elif key == "e":
+            self.linear_x *= 0.8
+            self.angular_z *= 0.8
+        elif key in ("x", " "):
+            self.linear_x = 0.0
+            self.angular_z = 0.0
+        else:
+            return
+
+        self.linear_x = max(-self.max_linear, min(self.max_linear, self.linear_x))
+        self.angular_z = max(-self.max_angular, min(self.max_angular, self.angular_z))
+        self.get_logger().info(
+            f"cmd_vel linear.x={self.linear_x:.2f} angular.z={self.angular_z:.2f}"
+        )
+
+    def _publish(self):
+        msg = Twist()
+        msg.linear.x = self.linear_x
+        msg.angular.z = self.angular_z
+        self.publisher.publish(msg)
+
+
+def get_keyboard_stream():
+    if sys.stdin.isatty():
+        return sys.stdin, False
+
+    try:
+        return open("/dev/tty", "r", encoding="utf-8"), True
+    except OSError as exc:
+        raise RuntimeError(
+            "当前进程没有可用终端，无法读取键盘。请在真实终端中运行该节点。"
+        ) from exc
+
+
+def read_key(input_stream, settings):
+    tty.setraw(input_stream.fileno())
+    ready, _, _ = select.select([input_stream], [], [], 0.1)
+    key = input_stream.read(1) if ready else ""
+    termios.tcsetattr(input_stream, termios.TCSADRAIN, settings)
+    return key
+
+
+def main():
+    input_stream, should_close_stream = get_keyboard_stream()
+    settings = termios.tcgetattr(input_stream)
+    rclpy.init()
+    node = KeyboardCmdVelTeleop()
+    print(HELP_TEXT)
+
+    try:
+        while rclpy.ok():
+            key = read_key(input_stream, settings)
+            if key == "\x03":
+                break
+            if key:
+                node.handle_key(key)
+            rclpy.spin_once(node, timeout_sec=0.0)
+    finally:
+        node.linear_x = 0.0
+        node.angular_z = 0.0
+        node._publish()
+        termios.tcsetattr(input_stream, termios.TCSADRAIN, settings)
+        if should_close_stream:
+            input_stream.close()
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

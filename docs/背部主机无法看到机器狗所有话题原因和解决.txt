@@ -1,0 +1,3833 @@
+背部主机，我远程他的ip是192.168.112.146，其与机器狗的网线链接IP是：10.21.31.192，其上话题可以看到：m20@M20piper:~$ ros2 topic list
+/BATTERY_CHARGE_ENABLE
+/BATTERY_DATA
+/CHARGE_CMD
+/CHARGE_STATUS
+/CPU_103
+/CPU_104
+/CPU_106
+/EXCEPTION_NOTIFICATION
+/FAULT_STATUS
+/FIBOCOM/net_rtk/gngga
+/FIBOCOM/net_rtk/heading
+/GAIT
+/GLOBAL_PLANNER_STATUS
+/GPS
+/GPS_CFGSYS
+/GPS_SYS_MODE
+/GRIDS_ID
+/GRID_MAP
+/HANDLE_STEER
+/HEIGHT_IMAGE
+/HEIGHT_MAP_STATUS
+/HES_STATUS
+/IMU
+/JOINTS_CMD
+/JOINTS_DATA
+/JOINTS_DATA_10HZ
+/LED/STATUS
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/STATUS
+/LOCATION_STATUS
+/LOCATION_STATUS/MATCHING_ERROR
+/MOTION_INFO
+/MOTION_STATE
+/MOTION_STATUS
+/NAV_CMD
+/NAV_STATUS
+/ODOM
+/OOA_STATUS
+/PASSABLE_AREA_ENABLE
+/PLANNER_STATUS
+/REAL_STEER
+/STEER
+/TERRAIN_CLASSIFIER_STATUS
+/TRACK_PATH
+/UWB_ENABLE
+/UWB_ODOM_LOST
+/UWB_ONLINE
+/accumulate_cloud/status_code
+/fibo_fusion_pose
+/fibo_fusion_state
+/initialpose
+/parameter_events
+/passable_status_code
+/rosout
+/tf
+m20@M20piper:~$
+
+然后按照官方这个建图算法包的说明文档中指令，在103运动主机上可以看到：如下日志和话题：
+user@10.21.31.103's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in aos(103)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Thu Jul 16 19:24:24 2026 from 10.21.31.192
+user@host.v1.4:~$ su
+Password:
+root@host.v1.4:/home/user# source /opt/ro
+robot/ ros/
+root@host.v1.4:/home/user# source /opt/robot/
+bin/         .dpkg/       fastdds.xml  lib/         os_type      scripts/     tests/       version
+docs/        etc/         include/     lost+found/  samples/     share/       tools/
+root@host.v1.4:/home/user# source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.33.103
+Selected IP(s) based on eth0 IP (10.21.33.103): 10.21.33.103
+IP 10.21.33.103 already exists in /opt/robot/fastdds.xml
+Current ROS_DISTRO is foxy
+source ros2 env success
+root@host.v1.4:/home/user# ros2 topic hz /LIDAR/POINTS
+average rate: 9.070
+        min: 0.104s max: 0.120s std dev: 0.00365s window: 11
+average rate: 9.092
+        min: 0.101s max: 0.121s std dev: 0.00437s window: 21
+average rate: 9.091
+        min: 0.101s max: 0.121s std dev: 0.00364s window: 31
+average rate: 9.092
+        min: 0.101s max: 0.121s std dev: 0.00334s window: 41
+average rate: 9.092
+        min: 0.101s max: 0.121s std dev: 0.00316s window: 51
+^Croot@host.v1.4:/home/user# ros2 topic list
+/ACCUMULATED_POINTS_MAP
+/BATTERY_CHARGE_ENABLE
+/BATTERY_DATA
+/CHARGE_CMD
+/CHARGE_STATUS
+/CLOUD_REGISTERED_BODY
+/CPU_103
+/CPU_104
+/CPU_106
+/DEPTH_IMAGE
+/DEPTH_POINTS
+/EXCEPTION_NOTIFICATION
+/FAULT_STATUS
+/FIBOCOM/net_rtk/gngga
+/FIBOCOM/net_rtk/heading
+/GAIT
+/GLOBAL_PLANNER_STATUS
+/GPS
+/GPS_CFGSYS
+/GPS_SYS_MODE
+/GRIDS_ID
+/GRID_MAP
+/HANDLER_POINTS_DEBUG
+/HANDLE_STEER
+/HEIGHT_IMAGE
+/HEIGHT_MAP_STATUS
+/HES_STATUS
+/IMU
+/IMU_DATA
+/IMU_DATA_10HZ
+/IMU_YESENSE
+/JOINTS_CMD
+/JOINTS_DATA
+/JOINTS_DATA_10HZ
+/LED/STATUS
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/POINTS
+/LIDAR/POINTS2
+/LIDAR/STATUS
+/LIO_ALIGNED_POINTS
+/LIO_ODOM
+/LIO_ODOM_HIGH_FREQUENCY
+/LOCATION_STATUS
+/LOCATION_STATUS/MATCHING_ERROR
+/LOC_BODY_POINTS
+/MOTION_INFO
+/MOTION_STATE
+/MOTION_STATUS
+/NAV_CMD
+/NAV_STATUS
+/ODOM
+/OOA_STATUS
+/PASSABLE_AREA_ENABLE
+/PLANNER_STATUS
+/REAL_STEER
+/SEG_CLOUD
+/STEER
+/TERRAIN_CLASSIFIER_STATUS
+/TRACK_PATH
+/UWB_ENABLE
+/UWB_ODOM_LOST
+/UWB_ONLINE
+/WEIGHT_ITEMS
+/accumulate_cloud/cloud_base
+/accumulate_cloud/cloud_gravity
+/accumulate_cloud/status_code
+/body_visual
+/cloud_depth
+/cloud_local
+/cloud_local_g
+/cloud_nav
+/cloud_now_g
+/cloud_obs
+/dr/MotionInfo
+/fibo_fusion_pose
+/fibo_fusion_state
+/free_paths
+/global_path
+/global_path_markers
+/goal_baselink
+/grid_map
+/grid_map_3d
+/height_map
+/impassable_area
+/initialpose
+/local_goal
+/local_goal_baselink
+/local_map
+/local_path
+/local_scans
+/parameter_events
+/passable_area
+/passable_status_code
+/path
+/path_Astar
+/planner_mode
+/pose_in_apriltag_corrected
+/rosout
+/tag_status
+/target_goal
+/tf
+/track_path_baselink
+/traversal_cost
+/vis_global_points
+/vis_global_points_pruned
+root@host.v1.4:/home/user# exit
+exit
+user@host.v1.4:~$ source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.33.103
+Selected IP(s) based on eth0 IP (10.21.33.103): 10.21.33.103
+IP 10.21.33.103 already exists in /opt/robot/fastdds.xml
+source ros2 env success
+user@host.v1.4:~$ ros2 topic hz /LIDAR/POINTS
+WARNING: topic [/LIDAR/POINTS] does not appear to be published yet
+^Cuser@host.v1.4:~ros2 topic list
+/ACCUMULATED_POINTS_MAP
+/BATTERY_CHARGE_ENABLE
+/BATTERY_DATA
+/CHARGE_CMD
+/CHARGE_STATUS
+/CLOUD_REGISTERED_BODY
+/CPU_103
+/CPU_104
+/CPU_106
+/DEPTH_IMAGE
+/DEPTH_POINTS
+/EXCEPTION_NOTIFICATION
+/FAULT_STATUS
+/FIBOCOM/net_rtk/gngga
+/FIBOCOM/net_rtk/heading
+/GAIT
+/GLOBAL_PLANNER_STATUS
+/GPS
+/GPS_CFGSYS
+/GPS_SYS_MODE
+/GRIDS_ID
+/GRID_MAP
+/HANDLER_POINTS_DEBUG
+/HANDLE_STEER
+/HEIGHT_IMAGE
+/HEIGHT_MAP_STATUS
+/HES_STATUS
+/IMU
+/IMU_DATA
+/IMU_DATA_10HZ
+/IMU_YESENSE
+/JOINTS_CMD
+/JOINTS_DATA
+/JOINTS_DATA_10HZ
+/LED/STATUS
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/POINTS
+/LIDAR/POINTS2
+/LIDAR/STATUS
+/LIO_ALIGNED_POINTS
+/LIO_ODOM
+/LIO_ODOM_HIGH_FREQUENCY
+/LOCATION_STATUS
+/LOCATION_STATUS/MATCHING_ERROR
+/LOC_BODY_POINTS
+/MOTION_INFO
+/MOTION_STATE
+/MOTION_STATUS
+/NAV_CMD
+/NAV_STATUS
+/ODOM
+/OOA_STATUS
+/PASSABLE_AREA_ENABLE
+/PLANNER_STATUS
+/REAL_STEER
+/SEG_CLOUD
+/STEER
+/TERRAIN_CLASSIFIER_STATUS
+/TRACK_PATH
+/UWB_ENABLE
+/UWB_ODOM_LOST
+/UWB_ONLINE
+/WEIGHT_ITEMS
+/accumulate_cloud/cloud_base
+/accumulate_cloud/cloud_gravity
+/accumulate_cloud/status_code
+/body_visual
+/cloud_depth
+/cloud_local
+/cloud_local_g
+/cloud_nav
+/cloud_now_g
+/cloud_obs
+/dr/MotionInfo
+/fibo_fusion_pose
+/fibo_fusion_state
+/free_paths
+/global_path
+/global_path_markers
+/goal_baselink
+/grid_map
+/grid_map_3d
+/height_map
+/impassable_area
+/initialpose
+/local_goal
+/local_goal_baselink
+/local_map
+/local_path
+/local_scans
+/parameter_events
+/passable_area
+/passable_status_code
+/path
+/path_Astar
+/planner_mode
+/pose_in_apriltag_corrected
+/rosout
+/tag_status
+/target_goal
+/tf
+/track_path_baselink
+/traversal_cost
+/vis_global_points
+/vis_global_points_pruned
+user@host.v1.4:~$
+user@host.v1.4:~$ ros2 topic echo /LIDAR/POINTS
+
+
+可以看到是否在root下话题好像一样但是却检测不到雷达实际发布频率和数据显示卡在获取那里。
+
+所以我们该怎么办，到底背部主机是否对于常见二次开发程序和部署有必要和是否官方支持外部主机可获取雷达数据？？
+
+补充机器狗的硬件架构和官方说的大概的ros2通信接口说明
+
+
+按照你的这一步指令输出如下：
+
+m20@M20piper:~$ source /opt/ros/foxy/setup.bash
+m20@M20piper:~$ export ROS_DOMAIN_ID=0
+m20@M20piper:~$ unset ROS_LOCALHOST_ID=0
+-bash: unset: “ROS_LOCALHOST_ID=0”: 不是有效的标识符
+m20@M20piper:~$ unset ROS_LOCALHOST_ID
+m20@M20piper:~$ export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+m20@M20piper:~$ cat > ~/m20_ros_env.sh <<'EOF'
+> source /opt/ros/foxy/setup.bash
+> export ROS_DOMAIN_ID=0
+> unset ROS_LOCALHOST_ONLY
+> export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+> EOF
+m20@M20piper:~$
+m20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$ mkdir -p ~/.ros
+m20@M20piper:~$ cat > ~/.ros/m20_fastdds.xml <<'EOF'
+> <?xml version="1.0" encoding="UTF-8" ?>
+> <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+>   <transport_descriptors>
+>     <transport_descriptor>
+>       <transport_id>m20_udp_transport</transport_id>
+>       <type>UDPv4</type>
+>       <interfaceWhiteList>
+>         <address>10.21.31.192</address>
+>       </interfaceWhiteList>
+>     </transport_descriptor>
+>   </transport_descriptors>
+>
+>   <participant profile_name="m20_participant" is_default_profile="true">
+>     <rtps>
+>       <userTransports>
+>         <transport_id>m20_udp_transport</transport_id>
+>       </userTransports>
+>       <useBuiltinTransports>false</useBuiltinTransports>
+>     </rtps>
+>   </participant>
+> </profiles>
+> EOF
+m20@M20piper:~$
+m20@M20piper:~$ echo 'export FASTRTPS_DEFAULT_PROFILES_FILE=$HOME/.ros/m20_fastdds.xml' >> ~/m20_ros_env.sh
+m20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$ ip -br addr
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+enp1s0           DOWN
+enp2s0           UP             10.21.31.192/24 fe80::8c1d:2a8:b6c3:4c35/64
+can0             DOWN
+wlx6c1ff78bc632  UP             192.168.112.146/21 fe80::ec5b:481f:b615:de62/64
+m20@M20piper:~$ ros2 topic list | grep -Ei "lidar|point|points|rslidar|robosense"
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/STATUS
+m20@M20piper:~$
+
+
+背部主机相关指令和日志
+:m20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$ ping -c 3 10.21.33.103
+PING 10.21.33.103 (10.21.33.103) 56(84) bytes of data.
+^C
+--- 10.21.33.103 ping 统计 ---
+已发送 3 个包， 已接收 0 个包, 100% 包丢失, 耗时 2046 毫秒
+
+m20@M20piper:~$ ping -c 3 10.21.33.106
+PING 10.21.33.106 (10.21.33.106) 56(84) bytes of data.
+^C
+--- 10.21.33.106 ping 统计 ---
+已发送 3 个包， 已接收 0 个包, 100% 包丢失, 耗时 2045 毫秒
+
+m20@M20piper:~$
+
+
+机器狗NOS相关指令和日志
+:m20@M20piper:~$ ssh user@ 10.21.31.106
+ssh: Could not resolve hostname : Name or service not known
+m20@M20piper:~$ ssh user@10.21.31.106
+user@10.21.31.106's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in nos(106)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 09:47:53 2026 from 10.21.31.192
+user@host.v1.4:~$ sudo systemctl status multicast-relay.service
+[sudo] password for user:
+'Sorry, try again.
+[sudo] password for user:
+● multicast-relay.service - Multicast Relay Service
+     Loaded: loaded (/lib/systemd/system/multicast-relay.service; enabled; vendor preset: enabled)
+     Active: active (running) since Fri 2026-07-17 09:06:19 CST; 2h 2min ago
+   Main PID: 1827 (python3)
+      Tasks: 3 (limit: 18810)
+     Memory: 4.9M
+     CGroup: /system.slice/multicast-relay.service
+             └─1827 /usr/bin/python3 /usr/bin/multicast.py
+
+Warning: journal has been rotated since unit was started, output may be incomplete.
+user@host.v1.4:~$ sudo journalctl -u multicast-relay.service -n 80 --no-pager
+-- Logs begin at Fri 2026-07-17 10:59:12 CST, end at Fri 2026-07-17 11:09:13 CST. --
+-- No entries --
+user@host.v1.4:~$ ip -br addr
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+dummy0           DOWN
+eth0             UP             10.21.33.106/24 fe80::54f1:d2ff:fe66:4fd/64
+eth1             UP             10.21.31.106/24 fe80::58f1:d2ff:fe66:4fd/64
+docker0          DOWN           172.17.0.1/16
+
+
+机器狗AOS相关指令和日志
+:m20@M20piper:~$ ssh user@10.21.31.103
+user@10.21.31.103's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in aos(103)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 10:06:54 2026 from 10.21.31.192
+user@host.v1.4:~$ su
+Password:
+root@host.v1.4:/home/user# source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.33.103
+Selected IP(s) based on eth0 IP (10.21.33.103): 10.21.33.103
+IP 10.21.33.103 already exists in /opt/robot/fastdds.xml
+Current ROS_DISTRO is foxy
+source ros2 env success
+root@host.v1.4:/home/user# ros2 topic info -v /LIDAR/POINTS
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.be.0a.42.0f.00.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.ca.0a.ef.e0.00.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 2
+
+Node name: message_subscriber_node
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.60.0a.94.13.01.00.00.00.00.00.26.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.ba.0a.75.64.00.00.00.00.00.00.05.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+root@host.v1.4:/home/user# ros2 topic hz /LIDAR/POINTS
+WARNING: topic [/LIDAR/POINTS] does not appear to be published yet
+average rate: 10.025
+        min: 0.096s max: 0.104s std dev: 0.00264s window: 12
+average rate: 10.014
+        min: 0.095s max: 0.108s std dev: 0.00271s window: 23
+average rate: 10.009
+        min: 0.095s max: 0.108s std dev: 0.00251s window: 33
+average rate: 10.006
+        min: 0.095s max: 0.108s std dev: 0.00242s window: 43
+^Croot@host.v1.4:/home/user#
+
+
+
+机器狗通用主机指令和相关日志：
+m20@M20piper:~$ ssh user@10.21.31.104
+user@10.21.31.104's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in gos(104)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Thu Jul 16 19:08:56 2026 from 10.21.31.192
+user@host.v1.4:~$ source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.31.104
+Selected IP(s) based on eth0 IP (10.21.31.104): 10.21.31.104
+IP 10.21.31.104 already exists in /opt/robot/fastdds.xml
+source ros2 env success
+user@host.v1.4:~$ ros2 topic list | grep -Ei "lidar|point|points|imu|odom"
+/IMU
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/STATUS
+/ODOM
+/UWB_ODOM_LOST
+user@host.v1.4:~$ ros2 topic hz /LIDAR/POINTS
+WARNING: topic [/LIDAR/POINTS] does not appear to be published yet
+^Cuser@host.v1.4:~$ ros2 topic hz /IMU
+average rate: 200.084
+        min: 0.004s max: 0.007s std dev: 0.00022s window: 202
+average rate: 200.038
+        min: 0.004s max: 0.007s std dev: 0.00021s window: 402
+average rate: 200.031
+        min: 0.004s max: 0.007s std dev: 0.00019s window: 603
+^Cuser@host.v1.4:~$ ros2 topic echo /ODOM --once
+usage: ros2 [-h] Call `ros2 <command> -h` for more detailed usage. ...
+ros2: error: unrecognized arguments: --once
+user@host.v1.4:~$
+
+
+
+背部主机相关指令和日志
+m20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$
+m20@M20piper:~$ ip -br addr
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+enp1s0           DOWN
+enp2s0           UP             10.21.31.192/24 fe80::8c1d:2a8:b6c3:4c35/64
+can0             DOWN
+wlx6c1ff78bc632  UP             192.168.112.146/21 fe80::ec5b:481f:b615:de62/64
+m20@M20piper:~$ ip route
+default via 192.168.113.1 dev wlx6c1ff78bc632 proto dhcp metric 600
+10.21.31.0/24 dev enp2s0 proto kernel scope link src 10.21.31.192 metric 100
+169.254.0.0/16 dev enp2s0 scope link metric 1000
+192.168.112.0/21 dev wlx6c1ff78bc632 proto kernel scope link src 192.168.112.146 metric 600
+m20@M20piper:~$ echo $ROS_DOMAIN_ID
+0
+m20@M20piper:~$ echo $ROS_LOCALHOST_ONLY
+
+m20@M20piper:~$ echo $RMW_IMPLEMENTATION
+rmw_fastrtps_cpp
+m20@M20piper:~$ echo $FASTRTPS_DEFAULT_PROFILES_FILE
+/home/m20/.ros/m20_fastdds.xml
+m20@M20piper:~$
+m20@M20piper:~$ ros2 topic list | grep -Ei "lidar|point|points|imu|odom"
+/IMU
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/STATUS
+/ODOM
+/UWB_ODOM_LOST
+m20@M20piper:~$ sudo ip route add 10.21.33.0/24 via 10.21.31.106 dev enp2s0
+[sudo] m20 的密码：
+对不起，请重试。
+[sudo] m20 的密码：
+m20@M20piper:~$ sudo ip route add 10.21.33.0/24 via 10.21.31.106 dev enp2s0
+RTNETLINK answers: File exists
+m20@M20piper:~$ ip route | grep 10.21.33
+10.21.33.0/24 via 10.21.31.106 dev enp2s0
+m20@M20piper:~$ ping -c 3 10.21.33.106
+PING 10.21.33.106 (10.21.33.106) 56(84) bytes of data.
+64 字节，来自 10.21.33.106: icmp_seq=1 ttl=64 时间=0.257 毫秒
+64 字节，来自 10.21.33.106: icmp_seq=2 ttl=64 时间=0.346 毫秒
+64 字节，来自 10.21.33.106: icmp_seq=3 ttl=64 时间=0.345 毫秒
+
+--- 10.21.33.106 ping 统计 ---
+已发送 3 个包， 已接收 3 个包, 0% 包丢失, 耗时 2041 毫秒
+rtt min/avg/max/mdev = 0.257/0.316/0.346/0.041 ms
+m20@M20piper:~$ ping -c 3 10.21.33.103
+PING 10.21.33.103 (10.21.33.103) 56(84) bytes of data.
+^C
+--- 10.21.33.103 ping 统计 ---
+已发送 3 个包， 已接收 0 个包, 100% 包丢失, 耗时 2044 毫秒
+
+m20@M20piper:~$ ros2 topic list | grep -Ei "lidar|point|points"
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/STATUS
+/LOC_BODY_POINTS
+m20@M20piper:~$ ros2 topic hz /LIDAR/POINTS
+WARNING: topic [/LIDAR/POINTS] does not appear to be published yet
+^Cm20@M20piper:~$
+
+
+背部主机相关指令和日志
+@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$
+m20@M20piper:~$ ros2 topic type /LOC_BODY_POINTS
+sensor_msgs/msg/PointCloud2
+m20@M20piper:~$ ros2 topic info -v /LOC_BODY_POINTS
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: accumulate_cloud
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.67.42.23.0c.aa.96.01.00.00.00.00.00.17.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+m20@M20piper:~$ ros2 topic hz /LOC_BODY_POINTS
+^Cm20@M20piper:~$ ros2 topic hz /LOC_BODY_POINTS
+^Cm20@M20piper:~$ timeout 3 ros2 topic echo /LOC_BODY_POINTS
+m20@M20piper:~$
+
+
+背部主机相关指令和日志
+m20@M20piper:~$ for t in $(ros2 topic list); do
+>   ty=$(ros2 topic type "$t" 2>/dev/null)
+>   if [ "$ty" = "sensor_msgs/msg/PointCloud2" ]; then
+>     echo "===== $t ====="
+>     ros2 topic info -v "$t" | sed -n '1,35p'
+>   fi
+> done
+===== /LOC_BODY_POINTS =====
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: accumulate_cloud
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.67.42.23.0c.aa.96.01.00.00.00.00.00.17.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+===== /accumulate_cloud/cloud_base =====
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 1
+
+Node name: accumulate_cloud
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.23.0c.aa.96.01.00.00.00.00.00.13.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+===== /accumulate_cloud/cloud_gravity =====
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 1
+
+Node name: accumulate_cloud
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.23.0c.aa.96.01.00.00.00.00.00.14.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 1
+
+Node name: passable_area
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.67.42.25.0c.e1.6b.01.00.00.00.00.00.13.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+===== /impassable_area =====
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 1
+
+Node name: passable_area
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.25.0c.e1.6b.01.00.00.00.00.00.16.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+===== /passable_area =====
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 1
+
+Node name: passable_area
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.67.42.25.0c.e1.6b.01.00.00.00.00.00.15.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+m20@M20piper:~$
+
+
+
+背部主机相关指令和日志
+m20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$
+m20@M20piper:~$ timeout 8 ros2 topic hz /accumulate_cloud/cloud_base
+m20@M20piper:~$ timeout 8 ros2 topic hz /accumulate_cloud/cloud_gravity
+m20@M20piper:~$ timeout 8 ros2 topic hz /passable_area
+m20@M20piper:~$ timeout 8 ros2 topic hz /impassable_area
+m20@M20piper:~$ timeout 3 ros2 topic echo /accumulate_cloud/cloud_base | sed -n '1,120p'
+已终止
+m20@M20piper:~$ timeout 3 ros2 topic echo /accumulate_cloud/cloud_gravity | sed -n '1,120p'
+已终止
+m20@M20piper:~$ timeout 3 ros2 topic echo /passable_area | sed -n '1,120p'
+已终止
+m20@M20piper:~$ timeout 3 ros2 topic echo /impassable_area | sed -n '1,120p'
+已终止
+m20@M20piper:~$
+
+
+背部主机相关指令和日志
+m20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$
+m20@M20piper:~$ ros2 node list | sort
+/accumulate_cloud
+/passable_area
+m20@M20piper:~$ ros2 node info /accumulate_cloud
+/accumulate_cloud
+  Subscribers:
+    /IMU: sensor_msgs/msg/Imu
+    /LOC_BODY_POINTS: sensor_msgs/msg/PointCloud2
+    /ODOM: nav_msgs/msg/Odometry
+    /PASSABLE_AREA_ENABLE: std_msgs/msg/Int32
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+  Publishers:
+    /accumulate_cloud/cloud_base: sensor_msgs/msg/PointCloud2
+    /accumulate_cloud/cloud_gravity: sensor_msgs/msg/PointCloud2
+    /accumulate_cloud/status_code: std_msgs/msg/Int32
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /tf: tf2_msgs/msg/TFMessage
+  Service Servers:
+    /accumulate_cloud/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /accumulate_cloud/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /accumulate_cloud/get_parameters: rcl_interfaces/srv/GetParameters
+    /accumulate_cloud/list_parameters: rcl_interfaces/srv/ListParameters
+    /accumulate_cloud/set_parameters: rcl_interfaces/srv/SetParameters
+    /accumulate_cloud/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+m20@M20piper:~$ ros2 node info /passable_area
+/passable_area
+  Subscribers:
+    /IMU: sensor_msgs/msg/Imu
+    /accumulate_cloud/cloud_gravity: sensor_msgs/msg/PointCloud2
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+  Publishers:
+    /body_visual: visualization_msgs/msg/Marker
+    /grid_map: grid_map_msgs/msg/GridMap
+    /impassable_area: sensor_msgs/msg/PointCloud2
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /passable_area: sensor_msgs/msg/PointCloud2
+    /passable_status_code: std_msgs/msg/Int32
+    /rosout: rcl_interfaces/msg/Log
+    /traversal_cost: nav_msgs/msg/OccupancyGrid
+  Service Servers:
+    /passable_area/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /passable_area/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /passable_area/get_parameters: rcl_interfaces/srv/GetParameters
+    /passable_area/list_parameters: rcl_interfaces/srv/ListParameters
+    /passable_area/set_parameters: rcl_interfaces/srv/SetParameters
+    /passable_area/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+m20@M20piper:~$ ros2 param list /accumulate_cloud
+  FOV_max_angle
+  FOV_min_angle
+  azimuth_bins
+  base_gravity_frame
+  body_frame
+  body_max_x
+  body_max_y
+  body_max_z
+  body_min_x
+  body_min_y
+  body_min_z
+  cloud_base_pub_topic
+  cloud_gravity_pub_topic
+  cloud_topic
+  elevation_bins
+  enable_fov_visualization
+  enable_timing_debug_logs
+  extra_coverage_enabled
+  extra_coverage_max_range
+  extra_coverage_pitch_max_deg
+  extra_coverage_pitch_min_deg
+  extra_coverage_yaw_max_deg
+  extra_coverage_yaw_min_deg
+  fov_front_apex_x
+  fov_markers_pub_topic
+  fov_rear_apex_x
+  fov_shape
+  fov_viz_frame_mode
+  free_margin_base
+  free_margin_scale
+  imu_buffer_size
+  imu_topic
+  in_max_x
+  in_max_y
+  in_max_z
+  in_min_x
+  in_min_y
+  in_min_z
+  input_watchdog_timeout_sec
+  leaf_size_xy
+  leaf_size_z
+  match_margin_base
+  match_margin_scale
+  min_neighbors
+  near_field_protect_range
+  odom_jump_dis_thres
+  odom_jump_rot_thres
+  odom_jump_z_thres
+  odom_topic
+  out_max_x
+  out_max_y
+  out_max_z
+  out_min_x
+  out_min_y
+  out_min_z
+  ror_front_max_x
+  ror_front_max_y
+  ror_front_min_x
+  ror_front_min_y
+  ror_max_z
+  ror_min_z
+  ror_rear_max_x
+  ror_rear_max_y
+  ror_rear_min_x
+  ror_rear_min_y
+  search_radius
+  sensor_origin
+  sensor_rotation
+  status_code_pub_topic
+  status_output_stall_frames
+  switch_flag_topic
+  sync_queue_size
+  sync_tolerance
+  under_thres
+  use_sim_time
+  vis_roi_max_x
+  vis_roi_max_y
+  vis_roi_max_z
+  vis_roi_min_x
+  vis_roi_min_y
+  vis_roi_min_z
+  visibility_evidence_enabled
+  visibility_neighbor_radius
+  visibility_protect_radius
+  voxel_occ_gain
+  voxel_publish_score
+  voxel_relief_gain
+  voxel_remove_score
+  voxel_score_cap
+  voxel_strong_free_gain
+  voxel_weak_free_gain
+  wait_for_switch_flag
+  weak_free_confirm_frames
+m20@M20piper:~$ ros2 param dump /accumulate_cloud
+Saving to:  ./accumulate_cloud.yaml
+m20@M20piper:~$
+m20@M20piper:~$ ros2 param list /passable_area
+  accumulate_cloud_topic
+  body_frame
+  body_params.m20.body_height
+  body_params.m20.body_length
+  body_params.m20.body_width
+  center_dist_thresh
+  dog_model
+  elevation_solver.histogram_bins
+  elevation_solver.region_enabled
+  elevation_solver.region_max_x
+  elevation_solver.region_max_y
+  elevation_solver.region_min_x
+  elevation_solver.region_min_y
+  elevation_solver.use_histogram_solver
+  enable_blind_check
+  enable_center_padding
+  gravity_frame
+  grid_map_topic
+  impassable_cloud_topic
+  imu_topic
+  lidar_params.m20.lidar_front.fov_down_deg
+  lidar_params.m20.lidar_front.fov_up_deg
+  lidar_params.m20.lidar_front.max_range
+  lidar_params.m20.lidar_front.min_range
+  lidar_params.m20.lidar_front.pos_body
+  lidar_params.m20.lidar_front.rpy_body
+  lidar_params.m20.lidar_rear.fov_down_deg
+  lidar_params.m20.lidar_rear.fov_up_deg
+  lidar_params.m20.lidar_rear.max_range
+  lidar_params.m20.lidar_rear.min_range
+  lidar_params.m20.lidar_rear.pos_body
+  lidar_params.m20.lidar_rear.rpy_body
+  map_height_max
+  map_height_min
+  map_length
+  map_width
+  max_drop
+  max_inpaint_pixels
+  max_roughness
+  max_slope_deg
+  passable_cloud_topic
+  raycast.enable
+  raycast.max_nan_gap
+  raycast.max_ray_distance
+  traversal_cost.curve_power
+  traversal_cost.easy_cost
+  traversal_cost.enable
+  traversal_cost.hard_cost
+  traversal_cost.low_cost_filter_ratio
+  traversal_cost.max_cost
+  traversal_cost.missing_cost
+  traversal_cost.rough_block
+  traversal_cost.rough_free
+  traversal_cost.roughness_weight
+  traversal_cost.safe_zone_side_length
+  traversal_cost.slope_block_deg
+  traversal_cost.slope_free_deg
+  traversal_cost.slope_weight
+  traversal_cost.step_block
+  traversal_cost.step_free
+  traversal_cost.step_weight
+  traversal_cost.terrain_sample_window
+  traversal_cost_topic
+  treat_nan_as_stiff
+  use_sim_time
+  used_frame
+  voxel_size
+  world_frame
+m20@M20piper:~$ ros2 param dump /passable_area
+Saving to:  ./passable_area.yaml
+m20@M20piper:~$
+
+
+
+背部主机相关指令和日志
+m20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$
+m20@M20piper:~$ ros2 param get /accumulate_cloud cloud_topic
+String value is: /LOC_BODY_POINTS
+m20@M20piper:~$ ros2 param get /accumulate_cloud wait_for_switch_flag
+Boolean value is: True
+m20@M20piper:~$ ros2 param get /accumulate_cloud switch_flag_topic
+String value is: /PASSABLE_AREA_ENABLE
+m20@M20piper:~$ ros2 param get /accumulate_cloud odom_topic
+String value is: /ODOM
+m20@M20piper:~$ ros2 param get /accumulate_cloud imu_topic
+String value is: /IMU
+m20@M20piper:~$
+m20@M20piper:~$ ros2 param get /passable_area accumulate_cloud_topic
+String value is: /accumulate_cloud/cloud_gravity
+m20@M20piper:~$ ros2 param get /passable_area passable_cloud_topic
+String value is: /passable_area
+m20@M20piper:~$ ros2 param get /passable_area impassable_cloud_topic
+String value is: /impassable_area
+m20@M20piper:~$ ros2 param get /passable_area traversal_cost_topic
+String value is: /traversal_cost
+m20@M20piper:~$ timeout 5 ros2 topic echo /accumulate_cloud/status_code
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+data: 101
+---
+m20@M20piper:~$ timeout 5 ros2 topic echo /passable_status_code
+m20@M20piper:~$ timeout 8 ros2 topic hz /IMU
+average rate: 199.792
+        min: 0.004s max: 0.006s std dev: 0.00036s window: 201
+average rate: 199.958
+        min: 0.003s max: 0.008s std dev: 0.00039s window: 402
+average rate: 199.970
+        min: 0.003s max: 0.008s std dev: 0.00037s window: 602
+average rate: 199.948
+        min: 0.003s max: 0.008s std dev: 0.00037s window: 802
+average rate: 199.954
+        min: 0.003s max: 0.008s std dev: 0.00038s window: 1002
+average rate: 199.965
+        min: 0.003s max: 0.008s std dev: 0.00037s window: 1203
+average rate: 199.963
+        min: 0.003s max: 0.008s std dev: 0.00036s window: 1403
+m20@M20piper:~$ timeout 8 ros2 topic hz /ODOM
+average rate: 10.055
+        min: 0.089s max: 0.107s std dev: 0.00473s window: 12
+average rate: 10.028
+        min: 0.089s max: 0.107s std dev: 0.00418s window: 22
+average rate: 10.017
+        min: 0.089s max: 0.107s std dev: 0.00399s window: 32
+average rate: 10.017
+        min: 0.089s max: 0.109s std dev: 0.00411s window: 43
+average rate: 10.012
+        min: 0.088s max: 0.110s std dev: 0.00429s window: 53
+average rate: 10.011
+        min: 0.088s max: 0.110s std dev: 0.00431s window: 64
+m20@M20piper:~$ timeout 8 ros2 topic hz /LOC_BODY_POINTS
+m20@M20piper:~$ ros2 topic pub --once /PASSABLE_AREA_ENABLE std_msgs/msg/Int32 "{data: 1}"
+publisher: beginning loop
+publishing #1: std_msgs.msg.Int32(data=1)
+
+m20@M20piper:~$
+m20@M20piper:~$ timeout 8 ros2 topic hz /accumulate_cloud/cloud_gravity
+average rate: 1.870
+        min: 0.099s max: 0.802s std dev: 0.31058s window: 3
+average rate: 1.877
+        min: 0.099s max: 0.802s std dev: 0.30877s window: 6
+average rate: 2.081
+        min: 0.099s max: 0.802s std dev: 0.30834s window: 10
+average rate: 2.185
+        min: 0.099s max: 0.802s std dev: 0.30807s window: 14
+m20@M20piper:~$ timeout 8 ros2 topic hz /impassable_area
+average rate: 1.737
+        min: 0.099s max: 0.793s std dev: 0.27758s window: 4
+average rate: 1.797
+        min: 0.085s max: 0.798s std dev: 0.29618s window: 7
+average rate: 1.823
+        min: 0.085s max: 0.804s std dev: 0.30051s window: 10
+m20@M20piper:~$
+
+
+背部主机相关指令和日志
+m20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$
+m20@M20piper:~$ ros2 topic pub --once /PASSABLE_AREA_ENABLE std_msgs/msg/Int32 "{data: 1}"
+publisher: beginning loop
+publishing #1: std_msgs.msg.Int32(data=1)
+
+m20@M20piper:~$
+m20@M20piper:~$ timeout 8 ros2 topic hz /accumulate_cloud/cloud_base
+average rate: 1.430
+        min: 0.697s max: 0.704s std dev: 0.00341s window: 3
+average rate: 1.429
+        min: 0.697s max: 0.704s std dev: 0.00309s window: 5
+average rate: 1.426
+        min: 0.697s max: 0.708s std dev: 0.00385s window: 7
+average rate: 1.429
+        min: 0.693s max: 0.708s std dev: 0.00432s window: 9
+m20@M20piper:~$ timeout 8 ros2 topic hz /accumulate_cloud/cloud_gravity
+average rate: 1.429
+        min: 0.699s max: 0.700s std dev: 0.00023s window: 3
+average rate: 1.428
+        min: 0.699s max: 0.701s std dev: 0.00089s window: 5
+average rate: 1.429
+        min: 0.693s max: 0.703s std dev: 0.00291s window: 7
+average rate: 1.429
+        min: 0.693s max: 0.703s std dev: 0.00260s window: 9
+m20@M20piper:~$ timeout 8 ros2 topic hz /passable_area
+average rate: 1.426
+        min: 0.699s max: 0.703s std dev: 0.00170s window: 3
+average rate: 1.436
+        min: 0.677s max: 0.703s std dev: 0.00966s window: 5
+average rate: 1.430
+        min: 0.677s max: 0.713s std dev: 0.01007s window: 7
+average rate: 1.430
+        min: 0.677s max: 0.713s std dev: 0.00897s window: 9
+m20@M20piper:~$ timeout 8 ros2 topic hz /impassable_area
+average rate: 1.427
+        min: 0.692s max: 0.710s std dev: 0.00747s window: 3
+average rate: 1.430
+        min: 0.692s max: 0.710s std dev: 0.00658s window: 5
+average rate: 1.430
+        min: 0.692s max: 0.710s std dev: 0.00562s window: 7
+average rate: 1.429
+        min: 0.692s max: 0.710s std dev: 0.00509s window: 9
+m20@M20piper:~$ timeout 8 ros2 topic hz /traversal_cost
+average rate: 1.430
+        min: 0.692s max: 0.707s std dev: 0.00604s window: 3
+average rate: 1.430
+        min: 0.692s max: 0.707s std dev: 0.00470s window: 5
+average rate: 1.429
+        min: 0.692s max: 0.707s std dev: 0.00485s window: 7
+average rate: 1.430
+        min: 0.689s max: 0.708s std dev: 0.00612s window: 9
+m20@M20piper:~$ timeout 3 ros2 topic echo /accumulate_cloud/cloud_gravity | sed -n '1,120p'
+已终止
+m20@M20piper:~$ timeout 3 ros2 topic echo /impassable_area | sed -n '1,120p'
+已终止
+m20@M20piper:~$ timeout 3 ros2 topic echo /traversal_cost | sed -n '1,120p'
+已终止
+m20@M20piper:~$ timeout 3 ros2 topic echo /passable_status_code
+data: 100
+---
+data: 100
+---
+data: 100
+---
+m20@M20piper:~$ timeout 3 ros2 topic echo /accumulate_cloud/cloud_gravity | sed -n '1,120p'
+已终止
+m20@M20piper:~$ timeout 3 ros2 topic echo /impassable_area | sed -n '1,120p'
+已终止
+m20@M20piper:~$ timeout 3 ros2 topic echo /traversal_cost | sed -n '1,120p'
+已终止
+m20@M20piper:~$ timeout 3 ros2 topic echo /passable_status_code
+data: 100
+---
+data: 100
+---
+data: 100
+---
+m20@M20piper:~$
+
+
+背部主机相关指令和日志
+Cm20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$
+m20@M20piper:~$ ros2 topic echo -h | grep -E -- '--no-arr|--field'
+                       [--truncate-length TRUNCATE_LENGTH] [--no-arr]
+  --no-arr              Don't print array fields of messages
+m20@M20piper:~$
+m20@M20piper:~$ timeout 8 ros2 topic echo /accumulate_cloud/cloud_gravity --no-arr
+header:
+  stamp:
+    sec: 1784261734
+    nanosec: 5007
+  frame_id: base_gravity
+height: 1
+width: 12062
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 8>'
+is_bigendian: false
+point_step: 48
+row_step: 578976
+data: '<sequence type: uint8, length: 578976>'
+is_dense: true
+---
+...
+---
+header:
+  stamp:
+    sec: 1784261740
+    nanosec: 599900007
+  frame_id: base_gravity
+height: 1
+width: 11706
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 8>'
+is_bigendian: false
+point_step: 48
+row_step: 561888
+data: '<sequence type: uint8, length: 561888>'
+is_dense: true
+---
+m20@M20piper:~$ timeout 8 ros2 topic echo /impassable_area --no-arr
+header:
+  stamp:
+    sec: 1784261741
+    nanosec: 799976349
+  frame_id: base_gravity
+height: 1
+width: 4748
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 3>'
+is_bigendian: false
+point_step: 16
+row_step: 75968
+data: '<sequence type: uint8, length: 75968>'
+is_dense: true
+---
+...
+---
+header:
+  stamp:
+    sec: 1784261748
+    nanosec: 399996042
+  frame_id: base_gravity
+height: 1
+width: 5040
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 3>'
+is_bigendian: false
+point_step: 16
+row_step: 80640
+data: '<sequence type: uint8, length: 80640>'
+is_dense: true
+---
+m20@M20piper:~$ timeout 8 ros2 topic echo /traversal_cost --no-arr
+header:
+  stamp:
+    sec: 1784261751
+    nanosec: 400001049
+  frame_id: base_gravity
+info:
+  map_load_time:
+    sec: 0
+    nanosec: 0
+  resolution: 0.05000000074505806
+  width: 160
+  height: 160
+  origin:
+    position:
+      x: -4.000000059604645
+      y: -4.000000059604645
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+data: '<sequence type: int8, length: 25600>'
+---
+...
+---
+header:
+  stamp:
+    sec: 1784261758
+    nanosec: 3099
+  frame_id: base_gravity
+info:
+  map_load_time:
+    sec: 0
+    nanosec: 0
+  resolution: 0.05000000074505806
+  width: 160
+  height: 160
+  origin:
+    position:
+      x: -4.000000059604645
+      y: -4.000000059604645
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+data: '<sequence type: int8, length: 25600>'
+---
+m20@M20piper:~$
+
+背部主机相关指令和日志
+m20@M20piper:~$ source ~/m20_ros_env.sh
+m20@M20piper:~$
+m20@M20piper:~$ timeout 5 ros2 topic hz /tf
+average rate: 11.672
+        min: 0.022s max: 0.104s std dev: 0.02708s window: 14
+average rate: 11.347
+        min: 0.022s max: 0.118s std dev: 0.02564s window: 25
+average rate: 11.518
+        min: 0.022s max: 0.118s std dev: 0.02670s window: 38
+m20@M20piper:~$ timeout 5 ros2 topic echo /tf --no-arr
+transforms: '<sequence type: geometry_msgs/msg/TransformStamped, length: 1>'
+---
+...
+---
+transforms: '<sequence type: geometry_msgs/msg/TransformStamped, length: 1>'
+---
+m20@M20piper:~$
+m20@M20piper:~$ ros2 run tf2_ros tf2_echo odom base_gravity
+[INFO] [1784261975.114688578] [tf2_echo]: Waiting for transform odom ->  base_gravity: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+...
+[INFO] [1784261985.091218852] [tf2_echo]: Waiting for transform odom ->  base_gravity: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+^C[INFO] [1784261985.922489722] [rclcpp]: signal_handler(signal_value=2)
+m20@M20piper:~$ ros2 param get /accumulate_cloud body_frame
+String value is: base_link
+m20@M20piper:~$ ros2 param get /accumulate_cloud base_gravity_frame
+String value is: base_gravity
+m20@M20piper:~$ ros2 param get /passable_area body_frame
+String value is: base_link
+m20@M20piper:~$ ros2 param get /passable_area gravity_frame
+String value is: base_gravity
+m20@M20piper:~$
+
+
+背部主机相关指令和日志
+m20@M20piper:~$ hostname
+M20piper
+m20@M20piper:~$ uname -a
+Linux M20piper 5.4.0-216-generic #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+m20@M20piper:~$ lscpu | sed -n '1,35p'
+架构：                              x86_64
+CPU 运行模式：                      32-bit, 64-bit
+字节序：                            Little Endian
+Address sizes:                      39 bits physical, 48 bits virtual
+CPU:                                4
+在线 CPU 列表：                     0-3
+每个核的线程数：                    1
+每个座的核数：                      4
+座：                                1
+NUMA 节点：                         1
+厂商 ID：                           GenuineIntel
+CPU 系列：                          6
+型号：                              190
+型号名称：                          Intel(R) N97
+步进：                              0
+CPU MHz：                           813.566
+CPU 最大 MHz：                      3600.0000
+CPU 最小 MHz：                      800.0000
+BogoMIPS：                          3993.60
+虚拟化：                            VT-x
+L1d 缓存：                          128 KiB
+L1i 缓存：                          256 KiB
+L2 缓存：                           2 MiB
+L3 缓存：                           6 MiB
+NUMA 节点0 CPU：                    0-3
+Vulnerability Gather data sampling: Not affected
+Vulnerability Itlb multihit:        Not affected
+Vulnerability L1tf:                 Not affected
+Vulnerability Mds:                  Not affected
+Vulnerability Meltdown:             Not affected
+Vulnerability Mmio stale data:      Not affected
+Vulnerability Retbleed:             Not affected
+Vulnerability Spec store bypass:    Mitigation; Speculative Store Bypass disabled via prctl and seccomp
+Vulnerability Spectre v1:           Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+Vulnerability Spectre v2:           Mitigation; Enhanced / Automatic IBRS; IBPB conditional; RSB filling; PBRSB-eIBRS Not affected; BHI BHI_DIS_S
+m20@M20piper:~$ nproc --all
+4
+m20@M20piper:~$ free -h
+              总计         已用        空闲      共享    缓冲/缓存    可用
+内存：       7.5Gi       453Mi       6.5Gi       9.0Mi       571Mi       6.8Gi
+交换：       2.0Gi          0B       2.0Gi
+m20@M20piper:~$ df -h /
+文件系统        容量  已用  可用 已用% 挂载点
+/dev/mmcblk0p2  114G   26G   83G   24% /
+m20@M20piper:~$ lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+NAME           SIZE TYPE MOUNTPOINT                   FSTYPE
+loop0           55M loop /snap/core18/1705            squashfs
+loop1            4K loop /snap/bare/5                 squashfs
+loop2         55.5M loop /snap/core18/2999            squashfs
+loop3           74M loop /snap/core22/2411            squashfs
+loop4        221.4M loop /snap/gnome-3-34-1804/21     squashfs
+loop5         91.7M loop /snap/gtk-common-themes/1535 squashfs
+loop6         48.3M loop /snap/gtk-common-themes/1474 squashfs
+loop7        105.2M loop /snap/core/17292             squashfs
+loop8         47.8M loop /snap/snap-store/336         squashfs
+loop9         50.1M loop /snap/snapd/27406            squashfs
+loop10       218.4M loop /snap/gnome-3-34-1804/93     squashfs
+loop11        12.2M loop /snap/snap-store/1216        squashfs
+mmcblk0      116.5G disk
+├─mmcblk0p1    512M part /boot/efi                    vfat
+└─mmcblk0p2    116G part /                            ext4
+mmcblk0boot0     4M disk
+mmcblk0boot1     4M disk
+m20@M20piper:~$ uptime
+ 15:46:15 up 7 min,  1 user,  load average: 0.00, 0.03, 0.01
+m20@M20piper:~$ ps -eo pid,ppid,comm,%cpu,%mem --sort=-%cpu | head -n 20
+    PID    PPID COMMAND         %CPU %MEM
+    959     910 gnome-shell      3.3  2.7
+    579       1 avahi-daemon     0.3  0.0
+   1326       1 systemd          0.3  0.1
+      1       0 systemd          0.2  0.1
+    616       1 snapd            0.2  0.5
+    801       2 aicwf_busrx_thr  0.2  0.0
+    896     894 Xorg             0.2  0.8
+   1425    1416 bash             0.2  0.0
+    302       1 systemd-udevd    0.1  0.0
+   1309     700 sshd             0.1  0.1
+   1331     700 sshd             0.1  0.1
+   1340    1326 pulseaudio       0.1  0.1
+   1456    1416 bash             0.1  0.0
+      2       0 kthreadd         0.0  0.0
+      3       2 rcu_gp           0.0  0.0
+      4       2 rcu_par_gp       0.0  0.0
+      6       2 kworker/0:0H-kb  0.0  0.0
+      7       2 kworker/u8:0-ev  0.0  0.0
+      8       2 mm_percpu_wq     0.0  0.0
+m20@M20piper:~$
+
+
+运动主机103相关指令和日志：
+
+m20@M20piper:~$ ssh user@10.21.31.103
+user@10.21.31.103's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in aos(103)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 11:10:00 2026 from 10.21.31.192
+user@host.v1.4:~$ hostname
+host
+user@host.v1.4:~$ uname -a
+Linux host 5.10.198 #28 SMP Tue Dec 9 16:59:48 CST 2025 aarch64 aarch64 aarch64 GNU/Linux
+user@host.v1.4:~$ lscpu | sed -n '1,35p'
+Architecture:                    aarch64
+CPU op-mode(s):                  32-bit, 64-bit
+Byte Order:                      Little Endian
+CPU(s):                          8
+On-line CPU(s) list:             0-7
+Thread(s) per core:              1
+Core(s) per socket:              2
+Socket(s):                       3
+Vendor ID:                       ARM
+Model:                           0
+Model name:                      Cortex-A55
+Stepping:                        r2p0
+CPU max MHz:                     2304.0000
+CPU min MHz:                     408.0000
+BogoMIPS:                        48.00
+L1d cache:                       256 KiB
+L1i cache:                       256 KiB
+L2 cache:                        1 MiB
+L3 cache:                        3 MiB
+Vulnerability Itlb multihit:     Not affected
+Vulnerability L1tf:              Not affected
+Vulnerability Mds:               Not affected
+Vulnerability Meltdown:          Not affected
+Vulnerability Mmio stale data:   Not affected
+Vulnerability Retbleed:          Not affected
+Vulnerability Spec store bypass: Mitigation; Speculative Store Bypass disabled via prctl
+Vulnerability Spectre v1:        Mitigation; __user pointer sanitization
+Vulnerability Spectre v2:        Vulnerable: Unprivileged eBPF enabled
+Vulnerability Srbds:             Not affected
+Vulnerability Tsx async abort:   Not affected
+Flags:                           fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+user@host.v1.4:~$ nproc --all
+8
+user@host.v1.4:~$ free -h
+              total        used        free      shared  buff/cache   available
+Mem:           15Gi       1.4Gi        12Gi       1.0Gi       1.8Gi        12Gi
+Swap:            0B          0B          0B
+user@host.v1.4:~$ df -h /
+Filesystem      Size  Used Avail Use% Mounted on
+overlayroot      18G  1.5G   17G   9% /
+user@host.v1.4:~$ lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+NAME           SIZE TYPE MOUNTPOINT            FSTYPE
+mmcblk0      115.3G disk
+├─mmcblk0p1      8M part
+├─mmcblk0p2      4M part
+├─mmcblk0p3    256M part /boot                 ext4
+├─mmcblk0p4    128M part
+├─mmcblk0p5     32M part
+├─mmcblk0p6    100M part /var/opt/robot/conf   ext4
+├─mmcblk0p7    7.8G part /var/opt/robot/log    ext4
+├─mmcblk0p8      2G part /var/log              ext4
+├─mmcblk0p9    7.8G part /opt/robot            ext4
+├─mmcblk0p10   7.8G part /var/opt/robot/record ext4
+├─mmcblk0p11  62.5G part /var/opt/robot/data   ext4
+├─mmcblk0p12   8.5G part /root-ro              ext4
+└─mmcblk0p13  18.4G part /userdata             ext4
+mmcblk0boot0     4M disk
+mmcblk0boot1     4M disk
+user@host.v1.4:~$ uptime
+ 15:47:48 up 9 min,  1 user,  load average: 1.00, 1.09, 0.66
+user@host.v1.4:~$ ps -eo pid,ppid,comm,%cpu,%mem --sort=-%cpu | head -n 20
+    PID    PPID COMMAND         %CPU %MEM
+    517       1 systemd-journal 18.4  0.2
+   2726    2724 rslidar         16.9  0.6
+   2196    2190 rl_deploy       14.2  1.4
+   2188    2186 yesense_node    12.4  0.5
+   2174    2172 system_status_n 11.1  0.0
+   2697    2608 rob_bag          7.6  6.4
+   2722    2720 lio_ddsnode      7.5  0.7
+   2199    2195 basic_server     4.6  0.9
+   2730    2729 hsLidar          3.4  1.8
+   2715    2714 height_map_nav   2.4  0.8
+   6083       1 systemd          1.8  0.0
+      1       0 systemd          1.1  0.0
+   2170    2168 cpu_node         1.0  0.5
+   1876     941 run              0.9  0.0
+   2162    2160 ctrlmcu_node     0.8  0.6
+   2166    2164 gps_node         0.8  0.5
+   6130    6129 bash             0.7  0.0
+   6089    6083 pulseaudio       0.6  0.0
+   1326       1 NetworkManager   0.5  0.1
+user@host.v1.4:~$ su
+Password:
+root@host.v1.4:/home/user# su
+root@host.v1.4:/home/user# source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.33.103
+Selected IP(s) based on eth0 IP (10.21.33.103): 10.21.33.103
+IP 10.21.33.103 already exists in /opt/robot/fastdds.xml
+Current ROS_DISTRO is foxy
+source ros2 env success
+root@host.v1.4:/home/user# timeout 8 ros2 topic hz /LIDAR/POINTS
+average rate: 9.057
+        min: 0.102s max: 0.119s std dev: 0.00502s window: 11
+average rate: 9.102
+        min: 0.102s max: 0.119s std dev: 0.00403s window: 21
+average rate: 9.095
+        min: 0.102s max: 0.119s std dev: 0.00366s window: 31
+root@host.v1.4:/home/user# timeout 8 ros2 topic hz /LIO_ODOM
+root@host.v1.4:/home/user# timeout 8 ros2 topic hz /LIO_ODOM_HIGH_FREQUENCY
+WARNING: topic [/LIO_ODOM_HIGH_FREQUENCY] does not appear to be published yet
+
+user@host.v1.4:~$ ps -ef | grep -Ei "accumulate|passable|lio|lidar" | grep -v grep
+root        2206       1  0 15:39 ?        00:00:00 /bin/bash /opt/robot/share/lio-perception/scripts/lio_ddsnode.sh
+root        2720    2206  0 15:39 ?        00:00:00 sudo chrt 35 taskset -c 5,6,7 /opt/robot/share/lio-perception/scripts/../bin/lio_ddsnode
+root        2722    2720  7 15:39 ?        00:01:26 /opt/robot/share/lio-perception/scripts/../bin/lio_ddsnode
+root        2726    2724 16 15:39 ?        00:03:19 ./rslidar
+root        2730    2729  3 15:39 ?        00:00:40 ./hsLidar
+
+user@host.v1.4:~$ su
+Password:
+root@host.v1.4:/home/user# source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.33.103
+Selected IP(s) based on eth0 IP (10.21.33.103): 10.21.33.103
+IP 10.21.33.103 already exists in /opt/robot/fastdds.xml
+Current ROS_DISTRO is foxy
+source ros2 env success
+root@host.v1.4:/home/user# # 分别在 AOS/GOS/NOS 上跑
+root@host.v1.4:/home/user# ps -ef | grep -Ei "accumulate|passable|lio|lidar" | grep -v grep
+root        2206       1  0 15:39 ?        00:00:00 /bin/bash /opt/robot/share/lio-perception/scripts/lio_ddsnode.sh
+root        2720    2206  0 15:39 ?        00:00:00 sudo chrt 35 taskset -c 5,6,7 /opt/robot/share/lio-perception/scripts/../bin/lio_ddsnode
+root        2722    2720  7 15:39 ?        00:01:30 /opt/robot/share/lio-perception/scripts/../bin/lio_ddsnode
+root        2726    2724 16 15:39 ?        00:03:28 ./rslidar
+root        2730    2729  3 15:39 ?        00:00:41 ./hsLidar
+root@host.v1.4:/home/user#
+
+
+
+通用主机104相关指令和之日日志
+m20@M20piper:~$ ssh user@10.21.31.104
+user@10.21.31.104's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in gos(104)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 11:21:49 2026 from 10.21.31.192
+user@host.v1.4:~$ hostname
+host
+user@host.v1.4:~$ uname -a
+Linux host 5.10.198 #28 SMP Tue Dec 9 16:59:48 CST 2025 aarch64 aarch64 aarch64 GNU/Linux
+user@host.v1.4:~$ lscpu | sed -n '1,35p'
+Architecture:                    aarch64
+CPU op-mode(s):                  32-bit, 64-bit
+Byte Order:                      Little Endian
+CPU(s):                          8
+On-line CPU(s) list:             0-7
+Thread(s) per core:              1
+Core(s) per socket:              2
+Socket(s):                       3
+Vendor ID:                       ARM
+Model:                           0
+Model name:                      Cortex-A55
+Stepping:                        r2p0
+CPU max MHz:                     2304.0000
+CPU min MHz:                     408.0000
+BogoMIPS:                        48.00
+L1d cache:                       256 KiB
+L1i cache:                       256 KiB
+L2 cache:                        1 MiB
+L3 cache:                        3 MiB
+Vulnerability Itlb multihit:     Not affected
+Vulnerability L1tf:              Not affected
+Vulnerability Mds:               Not affected
+Vulnerability Meltdown:          Not affected
+Vulnerability Mmio stale data:   Not affected
+Vulnerability Retbleed:          Not affected
+Vulnerability Spec store bypass: Mitigation; Speculative Store Bypass disabled via prctl
+Vulnerability Spectre v1:        Mitigation; __user pointer sanitization
+Vulnerability Spectre v2:        Vulnerable: Unprivileged eBPF enabled
+Vulnerability Srbds:             Not affected
+Vulnerability Tsx async abort:   Not affected
+Flags:                           fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+user@host.v1.4:~$ nproc --all
+8
+user@host.v1.4:~$ free -h
+              total        used        free      shared  buff/cache   available
+Mem:           15Gi       1.0Gi        13Gi       293Mi       1.0Gi        13Gi
+Swap:            0B          0B          0B
+user@host.v1.4:~$ df -h /
+Filesystem      Size  Used Avail Use% Mounted on
+overlayroot      18G  231M   18G   2% /
+user@host.v1.4:~$ lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+NAME           SIZE TYPE MOUNTPOINT            FSTYPE
+mmcblk0      115.3G disk
+├─mmcblk0p1      8M part
+├─mmcblk0p2      4M part
+├─mmcblk0p3    256M part /boot                 ext4
+├─mmcblk0p4    128M part
+├─mmcblk0p5     32M part
+├─mmcblk0p6    100M part /var/opt/robot/conf   ext4
+├─mmcblk0p7    7.8G part /var/opt/robot/log    ext4
+├─mmcblk0p8      2G part /var/log              ext4
+├─mmcblk0p9    7.8G part /opt/robot            ext4
+├─mmcblk0p10   7.8G part /var/opt/robot/record ext4
+├─mmcblk0p11  62.5G part /var/opt/robot/data   ext4
+├─mmcblk0p12   8.5G part /root-ro              ext4
+└─mmcblk0p13  18.4G part /userdata             ext4
+mmcblk0boot0     4M disk
+mmcblk0boot1     4M disk
+user@host.v1.4:~$ uptime
+ 16:01:41 up 14 min,  2 users,  load average: 0.08, 0.21, 0.26
+user@host.v1.4:~$ ps -eo pid,ppid,comm,%cpu,%mem --sort=-%cpu | head -n 20
+    PID    PPID COMMAND         %CPU %MEM
+   2027    1055 gnome-shell      4.6  2.2
+   3044    3043 bash             2.4  0.0
+   1899    1882 hsLidar          2.1  1.8
+    504       1 systemd-journal  0.9  0.1
+      1       0 systemd          0.8  0.0
+   2043     896 run              0.7  0.0
+   3007     924 sshd             0.5  0.0
+   1808    1807 cpu_node         0.4  0.5
+   2132    2125 ibus-extension-  0.4  0.1
+   1149    1144 Xorg             0.3  0.9
+   1805    1803 encryption_node  0.2  0.5
+     12       2 rcu_sched        0.1  0.0
+    735       1 dbus-daemon      0.1  0.0
+    903       1 containerd       0.1  0.2
+   1833    1832 rslidar          0.1  0.6
+   2452    2013 evolution-alarm  0.1  0.4
+   2466    2013 xdg-user-dirs-g  0.1  0.2
+      2       0 kthreadd         0.0  0.0
+      3       2 rcu_gp           0.0  0.0
+user@host.v1.4:~$
+
+user@host.v1.4:~$ ps -ef | grep -Ei "accumulate|passable|lio|lidar" | grep -v grep
+root        1833    1832  0 15:47 ?        00:00:01 ./rslidar
+root        1899    1882  2 15:47 ?        00:00:22 ./hsLidar
+user@host.v1.4:~$
+
+
+
+导航主机106相关日志和指令：
+m20@M20piper:~$ ssh user@10.21.31.106
+user@10.21.31.106's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in nos(106)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 11:08:19 2026 from 10.21.31.192
+user@host.v1.4:~$ hostname
+host
+user@host.v1.4:~$ uname -a
+Linux host 5.10.198 #28 SMP Tue Dec 9 16:59:48 CST 2025 aarch64 aarch64 aarch64 GNU/Linux
+user@host.v1.4:~$ lscpu | sed -n '1,35p'
+Architecture:                    aarch64
+CPU op-mode(s):                  32-bit, 64-bit
+Byte Order:                      Little Endian
+CPU(s):                          8
+On-line CPU(s) list:             0-7
+Thread(s) per core:              1
+Core(s) per socket:              2
+Socket(s):                       3
+Vendor ID:                       ARM
+Model:                           0
+Model name:                      Cortex-A55
+Stepping:                        r2p0
+CPU max MHz:                     2352.0000
+CPU min MHz:                     408.0000
+BogoMIPS:                        48.00
+L1d cache:                       256 KiB
+L1i cache:                       256 KiB
+L2 cache:                        1 MiB
+L3 cache:                        3 MiB
+Vulnerability Itlb multihit:     Not affected
+Vulnerability L1tf:              Not affected
+Vulnerability Mds:               Not affected
+Vulnerability Meltdown:          Not affected
+Vulnerability Mmio stale data:   Not affected
+Vulnerability Retbleed:          Not affected
+Vulnerability Spec store bypass: Mitigation; Speculative Store Bypass disabled via prctl
+Vulnerability Spectre v1:        Mitigation; __user pointer sanitization
+Vulnerability Spectre v2:        Vulnerable: Unprivileged eBPF enabled
+Vulnerability Srbds:             Not affected
+Vulnerability Tsx async abort:   Not affected
+Flags:                           fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+user@host.v1.4:~$ nproc --all
+8
+user@host.v1.4:~$ free -h
+              total        used        free      shared  buff/cache   available
+Mem:           15Gi       2.4Gi         9Gi       1.5Gi       3.0Gi        11Gi
+Swap:            0B          0B          0B
+user@host.v1.4:~$ df -h /
+Filesystem      Size  Used Avail Use% Mounted on
+overlayroot      18G  447M   18G   3% /
+user@host.v1.4:~$ lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+NAME           SIZE TYPE MOUNTPOINT            FSTYPE
+mmcblk0      115.3G disk
+├─mmcblk0p1      8M part
+├─mmcblk0p2      4M part
+├─mmcblk0p3    256M part /boot                 ext4
+├─mmcblk0p4    128M part
+├─mmcblk0p5     32M part
+├─mmcblk0p6    100M part /var/opt/robot/conf   ext4
+├─mmcblk0p7    7.8G part /var/opt/robot/log    ext4
+├─mmcblk0p8      2G part /var/log              ext4
+├─mmcblk0p9    7.8G part /opt/robot            ext4
+├─mmcblk0p10   7.8G part /var/opt/robot/record ext4
+├─mmcblk0p11  62.5G part /var/opt/robot/data   ext4
+├─mmcblk0p12   8.5G part /root-ro              ext4
+└─mmcblk0p13  18.4G part /userdata             ext4
+mmcblk0boot0     4M disk
+mmcblk0boot1     4M disk
+user@host.v1.4:~$ uptime
+ 16:02:42 up 15 min,  1 user,  load average: 4.34, 5.41, 3.69
+user@host.v1.4:~$ ps -eo pid,ppid,comm,%cpu,%mem --sort=-%cpu | head -n 20
+    PID    PPID COMMAND         %CPU %MEM
+   2401    2397 pcl_pass_grid   32.3  0.8
+   2273    2132 localization_dd 31.8  9.6
+   2046    2044 yesense_node    16.7  0.5
+   2597    2596 rslidar         14.9  0.6
+   2032    2030 system_status_n 11.3  0.0
+   2129       1 handler          7.6  0.8
+    505       1 systemd-journal  6.8  0.1
+   2400    2398 localPlanner     5.0  2.3
+   2537    2368 accumulate_clou  4.5  3.2
+   2121    2119 charge_manager   4.4  0.9
+   2399    2394 astar_node       4.1  0.8
+   2539    2368 passable_area    3.7  3.4
+   2610    2600 hsLidar          3.5  1.8
+  20781       1 systemd          1.8  0.0
+   2028    2026 cpu_node         1.1  0.5
+   2272    2132 map_server       1.0  0.8
+      1       0 systemd          0.9  0.0
+  20835   20834 bash             0.9  0.0
+   1795     888 run              0.8  0.0
+user@host.v1.4:~$
+
+user@host.v1.4:~$ ps -ef | grep -Ei "accumulate|passable|lio|lidar" | grep -v grep
+root        2368       1  0 15:47 ?        00:00:00 /usr/bin/python3 /opt/ros/foxy/bin/ros2 launch passable_area nav.launch.py
+root        2537    2368  4 15:47 ?        00:00:44 /opt/ros/foxy/lib/accumulate_cloud/accumulate_cloud --ros-args -r __node:=accumulate_cloud --params-file /opt/ros/foxy/share/accumulate_cloud/config/accumulate_cloud.yaml
+root        2539    2368  3 15:47 ?        00:00:36 /opt/ros/foxy/lib/passable_area/passable_area --ros-args --log-level info --ros-args -r __node:=passable_area --params-file /opt/ros/foxy/share/passable_area/config/nav_params.yaml --params-file /opt/ros/foxy/share/passable_area/config/body_params.yaml --params-file /opt/ros/foxy/share/passable_area/config/lidar_params.yaml
+root        2597    2596 14 15:47 ?        00:02:26 ./rslidar
+root        2610    2600  3 15:47 ?        00:00:34 ./hsLidar
+user@host.v1.4:~$
+
+
+导航主机106相关日志和指令：
+m20@M20piper:~$ ssh user@10.21.31.106
+user@10.21.31.106's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in nos(106)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 16:02:28 2026 from 10.21.31.192
+user@host.v1.4:~$ sudo systemctl restart multicast-relay.service
+[sudo] password for user:
+'
+Sorry, try again.
+[sudo] password for user:
+user@host.v1.4:~$ sudo systemctl restart multicast-relay.service
+user@host.v1.4:~$ sudo systemctl status multicast-relay.service
+● multicast-relay.service - Multicast Relay Service
+     Loaded: loaded (/lib/systemd/system/multicast-relay.service; enabled; vendor preset: enabled)
+     Active: active (running) since Fri 2026-07-17 16:27:50 CST; 12s ago
+   Main PID: 51957 (python3)
+      Tasks: 5 (limit: 18810)
+     Memory: 4.7M
+     CGroup: /system.slice/multicast-relay.service
+             └─51957 /usr/bin/python3 /usr/bin/multicast.py
+
+Jul 17 16:27:50 host systemd[1]: Started Multicast Relay Service.
+user@host.v1.4:~$ sudo journalctl -u multicast-relay.service -n 80 --no-pager
+-- Logs begin at Fri 2026-07-17 16:17:29 CST, end at Fri 2026-07-17 16:28:14 CST. --
+Jul 17 16:27:47 host systemd[1]: Stopping Multicast Relay Service...
+Jul 17 16:27:47 host systemd[1]: multicast-relay.service: Succeeded.
+Jul 17 16:27:47 host systemd[1]: Stopped Multicast Relay Service.
+Jul 17 16:27:47 host systemd[1]: Started Multicast Relay Service.
+Jul 17 16:27:50 host systemd[1]: Stopping Multicast Relay Service...
+Jul 17 16:27:50 host systemd[1]: multicast-relay.service: Succeeded.
+Jul 17 16:27:50 host systemd[1]: Stopped Multicast Relay Service.
+Jul 17 16:27:50 host systemd[1]: Started Multicast Relay Service.
+user@host.v1.4:~$
+
+
+运动主机103相关指令和日志：
+m20@M20piper:~$ ssh user@10.21.31.103
+user@10.21.31.103's password:
+Permission denied, please try again.
+user@10.21.31.103's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in aos(103)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 15:58:34 2026 from 10.21.31.192
+user@host.v1.4:~$ su
+Password:
+root@host.v1.4:/home/user# source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.33.103
+Selected IP(s) based on eth0 IP (10.21.33.103): 10.21.33.103
+IP 10.21.33.103 already exists in /opt/robot/fastdds.xml
+Current ROS_DISTRO is foxy
+source ros2 env success
+root@host.v1.4:/home/user#
+root@host.v1.4:/home/user# ros2 topic info -v /LIDAR/POINTS
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 2
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.a6.0a.9a.33.00.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.21.3d.aa.0a.42.66.00.00.00.00.00.00.01.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 2
+
+Node name: message_subscriber_node
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.89.0a.c2.94.01.00.00.00.00.00.26.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Node name: _CREATED_BY_BARE_DDS_APP_
+Node namespace: _CREATED_BY_BARE_DDS_APP_
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.21.3d.a2.0a.72.c6.00.00.00.00.00.00.05.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+root@host.v1.4:/home/user# ros2 topic hz /LIDAR/POINTS
+average rate: 9.177
+        min: 0.101s max: 0.115s std dev: 0.00360s window: 11
+average rate: 9.129
+        min: 0.101s max: 0.117s std dev: 0.00339s window: 21
+average rate: 9.116
+        min: 0.099s max: 0.119s std dev: 0.00401s window: 31
+average rate: 9.114
+        min: 0.098s max: 0.119s std dev: 0.00418s window: 41
+average rate: 9.107
+        min: 0.098s max: 0.119s std dev: 0.00419s window: 51
+average rate: 9.112
+        min: 0.098s max: 0.119s std dev: 0.00405s window: 61
+average rate: 9.107
+        min: 0.098s max: 0.122s std dev: 0.00444s window: 71
+average rate: 9.104
+        min: 0.098s max: 0.122s std dev: 0.00449s window: 81
+average rate: 9.104
+        min: 0.098s max: 0.122s std dev: 0.00436s window: 91
+average rate: 9.102
+        min: 0.098s max: 0.122s std dev: 0.00438s window: 101
+
+
+通用主机104相关指令和之日日志
+m20@M20piper:~$ ssh user@10.21.31.104
+user@10.21.31.104's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in gos(104)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 16:30:40 2026 from 10.21.31.192
+user@host.v1.4:~$ source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.31.104
+Selected IP(s) based on eth0 IP (10.21.31.104): 10.21.31.104
+IP 10.21.31.104 already exists in /opt/robot/fastdds.xml
+source ros2 env success
+user@host.v1.4:~$
+user@host.v1.4:~$ ros2 topic list | grep -Ei "LIDAR|POINT|LOC|cloud|passable|traversal"
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/STATUS
+/LOCATION_STATUS
+/LOCATION_STATUS/MATCHING_ERROR
+/PASSABLE_AREA_ENABLE
+/accumulate_cloud/status_code
+/passable_status_code
+user@host.v1.4:~$ ros2 topic info -v /LIDAR/POINTS
+Unknown topic '/LIDAR/POINTS'
+user@host.v1.4:~$ ros2 topic hz /LIDAR/POINTS
+WARNING: topic [/LIDAR/POINTS] does not appear to be published yet
+^Cuser@host.v1.4:~$ ros2 topic hz /LIDAR/POINTS2
+WARNING: topic [/LIDAR/POINTS2] does not appear to be published yet
+user@host.v1.4:~$ ros2 topic hz /LOC_BODY_POINTS
+WARNING: topic [/LOC_BODY_POINTS] does not appear to be published yet
+
+
+
+导航主机106相关日志和指令：
+@M20piper:~$ ssh user@10.21.31.106
+user@10.21.31.106's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in nos(106)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 16:27:27 2026 from 10.21.31.192
+user@host.v1.4:~$ systemctl cat multicast-relay.service
+# /lib/systemd/system/multicast-relay.service
+
+[Unit]
+Description=Multicast Relay Service
+After=network.target
+Requires=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/bin/multicast.py
+Restart=always
+RestartSec=2
+WorkingDirectory=/usr/bin/
+
+[Install]
+WantedBy=multi-user.target
+user@host.v1.4:~$ sudo sed -n '1,240p' /usr/bin/multicast.py
+[sudo] password for user:
+Sorry, try again.
+[sudo] password for user:
+import socket
+import struct
+import threading
+
+# 需要转发的组播组和端口
+GROUPS = [
+    ("224.10.10.202", 6692),
+    ("224.10.10.202", 7782),
+    ("224.10.10.201", 6691),
+    ("224.10.10.201", 7781),
+]
+
+# 接收组播的接口 (eth0)
+RECV_IFACE = "10.21.33.106"
+# 转发出去的接口 (eth1)
+SEND_IFACE = "10.21.31.106"
+
+
+def join_multicast_group(group, port, iface_ip):
+    """创建并返回一个加入了组播组的 UDP socket"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((group, port))  # 绑定到组播端口
+
+    # 加入组播组
+    mreq = struct.pack("4s4s", socket.inet_aton(group), socket.inet_aton(iface_ip))
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
+    return sock
+
+
+def forwarder(group, port):
+    """从 eth0 接收组播并转发到 eth1"""
+    recv_sock = join_multicast_group(group, port, RECV_IFACE)
+
+    send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    # 指定发送接口为 eth1
+    send_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(SEND_IFACE))
+
+    print(f"[Relay] Forwarding {group}:{port} from {RECV_IFACE} → {SEND_IFACE}")
+
+    while True:
+        data, addr = recv_sock.recvfrom(65535)
+        send_sock.sendto(data, (group, port))
+
+
+def main():
+    threads = []
+    for group, port in GROUPS:
+        t = threading.Thread(target=forwarder, args=(group, port), daemon=True)
+        t.start()
+        threads.append(t)
+
+    print("Multicast relay running...")
+    for t in threads:
+        t.join()
+
+
+if __name__ == "__main__":
+    main()
+
+
+通用主机104相关指令和之日日志
+M20piper:~$ ssh user@10.21.31.104
+user@10.21.31.104's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in gos(104)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 16:46:17 2026 from 10.21.31.192
+user@host.v1.4:~$ source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.31.104
+Selected IP(s) based on eth0 IP (10.21.31.104): 10.21.31.104
+IP 10.21.31.104 already exists in /opt/robot/fastdds.xml
+source ros2 env success
+user@host.v1.4:~$
+user@host.v1.4:~$ timeout 10 sudo tcpdump -ni eth0 \
+>   'udp and (host 224.10.10.201 or host 224.10.10.202) and (port 6691 or port 7781 or port 6692 or port 7782)' \
+>   -c 30
+[sudo] password for user:
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
+16:55:19.101389 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.101392 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.101828 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.101830 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.102277 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.102280 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.102710 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.102713 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.103153 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.103155 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.103597 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.103599 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.104066 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.104070 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.104464 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.104568 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.104852 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.105056 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.105388 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.105396 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.105822 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.105832 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.106195 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.106205 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.106719 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.106728 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.107098 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.107108 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:55:19.107598 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:55:19.107608 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+30 packets captured
+32 packets received by filter
+0 packets dropped by kernel
+user@host.v1.4:~$
+
+
+背部主机相关指令和日志：
+m20@M20piper:~$ source /opt/ros/foxy/setup.bash
+m20@M20piper:~$ timeout 10 sudo tcpdump -ni eth0 \
+>   'udp and (host 224.10.10.201 or host 224.10.10.202) and (port 6691 or port 7781 or port 6692 or port 7782)' \
+>   -c 30
+[sudo] m20 的密码：
+tcpdump: eth0: No such device exists
+(SIOCGIFHWADDR: No such device)
+m20@M20piper:~$
+
+
+
+通用主机104相关指令和之日日志
+M20piper:~$ ssh user@10.21.31.104
+user@10.21.31.104's password:
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in gos(104)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 16:54:55 2026 from 10.21.31.192
+user@host.v1.4:~$ # 1. 看 DIFOP 包有没有，DIFOP 可能低频，所以抓久一点
+user@host.v1.4:~$ timeout 60 sudo tcpdump -ni eth0 \
+>   'udp and (host 224.10.10.201 or host 224.10.10.202) and (port 7781 or port 7782)' \
+>   -c 10
+[sudo] password for user:
+'
+Sorry, try again.
+[sudo] password for user:
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
+17:07:46.659204 IP 10.21.31.106.37422 > 224.10.10.201.7781: UDP, length 1248
+17:07:46.695612 IP 10.21.31.106.48480 > 224.10.10.202.7782: UDP, length 1248
+17:07:47.659267 IP 10.21.31.106.37422 > 224.10.10.201.7781: UDP, length 1248
+17:07:47.695548 IP 10.21.31.106.48480 > 224.10.10.202.7782: UDP, length 1248
+17:07:48.659260 IP 10.21.31.106.37422 > 224.10.10.201.7781: UDP, length 1248
+17:07:48.695537 IP 10.21.31.106.48480 > 224.10.10.202.7782: UDP, length 1248
+17:07:49.659102 IP 10.21.31.106.37422 > 224.10.10.201.7781: UDP, length 1248
+17:07:49.695632 IP 10.21.31.106.48480 > 224.10.10.202.7782: UDP, length 1248
+17:07:50.659246 IP 10.21.31.106.37422 > 224.10.10.201.7781: UDP, length 1248
+17:07:50.695589 IP 10.21.31.106.48480 > 224.10.10.202.7782: UDP, length 1248
+10 packets captured
+30 packets received by filter
+0 packets dropped by kernel
+user@host.v1.4:~$ # 2. 抓一帧包头，方便判断 RoboSense 型号
+user@host.v1.4:~$ timeout 5 sudo tcpdump -ni eth0 -s 128 -XX \
+>   'udp and host 224.10.10.201 and port 6691' \
+>   -c 1
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 128 bytes
+17:08:06.948088 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+        0x0000:  0100 5e0a 0ac9 5af1 d266 04fd 0800 4500  ..^...Z..f....E.
+        0x0010:  04fc 3c7f 4000 0111 2420 0a15 1f6a e00a  ..<.@...$....j..
+        0x0020:  0ac9 94c0 1a23 04e8 2aa4 55aa 055a 0000  .....#..*.U..Z..
+        0x0030:  0000 0a62 6c5e 0000 26c7 0000 0815 0000  ...bl^..&.......
+        0x0040:  6a59 f0f6 000e 4392 0031 0200 0000 0000  jY....C..1......
+        0x0050:  d324 230b ffee 3100 0000 0000 0000 0000  .$#...1.........
+        0x0060:  0000 0000 0000 0000 0000 0000 0000 0000  ................
+        0x0070:  0000 0000 0000 0000 0000 0000 0000 0000  ................
+1 packet captured
+14 packets received by filter
+0 packets dropped by kernel
+user@host.v1.4:~$ timeout 5 sudo tcpdump -ni eth0 -s 128 -XX \
+>   'udp and host 224.10.10.202 and port 6692' \
+>   -c 1
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 128 bytes
+17:08:19.961593 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+        0x0000:  0100 5e0a 0aca 5af1 d266 04fd 0800 4500  ..^...Z..f....E.
+        0x0010:  04fc 564d 4000 0111 0a51 0a15 1f6a e00a  ..VM@....Q...j..
+        0x0020:  0aca d006 1a24 04e8 e242 55aa 055a 0000  .....$...BU..Z..
+        0x0030:  0000 0a68 ce9e 0000 8cea 0000 0f90 0000  ...h............
+        0x0040:  6a59 f103 000e 7790 0031 0200 0000 0000  jY....w..1......
+        0x0050:  df24 220b ffee 43c0 0000 0000 0000 0000  .$"...C.........
+        0x0060:  0000 0000 0000 0000 0000 0000 0000 0000  ................
+        0x0070:  0000 0000 0000 0000 0000 0000 0000 0000  ................
+1 packet captured
+14 packets received by filter
+0 packets dropped by kernel
+user@host.v1.4:~$ # 3. 看 GOS 上有没有现成 rslidar_sdk
+user@host.v1.4:~$ source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.31.104
+Selected IP(s) based on eth0 IP (10.21.31.104): 10.21.31.104
+IP 10.21.31.104 already exists in /opt/robot/fastdds.xml
+source ros2 env success
+user@host.v1.4:~$ ros2 pkg prefix rslidar_sdk
+Package not found
+user@host.v1.4:~$ ros2 pkg executables rslidar_sdk
+Package 'rslidar_sdk' not found
+user@host.v1.4:~$
+
+
+
+
+背部主机相关指令和日志：
+M20piper:~$ timeout 10 sudo tcpdump -ni enp2s0 \
+>   'udp and (host 224.10.10.201 or host 224.10.10.202) and (port 6691 or port 7781 or port 6692 or port 7782)' \
+>   -c 30
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on enp2s0, link-type EN10MB (Ethernet), capture size 262144 bytes
+16:58:37.291322 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.291502 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.291679 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.291938 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.292143 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.292370 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.292585 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.292920 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.293147 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.293318 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.293521 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.293767 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.294016 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.294152 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.294365 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.294592 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.294801 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.295047 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.295246 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.295699 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.295927 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.296152 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.296394 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.296608 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.296828 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.297032 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.297478 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.297561 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+16:58:37.297736 IP 10.21.31.106.38080 > 224.10.10.201.6691: UDP, length 1248
+16:58:37.298028 IP 10.21.31.106.53254 > 224.10.10.202.6692: UDP, length 1248
+30 packets captured
+39 packets received by filter
+0 packets dropped by kernel
+m20@M20piper:~$
+
+
+
+背部主机相关指令和日志
+终端1：
+m20@M20piper:~$ cd robodog_nav_system/
+m20@M20piper:~/robodog_nav_system$ cd src/
+m20@M20piper:~/robodog_nav_system/src$ chmod +x m20_lidar_bridge/scripts/*
+m20@M20piper:~/robodog_nav_system/src$ cd ..
+m20@M20piper:~/robodog_nav_system$ source /opt/ros/foxy/setup.bash
+m20@M20piper:~/robodog_nav_system$ colcon build --packages-up-to rs^C
+m20@M20piper:~/robodog_nav_system$ colcon build --packages-up-to rslidar_sdk m20_lidar_bridge --symlink-install
+Starting >>> rslidar_msg
+Starting >>> m20_lidar_bridge
+Finished <<< rslidar_msg [1.57s]
+Starting >>> rslidar_sdk
+Finished <<< m20_lidar_bridge [7.42s]
+--- stderr: rslidar_sdk
+=============================================================
+-- POINT_TYPE is XYZI
+=============================================================
+=============================================================
+-- ROS Not Found. ROS Support is turned Off.
+=============================================================
+=============================================================
+-- ROS2 Found. ROS2 Support is turned On.
+=============================================================
+=============================================================
+-- CMake run for UNIX GNU Compiler
+=============================================================
+=============================================================
+-- Disable PCAP parse
+=============================================================
+=============================================================
+-- rs_driver Version : v1.5.19
+=============================================================
+---
+Finished <<< rslidar_sdk [17.4s]
+
+Summary: 3 packages finished [19.3s]
+  1 package had stderr output: rslidar_sdk
+m20@M20piper:~/robodog_nav_system$ source install/setup.bash
+m20@M20piper:~/robodog_nav_system$ ros2 run m20_lidar_bridge run_backpack_m20_rs48
+********************************************************
+**********                                    **********
+**********    RSLidar_SDK Version: v1.5.19     **********
+**********                                    **********
+********************************************************
+--------------------------------------------------------
+Config loaded from PATH:
+/home/m20/robodog_nav_system/install/m20_lidar_bridge/share/m20_lidar_bridge/config/rslidar_multicast_m20_rs48_backpack.yaml
+--------------------------------------------------------
+------------------------------------------------------
+Receive Packets From : Online LiDAR
+Msop Port: 6691
+Difop Port: 7781
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Driver Parameters
+input type: ONLINE_LIDAR
+lidar_type: M20_RS48
+frame_id: rslidar
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Input Parameters
+msop_port: 6691
+difop_port: 7781
+imu_port: 0
+user_layer_bytes: 0
+tail_layer_bytes: 0
+host_address: 10.21.31.192
+group_address: 224.10.10.201
+socket_recv_buf: 106496
+pcap_path:
+pcap_rate: 1
+pcap_repeat: 1
+use_vlan: 0
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Decoder Parameters
+min_distance: 0.2
+max_distance: 100
+use_lidar_clock: 1
+dense_points: 0
+ts_first_point: 1
+wait_for_difop: 0
+config_from_file: 0
+angle_path:
+start_angle: 0
+end_angle: 360
+split_frame_mode: 1
+split_angle: 0
+num_blks_split: 0
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Transform Parameters
+x: 0
+y: 0
+z: 0
+roll: 0
+pitch: 0
+yaw: 0
+------------------------------------------------------
+Original receive buffer size: 212992 bytes
+After setting: receive buffer size: 425984 bytes
+Original receive buffer size: 212992 bytes
+After setting: receive buffer size: 425984 bytes
+------------------------------------------------------
+Send PointCloud To : ROS
+PointCloud Topic: /m20/front/points
+------------------------------------------------------
+------------------------------------------------------
+Receive Packets From : Online LiDAR
+Msop Port: 6692
+Difop Port: 7782
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Driver Parameters
+input type: ONLINE_LIDAR
+lidar_type: M20_RS48
+frame_id: rslidar
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Input Parameters
+msop_port: 6692
+difop_port: 7782
+imu_port: 0
+user_layer_bytes: 0
+tail_layer_bytes: 0
+host_address: 10.21.31.192
+group_address: 224.10.10.202
+socket_recv_buf: 106496
+pcap_path:
+pcap_rate: 1
+pcap_repeat: 1
+use_vlan: 0
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Decoder Parameters
+min_distance: 0.2
+max_distance: 100
+use_lidar_clock: 1
+dense_points: 0
+ts_first_point: 1
+wait_for_difop: 0
+config_from_file: 0
+angle_path:
+start_angle: 0
+end_angle: 360
+split_frame_mode: 1
+split_angle: 0
+num_blks_split: 0
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Transform Parameters
+x: 0
+y: 0
+z: 0
+roll: 0
+pitch: 0
+yaw: 0
+------------------------------------------------------
+Original receive buffer size: 212992 bytes
+After setting: receive buffer size: 425984 bytes
+Original receive buffer size: 212992 bytes
+After setting: receive buffer size: 425984 bytes
+------------------------------------------------------
+Send PointCloud To : ROS
+PointCloud Topic: /m20/rear/points
+------------------------------------------------------
+RoboSense-LiDAR-Driver is running.....
+
+
+
+终端2;
+Last login: Mon Jul 20 09:23:30 2026 from 192.168.116.95
+m20@M20piper:~$ cd ~/robodog_nav_system
+m20@M20piper:~/robodog_nav_system$ source /opt/ros/foxy/setup.bash
+m20@M20piper:~/robodog_nav_system$ source install/setup.bash
+m20@M20piper:~/robodog_nav_system$
+m20@M20piper:~/robodog_nav_system$ ros2 topic list | grep m20
+/m20/front/points
+/m20/rear/points
+m20@M20piper:~/robodog_nav_system$ ros2 topic hz /m20/front/points
+^Cm20@M20piper:~/robodog_nav_system$
+
+
+
+背部主机相关指令和日志
+终端1:
+m20@M20piper:~/robodog_nav_system$ source /opt/ros/foxy/setup.bash
+m20@M20piper:~/robodog_nav_system$ source install/setup.bash
+m20@M20piper:~/robodog_nav_system$
+m20@M20piper:~/robodog_nav_system$ cp install/m20_lidar_bridge/share/m20_lidar_bridge/config/rslidar_multicast_m20_rs48_backpack.yaml /tmp/m20_rs48_fastsplit.yaml
+m20@M20piper:~/robodog_nav_system$
+m20@M20piper:~/robodog_nav_system$ sed -i '/end_angle: 360/a\      split_frame_mode: 3\n      num_blks_split: 80' /tmp/m20_rs48_fastsplit.yaml
+m20@M20piper:~/robodog_nav_system$ sed -i 's/use_lidar_clock: true/use_lidar_clock: false/g' /tmp/m20_rs48_fastsplit.yaml
+m20@M20piper:~/robodog_nav_system$
+m20@M20piper:~/robodog_nav_system$ ros2 run rslidar_sdk rslidar_sdk_node --ros-args \
+>   -p config_path:=/tmp/m20_rs48_fastsplit.yaml
+********************************************************
+**********                                    **********
+**********    RSLidar_SDK Version: v1.5.19     **********
+**********                                    **********
+********************************************************
+--------------------------------------------------------
+Config loaded from PATH:
+/tmp/m20_rs48_fastsplit.yaml
+--------------------------------------------------------
+------------------------------------------------------
+Receive Packets From : Online LiDAR
+Msop Port: 6691
+Difop Port: 7781
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Driver Parameters
+input type: ONLINE_LIDAR
+lidar_type: M20_RS48
+frame_id: rslidar
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Input Parameters
+msop_port: 6691
+difop_port: 7781
+imu_port: 0
+user_layer_bytes: 0
+tail_layer_bytes: 0
+host_address: 10.21.31.192
+group_address: 224.10.10.201
+socket_recv_buf: 106496
+pcap_path:
+pcap_rate: 1
+pcap_repeat: 1
+use_vlan: 0
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Decoder Parameters
+min_distance: 0.2
+max_distance: 100
+use_lidar_clock: 0
+dense_points: 0
+ts_first_point: 1
+wait_for_difop: 0
+config_from_file: 0
+angle_path:
+start_angle: 0
+end_angle: 360
+split_frame_mode: 3
+split_angle: 0
+num_blks_split: 80
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Transform Parameters
+x: 0
+y: 0
+z: 0
+roll: 0
+pitch: 0
+yaw: 0
+------------------------------------------------------
+Original receive buffer size: 212992 bytes
+After setting: receive buffer size: 425984 bytes
+Original receive buffer size: 212992 bytes
+After setting: receive buffer size: 425984 bytes
+------------------------------------------------------
+Send PointCloud To : ROS
+PointCloud Topic: /m20/front/points
+------------------------------------------------------
+------------------------------------------------------
+Receive Packets From : Online LiDAR
+Msop Port: 6692
+Difop Port: 7782
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Driver Parameters
+input type: ONLINE_LIDAR
+lidar_type: M20_RS48
+frame_id: rslidar
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Input Parameters
+msop_port: 6692
+difop_port: 7782
+imu_port: 0
+user_layer_bytes: 0
+tail_layer_bytes: 0
+host_address: 10.21.31.192
+group_address: 224.10.10.202
+socket_recv_buf: 106496
+pcap_path:
+pcap_rate: 1
+pcap_repeat: 1
+use_vlan: 0
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Decoder Parameters
+min_distance: 0.2
+max_distance: 100
+use_lidar_clock: 0
+dense_points: 0
+ts_first_point: 1
+wait_for_difop: 0
+config_from_file: 0
+angle_path:
+start_angle: 0
+end_angle: 360
+split_frame_mode: 3
+split_angle: 0
+num_blks_split: 80
+------------------------------------------------------
+------------------------------------------------------
+             RoboSense Transform Parameters
+x: 0
+y: 0
+z: 0
+roll: 0
+pitch: 0
+yaw: 0
+------------------------------------------------------
+Original receive buffer size: 212992 bytes
+After setting: receive buffer size: 425984 bytes
+Original receive buffer size: 212992 bytes
+After setting: receive buffer size: 425984 bytes
+------------------------------------------------------
+Send PointCloud To : ROS
+PointCloud Topic: /m20/rear/points
+------------------------------------------------------
+RoboSense-LiDAR-Driver is running.....
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+ERRCODE_MSOPTIMEOUT
+^C[INFO] [1784511378.962637093] [rclcpp]: signal_handler(signal_value=2)
+RoboSense-LiDAR-Driver is stopping.....
+terminate called after throwing an instance of 'std::system_error'
+  what():  Invalid argument
+m20@M20piper:~/robodog_nav_system$
+
+
+
+终端2：
+m20@M20piper:~/robodog_nav_system$ cd ~/robodog_nav_system
+m20@M20piper:~/robodog_nav_system$ source /opt/ros/foxy/setup.bash
+m20@M20piper:~/robodog_nav_system$ source install/setup.bash
+m20@M20piper:~/robodog_nav_system$
+m20@M20piper:~/robodog_nav_system$ timeout 20 ros2 topic hz /m20/front/points
+^Cm20@M20piper:~/robodog_nav_system$ ros2 topic info -v /m20/front/points
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 1
+
+Node name: rslidar_points_destination_0
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.5c.19.4f.48.01.00.00.00.00.00.21.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+m20@M20piper:~/robodog_nav_system$ ros2 topic info -v /m20/rear/points
+Type: sensor_msgs/msg/PointCloud2
+
+Publisher count: 1
+
+Node name: rslidar_points_destination_1
+Node namespace: /
+Topic type: sensor_msgs/msg/PointCloud2
+Endpoint type: PUBLISHER
+GID: 01.0f.77.d1.5c.19.4f.48.01.00.00.00.00.00.31.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RMW_QOS_POLICY_RELIABILITY_RELIABLE
+  Durability: RMW_QOS_POLICY_DURABILITY_VOLATILE
+  Lifespan: 2147483651294967295 nanoseconds
+  Deadline: 2147483651294967295 nanoseconds
+  Liveliness: RMW_QOS_POLICY_LIVELINESS_AUTOMATIC
+  Liveliness lease duration: 2147483651294967295 nanoseconds
+
+Subscription count: 0
+
+m20@M20piper:~/robodog_nav_system$
+
+
+
+背部主机相关指令和日志
+终端1m20@M20piper:~$ cd ~/robodog_nav_system
+m20@M20piper:~/robodog_nav_system$ source /opt/ros/foxy/setup.bash
+m20@M20piper:~/robodog_nav_system$ source install/setup.bash
+m20@M20piper:~/robodog_nav_system$
+m20@M20piper:~/robodog_nav_system$ pgrep -af 'rslidar_sdk_node|run_backpack'
+m20@M20piper:~/robodog_nav_system$ pkill -f rslidar_sdk_node
+m20@M20piper:~/robodog_nav_system$ sudo timeout 20 tcpdump -ni enp2s0 \
+>   'udp and src host 10.21.31.106 and (dst host 224.10.10.201 or dst host 224.10.10.202) and (dst port 6691 or dst port 6692)' \
+>   -c 30
+[sudo] m20 的密码：
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on enp2s0, link-type EN10MB (Ethernet), capture size 262144 bytes
+
+0 packets captured
+0 packets received by filter
+0 packets dropped by kernel
+m20@M20piper:~/robodog_nav_system$
+
+
+终端2
+m20@M20piper:~/robodog_nav_system$ python3 - <<'PY'
+> import socket, struct, time
+>
+> iface = '10.21.31.192'
+> group = '224.10.10.201'
+> port = 6691
+>
+> for bind_addr in [group, '0.0.0.0']:
+>     print('bind_addr =', bind_addr)
+>     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+>     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+>     s.bind((bind_addr, port))
+>     mreq = socket.inet_aton(group) + socket.inet_aton(iface)
+>     s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+>     s.settimeout(5)
+>     try:
+>         for i in range(5):
+>             data, addr = s.recvfrom(2048)
+>             print(i, addr, len(data), data[:8].hex(' '))
+>     except Exception as e:
+>         print('ERR:', repr(e))
+>     s.close()
+> PY
+bind_addr = 224.10.10.201
+ERR: timeout('timed out')
+bind_addr = 0.0.0.0
+ERR: timeout('timed out')
+m20@M20piper:~/robodog_nav_system$
+
+
+背部主机相关指令和日志
+m20@M20piper:~/robodog_nav_system$ ip -br addr show enp2s0
+enp2s0           UP             10.21.31.192/24 fe80::8c1d:2a8:b6c3:4c35/64
+m20@M20piper:~/robodog_nav_system$ ip route
+default via 192.168.113.1 dev wlx6c1ff78bc632 proto dhcp metric 600
+10.21.31.0/24 dev enp2s0 proto kernel scope link src 10.21.31.192 metric 100
+169.254.0.0/16 dev enp2s0 scope link metric 1000
+192.168.112.0/21 dev wlx6c1ff78bc632 proto kernel scope link src 192.168.112.146 metric 600
+m20@M20piper:~/robodog_nav_system$ ping -c 3 10.21.31.106
+PING 10.21.31.106 (10.21.31.106) 56(84) bytes of data.
+64 字节，来自 10.21.31.106: icmp_seq=1 ttl=64 时间=0.271 毫秒
+64 字节，来自 10.21.31.106: icmp_seq=2 ttl=64 时间=0.458 毫秒
+64 字节，来自 10.21.31.106: icmp_seq=3 ttl=64 时间=0.263 毫秒
+
+--- 10.21.31.106 ping 统计 ---
+已发送 3 个包， 已接收 3 个包, 0% 包丢失, 耗时 2031 毫秒
+rtt min/avg/max/mdev = 0.263/0.330/0.458/0.090 ms
+m20@M20piper:~/robodog_nav_system$ ping -c 3 10.21.31.104
+PING 10.21.31.104 (10.21.31.104) 56(84) bytes of data.
+64 字节，来自 10.21.31.104: icmp_seq=1 ttl=64 时间=0.472 毫秒
+64 字节，来自 10.21.31.104: icmp_seq=2 ttl=64 时间=0.300 毫秒
+64 字节，来自 10.21.31.104: icmp_seq=3 ttl=64 时间=0.352 毫秒
+
+--- 10.21.31.104 ping 统计 ---
+已发送 3 个包， 已接收 3 个包, 0% 包丢失, 耗时 2035 毫秒
+rtt min/avg/max/mdev = 0.300/0.374/0.472/0.072 ms
+m20@M20piper:~/robodog_nav_system$ sudo timeout 15 tcpdump -ni enp2s0 'host 10.21.31.106' -c 30
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on enp2s0, link-type EN10MB (Ethernet), capture size 262144 bytes
+09:45:07.734313 IP 10.21.31.106.320 > 224.0.1.129.320: UDP, length 54
+09:45:07.767092 IP 10.21.31.106.40318 > 10.21.31.192.7416: UDP, length 524
+09:45:07.767649 IP 10.21.31.106.40318 > 239.255.0.1.7400: UDP, length 524
+09:45:08.058492 IP 10.21.31.192.60305 > 10.21.31.106.7416: UDP, length 52
+09:45:08.058659 IP 10.21.31.192.60305 > 10.21.31.106.7436: UDP, length 52
+09:45:08.058682 IP 10.21.31.192.60305 > 10.21.31.106.7412: UDP, length 52
+09:45:08.058729 IP 10.21.31.192.60305 > 10.21.31.106.7456: UDP, length 52
+09:45:08.058814 IP 10.21.31.192.60305 > 10.21.31.106.7432: UDP, length 52
+09:45:08.058837 IP 10.21.31.192.60305 > 10.21.31.106.7460: UDP, length 52
+09:45:08.058990 IP 10.21.31.106.58820 > 10.21.31.192.7416: UDP, length 124
+09:45:08.059033 IP 10.21.31.106.50007 > 10.21.31.192.7416: UDP, length 124
+09:45:08.059106 IP 10.21.31.106.57572 > 10.21.31.192.7416: UDP, length 124
+09:45:08.059256 IP 10.21.31.106.40318 > 10.21.31.192.7416: UDP, length 124
+09:45:08.059491 IP 10.21.31.106.53058 > 10.21.31.192.7416: UDP, length 124
+09:45:08.060486 IP 10.21.31.106.52556 > 10.21.31.192.7416: UDP, length 124
+09:45:08.264429 IP 10.21.31.106.320 > 224.0.1.129.320: UDP, length 64
+09:45:08.272556 IP 10.21.31.106.319 > 224.0.1.129.319: UDP, length 44
+09:45:08.272583 IP 10.21.31.106.320 > 224.0.1.129.320: UDP, length 44
+09:45:08.413841 IP 10.21.31.192.60305 > 10.21.31.106.7416: UDP, length 52
+09:45:08.414003 IP 10.21.31.192.60305 > 10.21.31.106.7436: UDP, length 52
+09:45:08.414025 IP 10.21.31.192.60305 > 10.21.31.106.7412: UDP, length 52
+09:45:08.414066 IP 10.21.31.192.60305 > 10.21.31.106.7456: UDP, length 52
+09:45:08.414085 IP 10.21.31.192.60305 > 10.21.31.106.7432: UDP, length 52
+09:45:08.414102 IP 10.21.31.192.60305 > 10.21.31.106.7460: UDP, length 52
+09:45:08.414276 IP 10.21.31.106.58820 > 10.21.31.192.7416: UDP, length 124
+09:45:08.414342 IP 10.21.31.106.50007 > 10.21.31.192.7416: UDP, length 124
+09:45:08.414344 IP 10.21.31.106.53058 > 10.21.31.192.7416: UDP, length 124
+09:45:08.414367 IP 10.21.31.106.52556 > 10.21.31.192.7416: UDP, length 124
+09:45:08.414433 IP 10.21.31.106.57572 > 10.21.31.192.7416: UDP, length 124
+09:45:08.414462 IP 10.21.31.106.40318 > 10.21.31.192.7416: UDP, length 124
+30 packets captured
+30 packets received by filter
+0 packets dropped by kernel
+m20@M20piper:~/robodog_nav_system$ sudo timeout 15 tcpdump -ni enp2s0 'udp and multicast' -c 30
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on enp2s0, link-type EN10MB (Ethernet), capture size 262144 bytes
+09:45:16.770194 IP 10.21.31.106.40318 > 239.255.0.1.7400: UDP, length 524
+09:45:17.274489 IP 10.21.31.106.319 > 224.0.1.129.319: UDP, length 44
+09:45:17.274525 IP 10.21.31.106.320 > 224.0.1.129.320: UDP, length 44
+09:45:17.517228 IP 10.21.31.104.319 > 224.0.1.129.319: UDP, length 44
+09:45:17.517255 IP 10.21.31.106.320 > 224.0.1.129.320: UDP, length 54
+09:45:17.523806 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+09:45:17.575403 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+09:45:17.945210 IP 10.21.31.103.44500 > 239.255.0.1.7400: UDP, length 524
+09:45:18.039790 IP 10.21.31.104.39819 > 239.255.0.1.7400: UDP, length 464
+09:45:18.041141 IP 10.21.31.103.34515 > 239.255.0.1.7400: UDP, length 524
+09:45:18.049091 IP 10.21.31.192.60305 > 239.255.0.1.7400: UDP, length 320
+09:45:18.054737 IP 10.21.31.104.44738 > 239.255.0.1.7400: UDP, length 468
+09:45:18.062561 IP 10.21.31.106.57572 > 239.255.0.1.7400: UDP, length 524
+09:45:18.107899 IP 10.21.31.104.55001 > 239.255.0.1.7400: UDP, length 464
+09:45:18.127353 IP 10.21.31.106.50007 > 239.255.0.1.7400: UDP, length 464
+09:45:18.132164 IP 10.21.31.104.39390 > 239.255.0.1.7400: UDP, length 468
+09:45:18.266413 IP 10.21.31.106.320 > 224.0.1.129.320: UDP, length 64
+09:45:18.275293 IP 10.21.31.106.319 > 224.0.1.129.319: UDP, length 44
+09:45:18.275313 IP 10.21.31.106.320 > 224.0.1.129.320: UDP, length 44
+09:45:18.295367 IP 10.21.31.106.58820 > 239.255.0.1.7400: UDP, length 524
+09:45:18.523969 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+09:45:18.575506 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+09:45:19.174118 IP 10.21.31.106.53058 > 239.255.0.1.7400: UDP, length 524
+09:45:19.275609 IP 10.21.31.106.319 > 224.0.1.129.319: UDP, length 44
+09:45:19.275639 IP 10.21.31.106.320 > 224.0.1.129.320: UDP, length 44
+09:45:19.282047 IP 10.21.31.104.319 > 224.0.1.129.319: UDP, length 44
+09:45:19.282219 IP 10.21.31.106.320 > 224.0.1.129.320: UDP, length 54
+09:45:19.379219 IP 10.21.31.106.52556 > 239.255.0.1.7400: UDP, length 524
+09:45:19.524038 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+09:45:19.575710 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+30 packets captured
+30 packets received by filter
+0 packets dropped by kernel
+m20@M20piper:~/robodog_nav_system$
+
+通用主机104相关指令和之日日志
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.10.198 aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ * You are now in gos(104)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 17:07:39 2026 from 10.21.31.192
+user@host.v1.4:~$ source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.31.104
+Selected IP(s) based on eth0 IP (10.21.31.104): 10.21.31.104
+IP 10.21.31.104 already exists in /opt/robot/fastdds.xml
+source ros2 env success
+user@host.v1.4:~$
+user@host.v1.4:~$ timeout 10 sudo tcpdump -ni eth0 \
+>   'udp and (dst host 224.10.10.201 or dst host 224.10.10.202) and (dst port 6691 or dst port 6692)' \
+>   -c 20
+[sudo] password for user:
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
+
+
+
+导航主机106相关日志和指令：
+
+ * You are now in nos(106)
+ * aos(103) gos(104) nos(106)
+
+Web console: https://host.v1.4:9393/
+
+Last login: Fri Jul 17 16:50:07 2026 from 10.21.31.192
+user@host.v1.4:~$ source /opt/robot/scripts/setup_ros2.sh
+Detected eth0 IP: 10.21.33.106
+Selected IP(s) based on eth0 IP (10.21.33.106): 10.21.33.106
+IP 10.21.33.106 already exists in /opt/robot/fastdds.xml
+source ros2 env success
+user@host.v1.4:~$
+user@host.v1.4:~$ ip -br addr
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+dummy0           DOWN
+eth0             UP             10.21.33.106/24 fe80::54f1:d2ff:fe66:4fd/64
+eth1             UP             10.21.31.106/24 fe80::58f1:d2ff:fe66:4fd/64
+docker0          DOWN           172.17.0.1/16
+user@host.v1.4:~$ systemctl status multicast-relay.service --no-pager -l
+● multicast-relay.service - Multicast Relay Service
+     Loaded: loaded (/lib/systemd/system/multicast-relay.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2026-07-20 09:30:53 CST; 30min ago
+   Main PID: 1796 (python3)
+      Tasks: 3 (limit: 18810)
+     Memory: 4.9M
+     CGroup: /system.slice/multicast-relay.service
+             └─1796 /usr/bin/python3 /usr/bin/multicast.py
+
+Warning: journal has been rotated since unit was started, output may be incomplete.
+user@host.v1.4:~$ ps -ef | grep -E 'multicast.py|python3' | grep -v grep
+root         764       1  0 09:30 ?        00:00:00 /usr/bin/python3 /usr/bin/networkd-dispatcher --run-startup-triggers
+root        1796       1  0 09:30 ?        00:00:02 /usr/bin/python3 /usr/bin/multicast.py
+root        2963       1  0 09:31 ?        00:00:01 /usr/bin/python3 /opt/ros/foxy/bin/ros2 launch passable_area nav.launch.py
+user        4599    1072  2 09:32 ?        00:00:34 /usr/bin/python3 /usr/bin/update-manager --no-update --no-focus-on-map
+user@host.v1.4:~$ ^C
+user@host.v1.4:~$ sudo timeout 10 tcpdump -ni eth0 \
+>   'udp and (dst host 224.10.10.201 or dst host 224.10.10.202) and (dst port 6691 or dst port 6692 or dst port 7781 or dst port 7782)' \
+>   -c 30
+[sudo] password for user:
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
+10:01:17.848297 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.848547 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.848741 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.848988 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.849183 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.849396 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.849624 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.849874 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.850070 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.850346 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.850518 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.850767 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.851284 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.851480 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.851656 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.851855 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.852095 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.852295 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.852541 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.852741 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.852986 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.853187 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.853472 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.853634 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.853878 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.854075 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.854325 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.854559 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+10:01:17.854768 IP 10.21.33.201.49610 > 224.10.10.201.6691: UDP, length 1248
+10:01:17.854962 IP 10.21.33.202.49610 > 224.10.10.202.6692: UDP, length 1248
+30 packets captured
+38 packets received by filter
+0 packets dropped by kernel
+user@host.v1.4:~$ sudo timeout 10 tcpdump -ni eth1 \
+>   'udp and (dst host 224.10.10.201 or dst host 224.10.10.202) and (dst port 6691 or dst port 6692 or dst port 7781 or dst port 7782)' \
+>   -c 30
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
+10:01:30.615481 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:30.666206 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+10:01:31.615467 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:31.666148 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+10:01:32.615717 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:32.666171 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+10:01:33.615406 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:33.666124 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+10:01:34.615480 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:34.666128 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+10:01:35.615656 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:35.666206 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+10:01:36.615753 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:36.666116 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+10:01:37.615450 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:37.666162 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+10:01:38.615450 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:38.666207 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+10:01:39.615449 IP 10.21.31.106.44300 > 224.10.10.202.7782: UDP, length 1248
+10:01:39.666219 IP 10.21.31.106.38484 > 224.10.10.201.7781: UDP, length 1248
+
+20 packets captured
+30 packets received by filter
+0 packets dropped by kernel
+user@host.v1.4:~$
+
+
+导航主机106相关日志和指令：
+user@host.v1.4:~$ sudo sed -n '1,240p' /usr/bin/multicast.py
+import socket
+import struct
+import threading
+
+# 需要转发的组播组和端口
+GROUPS = [
+    ("224.10.10.202", 6692),
+    ("224.10.10.202", 7782),
+    ("224.10.10.201", 6691),
+    ("224.10.10.201", 7781),
+]
+
+# 接收组播的接口 (eth0)
+RECV_IFACE = "10.21.33.106"
+# 转发出去的接口 (eth1)
+SEND_IFACE = "10.21.31.106"
+
+
+def join_multicast_group(group, port, iface_ip):
+    """创建并返回一个加入了组播组的 UDP socket"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((group, port))  # 绑定到组播端口
+
+    # 加入组播组
+    mreq = struct.pack("4s4s", socket.inet_aton(group), socket.inet_aton(iface_ip))
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
+    return sock
+
+
+def forwarder(group, port):
+    """从 eth0 接收组播并转发到 eth1"""
+    recv_sock = join_multicast_group(group, port, RECV_IFACE)
+
+    send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    # 指定发送接口为 eth1
+    send_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(SEND_IFACE))
+
+    print(f"[Relay] Forwarding {group}:{port} from {RECV_IFACE} → {SEND_IFACE}")
+
+    while True:
+        data, addr = recv_sock.recvfrom(65535)
+        send_sock.sendto(data, (group, port))
+
+
+def main():
+    threads = []
+    for group, port in GROUPS:
+        t = threading.Thread(target=forwarder, args=(group, port), daemon=True)
+        t.start()
+        threads.append(t)
+
+    print("Multicast relay running...")
+    for t in threads:
+        t.join()
+
+
+if __name__ == "__main__":
+    main()
+
+user@host.v1.4:~$ sudo journalctl -u multicast-relay.service --no-pager -n 120
+-- Logs begin at Mon 2026-07-20 09:51:20 CST, end at Mon 2026-07-20 10:03:37 CST. --
+-- No entries --
+user@host.v1.4:~$ sudo ss -ulpn | grep -E '6691|6692|7781|7782|python|multicast'
+UNCONN   0         0                    0.0.0.0:38484            0.0.0.0:*       users:(("python3",pid=1796,fd=10))                    
+UNCONN   0         0              224.10.10.201:6691             0.0.0.0:*       users:(("rslidar",pid=3191,fd=34))                    
+UNCONN   0         0              224.10.10.202:6692             0.0.0.0:*       users:(("rslidar",pid=3191,fd=37))                    
+UNCONN   0         0              224.10.10.201:7781             0.0.0.0:*       users:(("rslidar",pid=3191,fd=35))                    
+UNCONN   0         0              224.10.10.201:7781             0.0.0.0:*       users:(("python3",pid=1796,fd=9))                     
+UNCONN   0         0              224.10.10.202:7782             0.0.0.0:*       users:(("rslidar",pid=3191,fd=38))                    
+UNCONN   0         0              224.10.10.202:7782             0.0.0.0:*       users:(("python3",pid=1796,fd=4))                     
+UNCONN   0         0                    0.0.0.0:44300            0.0.0.0:*       users:(("python3",pid=1796,fd=6))                     
+user@host.v1.4:~$
+
+
+
+背部主机相关指令和日志
+m20@M20piper:~/robodog_nav_system$ source /opt/ros/foxy/setup.bash
+m20@M20piper:~/robodog_nav_system$ source install/setup.bash
+m20@M20piper:~/robodog_nav_system$ ros2 topic list | grep -E 'rslidar_points|LIDAR|points'
+/LIDAR/IMU201
+/LIDAR/IMU202
+/LIDAR/STATUS
+/rslidar_points_front
+/rslidar_points_rear
+m20@M20piper:~/robodog_nav_system$
+m20@M20piper:~/robodog_nav_system$ ros2 topic hz /rslidar_points_front
+average rate: 10.018
+        min: 0.095s max: 0.105s std dev: 0.00222s window: 12
+average rate: 10.007
+        min: 0.095s max: 0.105s std dev: 0.00205s window: 23
+average rate: 10.007
+        min: 0.095s max: 0.105s std dev: 0.00236s window: 34
+average rate: 10.005
+        min: 0.095s max: 0.105s std dev: 0.00223s window: 44
+average rate: 10.003
+        min: 0.095s max: 0.105s std dev: 0.00217s window: 54
+average rate: 10.003
+        min: 0.095s max: 0.105s std dev: 0.00208s window: 65
+average rate: 10.003
+        min: 0.095s max: 0.105s std dev: 0.00206s window: 76
+^Cm20@M20piper:~/robodog_nav_system$ ros2 topic hz /rslidar_points_rear
+average rate: 10.004
+        min: 0.095s max: 0.104s std dev: 0.00203s window: 12
+average rate: 10.007
+        min: 0.095s max: 0.104s std dev: 0.00196s window: 23
+average rate: 10.002
+        min: 0.095s max: 0.105s std dev: 0.00198s window: 33
+average rate: 10.003
+        min: 0.095s max: 0.105s std dev: 0.00190s window: 44
+average rate: 10.002
+        min: 0.095s max: 0.105s std dev: 0.00193s window: 54
+average rate: 10.002
+        min: 0.095s max: 0.105s std dev: 0.00191s window: 65
+^Cm20@M20piper:~/robodog_nav_system$ timeout 3 ros2 topic echo /rslidar_points_front --no-arr
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 22888
+  frame_id: rslidar_front
+height: 20095
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 321520>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 100020885
+  frame_id: rslidar_front
+height: 20118
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 321888>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 200021029
+  frame_id: rslidar_front
+height: 20204
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 323264>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 300024033
+  frame_id: rslidar_front
+height: 19919
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 318704>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 400020838
+  frame_id: rslidar_front
+height: 20270
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 324320>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 500022888
+  frame_id: rslidar_front
+height: 20055
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 320880>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 600020885
+  frame_id: rslidar_front
+height: 19936
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 318976>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 700021982
+  frame_id: rslidar_front
+height: 20036
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 320576>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 800019979
+  frame_id: rslidar_front
+height: 20012
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 320192>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715098
+    nanosec: 899905205
+  frame_id: rslidar_front
+height: 17158
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 274528>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 18835
+  frame_id: rslidar_front
+height: 19993
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 319888>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 100018024
+  frame_id: rslidar_front
+height: 20182
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 322912>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 200024843
+  frame_id: rslidar_front
+height: 20096
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 321536>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 300026894
+  frame_id: rslidar_front
+height: 19856
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 317696>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 400027990
+  frame_id: rslidar_front
+height: 19976
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 319616>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 500023842
+  frame_id: rslidar_front
+height: 20000
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 320000>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 600026846
+  frame_id: rslidar_front
+height: 20058
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 320928>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 700024843
+  frame_id: rslidar_front
+height: 19898
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 318368>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 800026894
+  frame_id: rslidar_front
+height: 19953
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 319248>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715099
+    nanosec: 899917126
+  frame_id: rslidar_front
+height: 16832
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 269312>'
+is_dense: true
+---
+^Cm20@M20piper:~/robodog_nav_system$ timeout 3 ros2 topic echo /rslidar_points_rear --no-arr
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 99993944
+  frame_id: rslidar_rear
+height: 21085
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 337360>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 199990034
+  frame_id: rslidar_rear
+height: 21254
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 340064>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 299997091
+  frame_id: rslidar_rear
+height: 21348
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 341568>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 399991989
+  frame_id: rslidar_rear
+height: 21410
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 342560>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 499994040
+  frame_id: rslidar_rear
+height: 21213
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 339408>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 599992037
+  frame_id: rslidar_rear
+height: 21154
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 338464>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 699955940
+  frame_id: rslidar_rear
+height: 17909
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 286544>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 799985886
+  frame_id: rslidar_rear
+height: 21312
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 340992>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 899983883
+  frame_id: rslidar_rear
+height: 21189
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 339024>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715106
+    nanosec: 999986887
+  frame_id: rslidar_rear
+height: 21102
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 337632>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 99987984
+  frame_id: rslidar_rear
+height: 21258
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 340128>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 199988842
+  frame_id: rslidar_rear
+height: 21054
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 336864>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 299988985
+  frame_id: rslidar_rear
+height: 21360
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 341760>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 399986982
+  frame_id: rslidar_rear
+height: 21225
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 339600>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 499991894
+  frame_id: rslidar_rear
+height: 21197
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 339152>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 599989891
+  frame_id: rslidar_rear
+height: 21212
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 339392>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 699878216
+  frame_id: rslidar_rear
+height: 18053
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 288848>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 799989223
+  frame_id: rslidar_rear
+height: 21325
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 341200>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 899987221
+  frame_id: rslidar_rear
+height: 21216
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 339456>'
+is_dense: true
+---
+header:
+  stamp:
+    sec: 1784715107
+    nanosec: 999992132
+  frame_id: rslidar_rear
+height: 21039
+width: 1
+fields: '<sequence type: sensor_msgs/msg/PointField, length: 4>'
+is_bigendian: false
+point_step: 16
+row_step: 16
+data: '<sequence type: uint8, length: 336624>'
+is_dense: true
+---
+m20@M20piper:~/robodog_nav_system$

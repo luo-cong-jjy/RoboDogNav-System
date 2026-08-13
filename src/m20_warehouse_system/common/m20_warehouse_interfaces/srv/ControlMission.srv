@@ -1,0 +1,12 @@
+# Control the currently active mission without creating a second mission goal.
+uint8 PAUSE=1
+uint8 RESUME=2
+uint8 STOP=3
+uint8 RETRY_CURRENT=4
+
+string mission_id
+uint8 command
+---
+bool success
+string state
+string message

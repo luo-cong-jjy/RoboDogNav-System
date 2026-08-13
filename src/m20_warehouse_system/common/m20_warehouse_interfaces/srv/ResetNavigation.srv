@@ -1,0 +1,6 @@
+# Clear all navigation state that is tied to a previous floor/map generation.
+string floor_id
+uint64 generation
+---
+bool success
+string message

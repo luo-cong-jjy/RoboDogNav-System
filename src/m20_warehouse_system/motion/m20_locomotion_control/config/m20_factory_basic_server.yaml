@@ -1,0 +1,42 @@
+m20_locomotion_manager:
+  ros__parameters:
+    input_topic: /m20/control/cmd_vel_safe
+    output_topic: /m20/locomotion/cmd_vel_sdk
+    mode_topic: /m20/locomotion/mode
+    backend_ready_topic: /m20/locomotion/backend_ready
+    backend_fault_topic: /m20/locomotion/backend_fault
+    safety_state_topic: /m20/control/safety_state
+    require_backend_ready: true
+    # The autonomous candidate was adapted before collision prediction.
+    rolling_navigation_enabled: false
+    allow_manual_lateral: true
+    command_timeout_sec: 0.30
+
+m20_basic_server_backend:
+  ros__parameters:
+    robot_host: 10.21.31.103
+    udp_port: 30000
+    tcp_port: 30001
+    input_topic: /m20/locomotion/cmd_vel_sdk
+    e_stop_topic: /m20/control/e_stop
+    ready_topic: /m20/locomotion/backend_ready
+    fault_topic: /m20/locomotion/backend_fault
+    status_topic: /m20/locomotion/backend_status
+    measured_twist_topic: /m20/locomotion/measured_twist
+    enable_service: /m20/hardware/enable_motion
+    command_rate_hz: 20.0
+    # Shorter than the M20 firmware's documented 500 ms stop watchdog.
+    command_timeout_sec: 0.30
+    status_timeout_sec: 1.25
+    connect_retry_sec: 2.0
+    requested_control_usage_mode: 1
+    # 0x3002: agile-flat gait recommended for autonomous navigation.
+    requested_gait: 12290
+    auto_enable_motion: false
+    lie_down_on_disable: false
+    # Must be explicitly acknowledged after the onboard planner and
+    # autonomous charging command sources have been stopped.
+    command_ownership_confirmed: false
+    # Never enlarge a command after footprint collision prediction. Values
+    # below the official non-zero interval are safely reduced to zero.
+    subthreshold_policy: zero

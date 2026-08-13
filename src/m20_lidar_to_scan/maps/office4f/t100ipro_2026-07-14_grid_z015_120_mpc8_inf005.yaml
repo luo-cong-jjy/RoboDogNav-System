@@ -1,0 +1,7 @@
+image: t100ipro_2026-07-14_grid_z015_120_mpc8_inf005.pgm
+mode: trinary
+resolution: 0.200000
+origin: [-108.874001, -50.549999, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25

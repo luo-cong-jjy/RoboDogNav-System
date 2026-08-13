@@ -1,0 +1,117 @@
+schema_version: 1
+
+# Fail-closed single-floor template for the physical M20-PRO. Replace every
+# SITE_* value after mapping; the referenced assets intentionally do not ship.
+system:
+  project_id: m20_pao_f1_site
+  robot_model: deep_robotics_m20_pro
+  default_profile: hardware_f1_commissioning
+  deployment_mode: hardware
+  map_asset_kind: surveyed
+  logical_floor_count: 1
+
+frames:
+  overview: world
+  active_map: world
+  odom: world
+  robot_base: base_link
+  lidar: base_link
+
+# Bounds are used for configuration checks and RViz boundary markers only.
+# Set these to the surveyed F1 x/y extent with a small documented margin.
+simulation:
+  layout_mode: flat_separated_regions
+  ground_z: 0.0
+  floor_size_x: 40.0
+  floor_size_y: 40.0
+  inter_region_gap: 0.0
+  prohibit_direct_region_crossing: true
+  teleport_on_floor_switch: false
+  elevator_transition_delay_sec: 0.0
+
+floor_switch:
+  transfer_adapter: external_action
+  pose_handoff: wait_for_target
+  transition_delay_sec: 0.0
+  transfer_timeout_sec: 120.0
+  external_action_name: /m20/floor_transfer/execute
+
+# These fields remain present for schema compatibility but are never used to
+# generate a hardware map when map_asset_kind=surveyed.
+map_generation:
+  deterministic: true
+  obstacle_count_per_floor: 1
+  obstacle_height: 2.0
+  surface_resolution: 0.10
+  boundary_clearance: 1.0
+  reserved_zone_clearance: 1.0
+  minimum_obstacle_spacing: 0.90
+
+floors:
+  F1:
+    display_name: SITE_F1
+    source_seed: 1
+    # Hardware PCD and Elevator-LIO both use world; non-zero offsets are
+    # rejected by the validator.
+    simulation_offset: [0.0, 0.0, 0.0]
+    overview_z: 0.0
+    pcd_file: maps/sites/m20_pao/F1/static_map.pcd
+    metadata_file: maps/sites/m20_pao/F1/static_map.json
+    initial_pose: [0.0, 0.0, 0.0]
+    elevator_lobby_pose: [0.0, 0.0, 0.0]
+    elevator_cabin_pose: [0.0, 0.0, 0.0]
+    reserved_zones:
+      - name: SITE_START_CLEAR_ZONE
+        center: [0.0, 0.0]
+        size: [2.0, 2.0]
+    inspection_points:
+      - name: SITE_REVIEW_REQUIRED
+        pose: [0.0, 0.0, 0.0]
+        dwell_sec: 0.0
+
+elevators: {}
+
+map_switch_transaction:
+  require_robot_stopped: true
+  stop_linear_threshold: 0.03
+  stop_angular_threshold: 0.05
+  cancel_navigation_timeout_sec: 2.0
+  reset_navigation_timeout_sec: 2.0
+  load_map_timeout_sec: 5.0
+  relocate_timeout_sec: 5.0
+  readiness_timeout_sec: 12.0
+  minimum_fresh_local_cloud_count: 3
+  failure_state: FAULT_HOLD
+
+navigation:
+  global_route_backend: scan_native
+  automatic_mission_route_backend: scan_native
+  local_planner_backend: scan_planner
+  scan_navigation_mode: 1
+  local_cloud_topic: /LIO/clouds_lidar
+  sensor_cloud_topic: /quad_0/sensor_cloud
+  goal_topic: /move_base_simple/goal
+  raw_cmd_vel_topic: /m20/navigation/cmd_vel_raw
+  goal_position_tolerance: 0.20
+  goal_yaw_tolerance: 0.35
+
+safety:
+  manual_priority: true
+  immediate_zero_on_emergency_stop: true
+  immediate_zero_on_floor_switch_hold: true
+  navigation_command_timeout_sec: 0.5
+  max_linear_x: 0.30
+  max_linear_y: 0.0
+  max_angular_z: 0.45
+  max_linear_accel: 0.6
+  max_angular_accel: 0.8
+
+# Deliberately no movement: manual RViz goals are the G8 commissioning path.
+mission:
+  id: m20_pao_f1_no_motion
+  loop: false
+  sequence:
+    - type: terminal
+      floor: F1
+      location: initial_pose
+      name: SITE_INITIAL_HOLD

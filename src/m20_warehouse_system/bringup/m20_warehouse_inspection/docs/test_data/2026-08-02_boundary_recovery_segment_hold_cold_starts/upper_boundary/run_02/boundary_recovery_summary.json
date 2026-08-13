@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "case": "upper_boundary",
+  "action_success": true,
+  "action_error_code": 0,
+  "action_message": "goal reached",
+  "duration_sec": 105.175738549995,
+  "start_pose": {
+    "x": -7.199769653762361,
+    "y": 16.79929889630311,
+    "yaw": -3.109849555929025
+  },
+  "final_pose": {
+    "x": -35.854711282390916,
+    "y": 16.027024430197148,
+    "yaw": -3.1230338681238377
+  },
+  "final_error_m": 0.14778068646468215,
+  "minimum_obstacle_body_clearance_m": 0.39071430099807153,
+  "minimum_scan_inflation_clearance_m": 0.14071430099807153,
+  "minimum_guard_clearance_m": 0.09071430099807154,
+  "scan_inflated_region_sample_count": 0,
+  "longest_scan_inflated_region_sec": 0.0,
+  "obstacle_contact_event_count": 0,
+  "obstacle_contact_peak_force_n": 0.0,
+  "obstacle_contact_pairs": [],
+  "current_footprint_guard_event_count": 0,
+  "predicted_footprint_guard_event_count": 5,
+  "recovery_budget_exhausted_event_count": 1,
+  "raster_shell_escape_event_count": 0,
+  "map_edge_inward_recovery_event_count": 0,
+  "guard_events": [
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=nominal; t=0.65s; circle=front; xy=(-7.61,16.78); yaw=-3.09; cell=(323,367); cmd=(0.32,0.00,0.03); recovery=(-0.35,0.00,0.00)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=nominal; t=0.65s; circle=front; xy=(-7.61,16.78); yaw=-3.09; cell=(323,367); cmd=(0.28,0.00,0.03); recovery=(-0.35,0.00,0.00)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=nominal; t=0.70s; circle=front; xy=(-7.61,16.79); yaw=-3.11; cell=(323,367); cmd=(0.28,0.00,0.00); recovery=(-0.35,0.00,0.00)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=nominal; t=0.70s; circle=front; xy=(-7.61,16.79); yaw=-3.11; cell=(323,367); cmd=(0.38,0.00,0.04); recovery=(-0.35,0.00,0.00)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=nominal; t=0.70s; circle=front; xy=(-7.61,16.78); yaw=-3.11; cell=(323,367); cmd=(0.45,0.00,0.03); recovery=(-0.35,0.00,0.00)",
+    "RECOVERY_BUDGET_EXHAUSTED; reason=TIME_LIMIT; trigger=PREDICTED_FOOTPRINT; cause=OCCUPIED; model=nominal; t=0.60s; circle=front; xy=(-7.61,16.79); yaw=-3.12; cell=(323,367); cmd=(0.45,0.00,0.01)"
+  ],
+  "fallback_triggered": true,
+  "route_states": [
+    {
+      "elapsed_sec": 0.0,
+      "state": "WAITING_FOR_MAP_AND_ODOM"
+    },
+    {
+      "elapsed_sec": 0.0,
+      "state": "READY"
+    },
+    {
+      "elapsed_sec": 8.516549890991882,
+      "state": "TRACKING_ROUTE"
+    },
+    {
+      "elapsed_sec": 104.97546158600016,
+      "state": "GOAL_REACHED"
+    },
+    {
+      "elapsed_sec": 105.11247510599787,
+      "state": "READY"
+    }
+  ],
+  "scan_goal_count": 5,
+  "scan_goals": [
+    {
+      "elapsed_sec": 8.516725337001844,
+      "x": -5.983990733999477,
+      "y": 16.75789477730127,
+      "stationary_before_publish_sec": 0.004453418994671665,
+      "linear_speed_mps": 0.05394266152947476,
+      "angular_speed_radps": 0.001700999168056247
+    },
+    {
+      "elapsed_sec": 14.418157642998267,
+      "x": -7.349999513477087,
+      "y": 16.55000054463744,
+      "stationary_before_publish_sec": 0.30602784000802785,
+      "linear_speed_mps": 0.014727037115051484,
+      "angular_speed_radps": 0.013658755518144307
+    },
+    {
+      "elapsed_sec": 18.537941795992083,
+      "x": -7.949999522417784,
+      "y": 16.450000543147326,
+      "stationary_before_publish_sec": 0.30973142400034703,
+      "linear_speed_mps": 0.026034032300431477,
+      "angular_speed_radps": 0.042955404065948305
+    },
+    {
+      "elapsed_sec": 22.018064190997393,
+      "x": -30.149999853223562,
+      "y": 16.05000053718686,
+      "stationary_before_publish_sec": 0.3059823020012118,
+      "linear_speed_mps": 0.022491786179553955,
+      "angular_speed_radps": 0.010289771256158495
+    },
+    {
+      "elapsed_sec": 86.45312519698928,
+      "x": -36.0,
+      "y": 16.0,
+      "stationary_before_publish_sec": 0.3065193249931326,
+      "linear_speed_mps": 0.03424374022617386,
+      "angular_speed_radps": 0.034188403498341215
+    }
+  ],
+  "intermediate_stop_check_count": 4,
+  "intermediate_stop_violation_count": 0,
+  "intermediate_stop_violations": [],
+  "backend_faults": [],
+  "feedback": [
+    {
+      "elapsed_sec": 0.0449747539969394,
+      "state": "PLANNING",
+      "distance_remaining_m": 28.81131935119629,
+      "route_update_count": 32,
+      "message": "goal sent directly to SCAN"
+    },
+    {
+      "elapsed_sec": 0.045474092999938875,
+      "state": "TRACKING",
+      "distance_remaining_m": 28.811296463012695,
+      "route_update_count": 32,
+      "message": "native SCAN trajectory tracking"
+    },
+    {
+      "elapsed_sec": 6.873271907999879,
+      "state": "RECOVERY_REPLAN",
+      "distance_remaining_m": 28.847408294677734,
+      "route_update_count": 1393,
+      "message": "collision recovery ended; resetting SCAN (1/2)"
+    },
+    {
+      "elapsed_sec": 6.914314982001088,
+      "state": "WAITING_FOR_RECOVERY_REARM",
+      "distance_remaining_m": 28.832141876220703,
+      "route_update_count": 1402,
+      "message": "waiting for collision guard CLEAR"
+    },
+    {
+      "elapsed_sec": 8.483986801002175,
+      "state": "REPLANNING",
+      "distance_remaining_m": 28.827516555786133,
+      "route_update_count": 1715,
+      "message": "goal rerouted through M20 clearance subgoals after bounded recovery"
+    },
+    {
+      "elapsed_sec": 8.484450416988693,
+      "state": "PLANNING",
+      "distance_remaining_m": 28.827516555786133,
+      "route_update_count": 1715,
+      "message": "READY"
+    },
+    {
+      "elapsed_sec": 8.685094703992945,
+      "state": "TRACKING",
+      "distance_remaining_m": 28.820999145507812,
+      "route_update_count": 1716,
+      "message": "TRACKING_ROUTE"
+    }
+  ],
+  "accepted": true
+}

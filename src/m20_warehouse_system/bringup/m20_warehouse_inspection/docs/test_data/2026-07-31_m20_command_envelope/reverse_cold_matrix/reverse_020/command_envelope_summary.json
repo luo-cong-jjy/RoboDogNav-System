@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "suite": "smoke",
+  "requested_cases": [
+    "reverse_020"
+  ],
+  "completed_cases": 1,
+  "thresholds": {
+    "stable_tilt_rad": 0.25,
+    "stable_height_m": 0.48,
+    "abort_tilt_rad": 0.5,
+    "abort_height_m": 0.4
+  },
+  "all_stable": true,
+  "results": [
+    {
+      "name": "reverse_020",
+      "command": {
+        "vx": -0.2,
+        "vy": 0.0,
+        "wz": 0.0
+      },
+      "status": "PASS",
+      "stable": true,
+      "fault": "",
+      "safety_abort": "",
+      "sample_count": 106,
+      "peak_abs_tilt_rad": 0.007583381604135278,
+      "minimum_base_height_m": 0.5592475902041838,
+      "mean_hold_body_vx_mps": -0.006754641589743961,
+      "mean_hold_body_vy_mps": -0.00040546531016022095,
+      "mean_hold_body_wz_radps": -0.005857231451501241,
+      "planar_displacement_m": 0.010828936270490492,
+      "yaw_change_rad": -0.05981770299321398,
+      "maximum_abs_torque": 15.333761298328973,
+      "obstacle_contact_event_count": 0
+    }
+  ]
+}

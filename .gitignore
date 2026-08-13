@@ -1,0 +1,23 @@
+# 常规工作空间忽略文件
+build/
+install/
+log/
+*.log
+__pycache__/
+**/__pycache__/
+*.pyc
+artifacts/
+logs/
+symlink_install_manifest.txt
+*:Zone.Identifier
+
+# 官网下载第三方包（云深处，速腾，nav2）
+src/third_party
+
+# 本地测试数据集和 rosbag 录包
+datasets/
+
+# 大体积实测点云地图，后续如需版本化应迁移到 Git LFS
+src/m20_lidar_to_scan/maps/office4f/t100ipro_2026-07-10-15-20-18filtermap.pcd
+src/m20_lidar_to_scan/maps/office4f/t100ipro_2026-07-14-11-56-57.pcd
+src/m20_lidar_to_scan/maps/office4f/full_cloud1.pcd

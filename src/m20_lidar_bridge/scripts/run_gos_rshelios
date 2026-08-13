@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+CONFIG="$(ros2 pkg prefix m20_lidar_bridge)/share/m20_lidar_bridge/config/rslidar_multicast_rshelios_gos.yaml"
+
+exec ros2 run rslidar_sdk rslidar_sdk_node --ros-args \
+  -p config_path:="$CONFIG"

@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "action_success": false,
+  "action_message": "probe timeout after 180.0s",
+  "duration_sec": 180.01777876901906,
+  "final_error_m": 6.6261495251557685,
+  "minimum_circle_center_obstacle_distance_m": 0.39760476556018826,
+  "minimum_scan_hard_clearance_m": 0.14760476556018826,
+  "minimum_guard_clearance_m": 0.09760476556018827,
+  "doorway_sample": {
+    "x": -13.418058239890177,
+    "y": -1.28868043488748,
+    "yaw": -0.4844743340064258,
+    "distance_from_doorway_x_m": 0.9180582398901773,
+    "guard_clearance_m": 0.10493900936037104
+  },
+  "collision_stop_sample_count": 3230,
+  "predicted_stop_event_count": 10,
+  "rotation_recovery_event_count": 10,
+  "current_stop_event_count": 0,
+  "guard_events": [
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.65s; circle=front; xy=(-13.10,-1.35); yaw=-0.32; cell=(138,173); cmd=(0.45,0.00,0.33); recovery=(0.35,0.00,-0.33)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.65s; circle=front; xy=(-13.02,-1.35); yaw=-0.25; cell=(139,173); cmd=(0.45,0.00,0.39); recovery=(-0.35,0.00,0.00)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.60s; circle=front; xy=(-12.99,-1.35); yaw=-0.22; cell=(140,173); cmd=(0.45,0.00,0.45); recovery=(-0.35,0.00,0.00)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.70s; circle=front; xy=(-12.99,-1.35); yaw=-0.31; cell=(140,173); cmd=(0.45,0.00,0.65); recovery=(0.35,0.00,-0.65)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.70s; circle=front; xy=(-12.97,-1.35); yaw=-0.29; cell=(140,173); cmd=(0.45,0.00,0.65); recovery=(0.35,0.00,-0.65)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.65s; circle=front; xy=(-12.98,-1.34); yaw=-0.28; cell=(140,173); cmd=(0.45,0.00,0.65); recovery=(-0.35,0.00,0.00)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.70s; circle=front; xy=(-13.08,-1.33); yaw=-0.48; cell=(138,173); cmd=(0.43,0.00,0.65); recovery=(-0.35,0.00,0.00)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.70s; circle=front; xy=(-13.12,-1.30); yaw=-0.48; cell=(137,174); cmd=(0.35,0.00,0.65); recovery=(-0.35,0.00,0.00)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.65s; circle=front; xy=(-13.09,-1.34); yaw=-0.51; cell=(138,173); cmd=(0.43,0.00,0.65); recovery=(0.35,0.00,-0.65)",
+    "PREDICTED_FOOTPRINT; cause=OCCUPIED; model=measured_lateral_drift; t=0.60s; circle=front; xy=(-13.09,-1.34); yaw=-0.50; cell=(138,173); cmd=(0.45,0.00,0.65); recovery=(-0.35,0.00,0.00)"
+  ],
+  "obstacle_contact_event_count": 0,
+  "obstacle_contact_peak_force_n": 0.0,
+  "longest_commanded_stationary_sec": 33.959995953016914,
+  "trajectory_messages": 10,
+  "feedback": [
+    {
+      "state": "STARTING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "mission accepted"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "child action running"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "native SCAN trajectory tracking"
+    }
+  ]
+}

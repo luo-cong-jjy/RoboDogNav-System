@@ -1,0 +1,19 @@
+m20_rviz_kinematic_backend:
+  ros__parameters:
+    # Fallback only; integration launch overrides from the system YAML.
+    initial_x: -37.0
+    initial_y: 0.0
+    initial_z: 0.59
+    initial_yaw: 0.0
+    frame_id: world
+    child_frame_id: base_link
+    update_rate_hz: 100.0
+    command_timeout_sec: 0.3
+    max_linear_x: 0.75
+    max_linear_y: 0.35
+    max_angular_z: 1.0
+    wheel_radius: 0.09
+    path_max_poses: 3000
+    safe_cmd_topic: /m20/control/cmd_vel_safe
+    odom_topic: /m20/sim/body_pose
+    path_topic: /quad_0/path

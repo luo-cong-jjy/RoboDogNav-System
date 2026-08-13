@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="m20_industrial_inspection_gazebo">
+    <static>true</static>
+  </model>
+</sdf>

@@ -1,0 +1,29 @@
+<mujoco model="factory_world">
+    <worldbody>
+        <!-- 简化工厂场景：南侧留门，机器人默认从门外进入。 -->
+        <geom name="factory_wall_north" type="box" pos="0 4.0 0.75" size="4.0 0.08 0.75" rgba="0.55 0.58 0.60 1"/>
+        <geom name="factory_wall_west" type="box" pos="-4.0 0.5 0.75" size="0.08 3.5 0.75" rgba="0.55 0.58 0.60 1"/>
+        <geom name="factory_wall_east" type="box" pos="4.0 0.5 0.75" size="0.08 3.5 0.75" rgba="0.55 0.58 0.60 1"/>
+        <geom name="factory_wall_south_left" type="box" pos="-2.4 -3.0 0.75" size="1.6 0.08 0.75" rgba="0.55 0.58 0.60 1"/>
+        <geom name="factory_wall_south_right" type="box" pos="2.4 -3.0 0.75" size="1.6 0.08 0.75" rgba="0.55 0.58 0.60 1"/>
+
+        <geom name="door_threshold" type="box" pos="0 -3.02 0.01" size="0.75 0.05 0.01" rgba="0.1 0.45 0.85 1"/>
+        <geom name="door_marker_left" type="box" pos="-0.85 -3.02 0.45" size="0.04 0.06 0.45" rgba="0.1 0.45 0.85 1"/>
+        <geom name="door_marker_right" type="box" pos="0.85 -3.02 0.45" size="0.04 0.06 0.45" rgba="0.1 0.45 0.85 1"/>
+
+        <!-- 工厂内部设备与货架，保留中间通道用于早期巡检测试。 -->
+        <geom name="machine_left_front" type="box" pos="-2.45 -1.4 0.45" size="0.55 0.45 0.45" rgba="0.36 0.42 0.47 1"/>
+        <geom name="machine_left_back" type="box" pos="-2.45 1.4 0.55" size="0.55 0.65 0.55" rgba="0.36 0.42 0.47 1"/>
+        <geom name="cabinet_right_front" type="box" pos="2.45 -1.2 0.65" size="0.45 0.55 0.65" rgba="0.42 0.38 0.32 1"/>
+        <geom name="cabinet_right_back" type="box" pos="2.45 1.7 0.65" size="0.45 0.75 0.65" rgba="0.42 0.38 0.32 1"/>
+        <geom name="inspection_pillar_1" type="cylinder" pos="-1.2 0.4 0.65" size="0.10 0.65" rgba="0.72 0.64 0.28 1"/>
+        <geom name="inspection_pillar_2" type="cylinder" pos="1.2 0.4 0.65" size="0.10 0.65" rgba="0.72 0.64 0.28 1"/>
+
+        <!-- 少量低台阶，先放在侧边，避免默认巡检路径一开始就撞台阶。 -->
+        <body name="low_stairs" pos="2.1 2.75 0">
+            <geom name="factory_stair_1" type="box" pos="0.0 0.0 0.025" size="0.25 0.65 0.025" rgba="0.50 0.50 0.50 1"/>
+            <geom name="factory_stair_2" type="box" pos="0.35 0.0 0.075" size="0.25 0.65 0.025" rgba="0.50 0.50 0.50 1"/>
+            <geom name="factory_stair_3" type="box" pos="0.70 0.0 0.125" size="0.25 0.65 0.025" rgba="0.50 0.50 0.50 1"/>
+        </body>
+    </worldbody>
+</mujoco>

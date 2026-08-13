@@ -1,0 +1,48 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Plane Cell Count: 20
+      Value: true
+    - Class: rviz_default_plugins/RobotModel
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+      Enabled: true
+      Name: Official M20
+      Visual Enabled: true
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 28; 30; 34
+    Fixed Frame: base_link
+    Frame Rate: 30
+  Name: root
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 2.8
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: -0.15
+      Name: M20 View
+      Pitch: 0.45
+      Target Frame: base_link
+      Value: Orbit
+      Yaw: 0.8
+Window Geometry:
+  Height: 850
+  Width: 1200

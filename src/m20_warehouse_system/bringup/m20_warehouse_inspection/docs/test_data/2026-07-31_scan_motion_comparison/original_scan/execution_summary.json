@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "profile": "original_scan",
+  "sample_period_sec": 0.05,
+  "map_point_count": 21216,
+  "topics": {
+    "pose_topic": "/quad_0/body_pose",
+    "map_topic": "/map_generator/global_cloud",
+    "raw_topic": "/quad_0/cmd_vel",
+    "candidate_topic": "",
+    "safe_topic": "",
+    "applied_topic": "/quad_0/cmd_vel",
+    "mode_topic": "",
+    "collision_topic": ""
+  },
+  "footprint": {
+    "offset_m": 0.18,
+    "scan_hard_radius_m": 0.25,
+    "guard_radius_m": 0.3
+  },
+  "tests": [
+    {
+      "profile": "original_scan",
+      "name": "straight_inward_2p5m",
+      "success": true,
+      "duration_sec": 6.038585778995184,
+      "start": [
+        -19.0,
+        1.0,
+        0.0
+      ],
+      "requested_target": [
+        -16.5,
+        1.0
+      ],
+      "target": [
+        -16.5,
+        0.19999999999999996
+      ],
+      "target_adjustment_m": 0.8,
+      "final": [
+        -16.496403495751352,
+        0.19878591164365678,
+        -0.2510209232925235
+      ],
+      "final_error_m": 0.0037958995439226176,
+      "direct_length_m": 2.6248809496813377,
+      "travel_length_m": 2.632068362799567,
+      "path_length_ratio": 1.0027381863238796,
+      "max_cross_track_m": 0.03004706901734627,
+      "mean_abs_body_to_segment_yaw_deg": 3.657800403556943,
+      "p95_abs_body_to_segment_yaw_deg": 12.818002765141433,
+      "raw_lateral_command_fraction": 0.40425531914893614,
+      "applied_lateral_command_fraction": 0.40425531914893614,
+      "raw_to_applied_linear_error_rms": 0.0,
+      "applied_to_realized_linear_error_rms": 0.00599586138735242,
+      "minimum_surface_distance_m": 0.39456834765748106,
+      "minimum_scan_hard_margin_m": 0.14456834765748106,
+      "minimum_guard_margin_m": 0.09456834765748107,
+      "scan_hard_margin_negative_samples": 0,
+      "guard_margin_negative_samples": 0,
+      "collision_stop_samples": 0,
+      "trajectory_messages": 3,
+      "mode_transitions": 0,
+      "mode_fraction": {
+        "DIRECT": 1.0
+      },
+      "sample_count": 112,
+      "moving_sample_count": 94
+    },
+    {
+      "profile": "original_scan",
+      "name": "return_2p5m",
+      "success": true,
+      "duration_sec": 8.331953014974715,
+      "start": [
+        -16.496403495751352,
+        0.19878591164365678,
+        -0.2510209232925235
+      ],
+      "requested_target": [
+        -19.0,
+        1.0
+      ],
+      "target": [
+        -19.0,
+        1.0
+      ],
+      "target_adjustment_m": 0.0,
+      "final": [
+        -19.0057142715373,
+        1.0020300438853957,
+        2.868547455117229
+      ],
+      "final_error_m": 0.00606415512488214,
+      "direct_length_m": 2.6286763725241524,
+      "travel_length_m": 2.638270279206171,
+      "path_length_ratio": 1.0036497100907122,
+      "max_cross_track_m": 0.03128469602147326,
+      "mean_abs_body_to_segment_yaw_deg": 40.38422106121503,
+      "p95_abs_body_to_segment_yaw_deg": 161.04216024788207,
+      "raw_lateral_command_fraction": 0.41353383458646614,
+      "applied_lateral_command_fraction": 0.41353383458646614,
+      "raw_to_applied_linear_error_rms": 0.0,
+      "applied_to_realized_linear_error_rms": 0.004112473940534035,
+      "minimum_surface_distance_m": 0.387476414969212,
+      "minimum_scan_hard_margin_m": 0.13747641496921198,
+      "minimum_guard_margin_m": 0.08747641496921199,
+      "scan_hard_margin_negative_samples": 0,
+      "guard_margin_negative_samples": 0,
+      "collision_stop_samples": 0,
+      "trajectory_messages": 3,
+      "mode_transitions": 0,
+      "mode_fraction": {
+        "DIRECT": 1.0
+      },
+      "sample_count": 149,
+      "moving_sample_count": 133
+    },
+    {
+      "profile": "original_scan",
+      "name": "right_turn_90_and_straight_6m",
+      "success": true,
+      "duration_sec": 14.238907254999503,
+      "start": [
+        -19.0057142715373,
+        1.0020300438853957,
+        2.868547455117229
+      ],
+      "requested_target": [
+        -19.0,
+        -5.0
+      ],
+      "target": [
+        -19.8,
+        -5.0
+      ],
+      "target_adjustment_m": 0.8000000000000007,
+      "final": [
+        -19.798861073726474,
+        -5.002070423256102,
+        -1.137264102067876
+      ],
+      "final_error_m": 0.002363007726592657,
+      "direct_length_m": 6.0543583034160156,
+      "travel_length_m": 6.676802486360321,
+      "path_length_ratio": 1.1028092742038587,
+      "max_cross_track_m": 0.6299374972478553,
+      "mean_abs_body_to_segment_yaw_deg": 21.894064471923965,
+      "p95_abs_body_to_segment_yaw_deg": 57.72847300189579,
+      "raw_lateral_command_fraction": 0.720164609053498,
+      "applied_lateral_command_fraction": 0.720164609053498,
+      "raw_to_applied_linear_error_rms": 0.0,
+      "applied_to_realized_linear_error_rms": 0.004077990703094683,
+      "minimum_surface_distance_m": 0.3309599319594016,
+      "minimum_scan_hard_margin_m": 0.0809599319594016,
+      "minimum_guard_margin_m": 0.03095993195940161,
+      "scan_hard_margin_negative_samples": 0,
+      "guard_margin_negative_samples": 0,
+      "collision_stop_samples": 0,
+      "trajectory_messages": 7,
+      "mode_transitions": 0,
+      "mode_fraction": {
+        "DIRECT": 1.0
+      },
+      "sample_count": 260,
+      "moving_sample_count": 243
+    },
+    {
+      "profile": "original_scan",
+      "name": "left_turn_90_and_straight_3m",
+      "success": true,
+      "duration_sec": 10.60434364998946,
+      "start": [
+        -19.798861073726474,
+        -5.002070423256102,
+        -1.137264102067876
+      ],
+      "requested_target": [
+        -16.0,
+        -5.0
+      ],
+      "target": [
+        -15.5,
+        -5.6
+      ],
+      "target_adjustment_m": 0.7810249675906652,
+      "final": [
+        -15.50350169484486,
+        -5.599672473246847,
+        -0.06955748407172285
+      ],
+      "final_error_m": 0.003516978896802617,
+      "direct_length_m": 4.34024495967058,
+      "travel_length_m": 4.724549783132438,
+      "path_length_ratio": 1.088544500836429,
+      "max_cross_track_m": 0.6658696583082654,
+      "mean_abs_body_to_segment_yaw_deg": 20.159565090326595,
+      "p95_abs_body_to_segment_yaw_deg": 60.87728583406942,
+      "raw_lateral_command_fraction": 0.4370860927152318,
+      "applied_lateral_command_fraction": 0.4370860927152318,
+      "raw_to_applied_linear_error_rms": 0.0,
+      "applied_to_realized_linear_error_rms": 0.004871264258601889,
+      "minimum_surface_distance_m": 0.2389569447600167,
+      "minimum_scan_hard_margin_m": -0.011043055239983307,
+      "minimum_guard_margin_m": -0.061043055239983296,
+      "scan_hard_margin_negative_samples": 7,
+      "guard_margin_negative_samples": 16,
+      "collision_stop_samples": 0,
+      "trajectory_messages": 6,
+      "mode_transitions": 0,
+      "mode_fraction": {
+        "DIRECT": 1.0
+      },
+      "sample_count": 193,
+      "moving_sample_count": 151
+    },
+    {
+      "profile": "original_scan",
+      "name": "return_3m",
+      "success": true,
+      "duration_sec": 20.44998473400483,
+      "start": [
+        -15.50350169484486,
+        -5.599672473246847,
+        -0.06955748407172285
+      ],
+      "requested_target": [
+        -19.0,
+        -5.0
+      ],
+      "target": [
+        -20.0,
+        -5.0
+      ],
+      "target_adjustment_m": 1.0,
+      "final": [
+        -19.99983502720125,
+        -4.998366845913644,
+        1.4920115639538065
+      ],
+      "final_error_m": 0.0016414652887310859,
+      "direct_length_m": 4.5363095224458645,
+      "travel_length_m": 7.7641923127401045,
+      "path_length_ratio": 1.7115658167333005,
+      "max_cross_track_m": 2.3798178634443974,
+      "mean_abs_body_to_segment_yaw_deg": 51.28089873830819,
+      "p95_abs_body_to_segment_yaw_deg": 119.41007532966898,
+      "raw_lateral_command_fraction": 0.6173913043478261,
+      "applied_lateral_command_fraction": 0.6173913043478261,
+      "raw_to_applied_linear_error_rms": 0.0,
+      "applied_to_realized_linear_error_rms": 0.015422203206896558,
+      "minimum_surface_distance_m": 0.09514757888921903,
+      "minimum_scan_hard_margin_m": -0.15485242111078096,
+      "minimum_guard_margin_m": -0.20485242111078095,
+      "scan_hard_margin_negative_samples": 21,
+      "guard_margin_negative_samples": 34,
+      "collision_stop_samples": 0,
+      "trajectory_messages": 8,
+      "mode_transitions": 0,
+      "mode_fraction": {
+        "DIRECT": 1.0
+      },
+      "sample_count": 371,
+      "moving_sample_count": 345
+    },
+    {
+      "profile": "original_scan",
+      "name": "left_turn_90_return_home_6m",
+      "success": true,
+      "duration_sec": 11.794896909996169,
+      "start": [
+        -19.99983502720125,
+        -4.998366845913644,
+        1.4920115639538065
+      ],
+      "requested_target": [
+        -19.0,
+        1.0
+      ],
+      "target": [
+        -19.0,
+        1.0
+      ],
+      "target_adjustment_m": 0.0,
+      "final": [
+        -19.01306777758485,
+        0.9847334735354424,
+        0.851070101568711
+      ],
+      "final_error_m": 0.020095612488804,
+      "direct_length_m": 6.081124476589385,
+      "travel_length_m": 6.601010326924525,
+      "path_length_ratio": 1.0854917297510607,
+      "max_cross_track_m": 1.183650074527959,
+      "mean_abs_body_to_segment_yaw_deg": 17.301919226767,
+      "p95_abs_body_to_segment_yaw_deg": 31.28080257125661,
+      "raw_lateral_command_fraction": 0.6082474226804123,
+      "applied_lateral_command_fraction": 0.6082474226804123,
+      "raw_to_applied_linear_error_rms": 0.0,
+      "applied_to_realized_linear_error_rms": 0.0037479557628180755,
+      "minimum_surface_distance_m": 0.3505597760194583,
+      "minimum_scan_hard_margin_m": 0.10055977601945831,
+      "minimum_guard_margin_m": 0.050559776019458325,
+      "scan_hard_margin_negative_samples": 0,
+      "guard_margin_negative_samples": 0,
+      "collision_stop_samples": 0,
+      "trajectory_messages": 9,
+      "mode_transitions": 0,
+      "mode_fraction": {
+        "DIRECT": 1.0
+      },
+      "sample_count": 215,
+      "moving_sample_count": 194
+    }
+  ]
+}

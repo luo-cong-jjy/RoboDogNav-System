@@ -1,0 +1,17 @@
+/**:
+  ros__parameters:
+    use_sim_time: false
+
+    # Native SCAN execution profile. The values match the upstream
+    # plan_manage/config/controllers.yaml closed-loop controller. The system
+    # safety supervisor and RViz kinematic backend retain their own M20 limits.
+    time_forward: 0.8
+    heading_error_threshold: 0.8
+    kp_pos: 0.8
+    kp_yaw: 1.5
+    max_vx: 0.75
+    max_vy: 0.35
+    max_vyaw: 1.0
+    finish_dist: 0.15
+    forward_only: false
+    max_forward_lateral_speed: 0.35

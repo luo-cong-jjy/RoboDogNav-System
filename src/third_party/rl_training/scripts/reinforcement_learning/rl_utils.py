@@ -1,0 +1,46 @@
+# Copyright (c) 2025 Deep Robotics
+# SPDX-License-Identifier: BSD 3-Clause
+
+# Copyright (c) 2024-2025 Ziqi Fan
+# SPDX-License-Identifier: Apache-2.0
+
+import torch
+
+import isaaclab.utils.math as math_utils
+
+# camera_follow(env)：丝滑的相机跟随
+def camera_follow(env):
+    if not hasattr(camera_follow, "smooth_camera_positions"):
+        camera_follow.smooth_camera_positions = []
+    robot_pos = env.unwrapped.scene["robot"].data.root_pos_w[0]
+    robot_quat = env.unwrapped.scene["robot"].data.root_quat_w[0]
+    camera_offset = torch.tensor([-0.0, 1.4, 0.15], dtype=torch.float32, device=env.device)
+    camera_pos = math_utils.transform_points(
+        camera_offset.unsqueeze(0), pos=robot_pos.unsqueeze(0), quat=robot_quat.unsqueeze(0)
+    ).squeeze(0)
+    # camera_pos[2] = torch.clamp(camera_pos[2], min=0.1)
+    window_size = 50
+    camera_follow.smooth_camera_positions.append(camera_pos)
+    if len(camera_follow.smooth_camera_positions) > window_size:
+        camera_follow.smooth_camera_positions.pop(0)
+    smooth_camera_pos = torch.mean(torch.stack(camera_follow.smooth_camera_positions), dim=0)
+    env.unwrapped.viewport_camera_controller.set_view_env_index(env_index=0)
+    env.unwrapped.viewport_camera_controller.update_view_location(
+        eye=smooth_camera_pos.cpu().numpy(), lookat=robot_pos.cpu().numpy()
+    )
+
+
+
+
+import os
+import pickle
+from typing import Any
+
+# reindex_feet(vec)：足端数据重排
+def reindex_feet(vec):
+    return vec[:, [1, 0, 3, 2]]
+
+# reindex(vec)：全身关节数据重排
+def reindex(vec):
+    return vec[:, [3, 4, 5, 0, 1, 2, 9, 10, 11, 6, 7, 8]]
+

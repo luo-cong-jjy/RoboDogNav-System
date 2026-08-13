@@ -1,0 +1,5 @@
+repositories:
+  src/third_party/sdk_deploy:
+    type: git
+    url: https://github.com/DeepRoboticsLab/sdk_deploy.git
+    version: ee289d475f2dedf0332b7542f2b173fa9e8d1456

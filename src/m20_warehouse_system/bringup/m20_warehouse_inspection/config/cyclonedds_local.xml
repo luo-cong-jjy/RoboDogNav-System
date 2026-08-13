@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RViz simulation participant-capacity profile.
+  Use a dedicated ROS_DOMAIN_ID to isolate single-computer simulation.
+  Transport/interface selection is deliberately left to ROS/CycloneDDS so
+  PointCloud2 samples retain its tested MTU-safe fragmentation behavior.
+-->
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain Id="any">
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <MaxAutoParticipantIndex>63</MaxAutoParticipantIndex>
+    </Discovery>
+  </Domain>
+</CycloneDDS>

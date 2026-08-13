@@ -1,0 +1,75 @@
+{
+  "schema_version": 2,
+  "action_success": true,
+  "action_message": "mission complete",
+  "duration_sec": 27.49667609500466,
+  "final_error_m": 0.08533495672147995,
+  "minimum_circle_center_obstacle_distance_m": 0.43355347289251417,
+  "minimum_scan_hard_clearance_m": 0.18355347289251417,
+  "minimum_guard_clearance_m": 0.13355347289251418,
+  "doorway_sample": {
+    "x": -12.50554590869691,
+    "y": 1.5273392816532592,
+    "yaw": 0.05042255398046866,
+    "distance_from_doorway_x_m": 0.005545908696909407,
+    "guard_clearance_m": 0.2182670673283021
+  },
+  "collision_stop_sample_count": 1,
+  "predicted_stop_event_count": 0,
+  "rotation_recovery_event_count": 0,
+  "current_stop_event_count": 0,
+  "guard_events": [],
+  "obstacle_contact_event_count": 0,
+  "obstacle_contact_peak_force_n": 0.0,
+  "longest_commanded_stationary_sec": 0.3607889290142339,
+  "velocity_tracking_sample_count": 526,
+  "rms_forward_velocity_tracking_error_mps": 0.07807409207728207,
+  "rms_yaw_velocity_tracking_error_radps": 0.08833982677292349,
+  "velocity_feedback_active_sample_count": 529,
+  "velocity_feedback_reason_counts": {
+    "UNAVAILABLE": 1,
+    "ACTIVE": 529,
+    "STOPPED": 4
+  },
+  "maximum_abs_feedback_vx_correction_mps": 0.043494681167236815,
+  "maximum_abs_feedback_wz_correction_radps": 0.053235611804831065,
+  "trajectory_messages": 22,
+  "feedback": [
+    {
+      "state": "STARTING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "mission accepted"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "child action running"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "native SCAN trajectory tracking"
+    },
+    {
+      "state": "DWELLING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "inspecting F1_DIRECT_EXIT"
+    },
+    {
+      "state": "STEP_COMPLETE",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "F1_DIRECT_EXIT complete"
+    },
+    {
+      "state": "COMPLETED",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "mission complete"
+    }
+  ]
+}

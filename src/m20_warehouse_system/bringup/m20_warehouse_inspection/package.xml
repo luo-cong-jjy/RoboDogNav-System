@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>m20_warehouse_inspection</name>
+  <version>1.4.0</version>
+  <description>
+    Integration, configuration, and bringup package for the M20 flat multi-region
+    warehouse inspection system.
+  </description>
+  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>m20_inspection_core</exec_depend>
+  <exec_depend>m20_multifloor_map</exec_depend>
+  <exec_depend>m20_locomotion_control</exec_depend>
+  <exec_depend>m20_mujoco_backend</exec_depend>
+  <exec_depend>m20_official_description</exec_depend>
+  <exec_depend>m20_sdk_deploy</exec_depend>
+  <exec_depend>m20_scan_planner</exec_depend>
+  <exec_depend>m20_scan_navigation</exec_depend>
+  <exec_depend>m20_warehouse_interfaces</exec_depend>
+  <exec_depend>m20_warehouse_sim</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>sensor_msgs_py</exec_depend>
+  <exec_depend>scan_planner_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <exec_depend>xacro</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

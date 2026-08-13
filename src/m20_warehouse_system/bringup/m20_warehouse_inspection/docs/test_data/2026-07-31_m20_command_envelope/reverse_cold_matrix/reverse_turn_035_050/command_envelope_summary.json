@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "suite": "smoke",
+  "requested_cases": [
+    "reverse_turn_035_050"
+  ],
+  "completed_cases": 1,
+  "thresholds": {
+    "stable_tilt_rad": 0.25,
+    "stable_height_m": 0.48,
+    "abort_tilt_rad": 0.5,
+    "abort_height_m": 0.4
+  },
+  "all_stable": true,
+  "results": [
+    {
+      "name": "reverse_turn_035_050",
+      "command": {
+        "vx": -0.35,
+        "vy": 0.0,
+        "wz": 0.5
+      },
+      "status": "PASS",
+      "stable": true,
+      "fault": "",
+      "safety_abort": "",
+      "sample_count": 108,
+      "peak_abs_tilt_rad": 0.04923518997841002,
+      "minimum_base_height_m": 0.5497275517654235,
+      "mean_hold_body_vx_mps": -0.1931551728419267,
+      "mean_hold_body_vy_mps": 0.021571090579247894,
+      "mean_hold_body_wz_radps": 0.4015459854006934,
+      "planar_displacement_m": 0.4731262525583354,
+      "yaw_change_rad": 1.0703210603605144,
+      "maximum_abs_torque": 38.35655532335437,
+      "obstacle_contact_event_count": 0
+    }
+  ]
+}

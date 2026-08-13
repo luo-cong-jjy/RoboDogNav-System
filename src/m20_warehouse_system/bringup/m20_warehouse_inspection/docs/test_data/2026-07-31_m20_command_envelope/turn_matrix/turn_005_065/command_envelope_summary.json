@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "suite": "smoke",
+  "requested_cases": [
+    "turn_005_065"
+  ],
+  "completed_cases": 1,
+  "thresholds": {
+    "stable_tilt_rad": 0.25,
+    "stable_height_m": 0.48,
+    "abort_tilt_rad": 0.5,
+    "abort_height_m": 0.4
+  },
+  "all_stable": false,
+  "results": [
+    {
+      "name": "turn_005_065",
+      "command": {
+        "vx": 0.05,
+        "vy": 0.0,
+        "wz": 0.65
+      },
+      "status": "WARN",
+      "stable": false,
+      "fault": "",
+      "safety_abort": "",
+      "sample_count": 107,
+      "peak_abs_tilt_rad": 0.22580660065454775,
+      "minimum_base_height_m": 0.4555570871517581,
+      "mean_hold_body_vx_mps": 0.0268989110889503,
+      "mean_hold_body_vy_mps": 0.021665553858676908,
+      "mean_hold_body_wz_radps": 0.7617375630479892,
+      "planar_displacement_m": 0.14314148051927086,
+      "yaw_change_rad": 2.0310353727102486,
+      "maximum_abs_torque": 46.35657805434598,
+      "obstacle_contact_event_count": 0
+    }
+  ]
+}

@@ -1,0 +1,7626 @@
+\documentclass[UTF8,11pt,a4paper]{ctexart}
+
+% ===================== 基础宏包 =====================
+\usepackage[margin=1.7cm]{geometry}
+\usepackage{amsmath,amssymb,bm,mathtools}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{multicol}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+
+% ===================== 颜色定义 =====================
+\definecolor{mainblue}{HTML}{0B4F8A}
+\definecolor{lightblue}{HTML}{EAF5FF}
+\definecolor{deepgreen}{HTML}{0E7C61}
+\definecolor{lightgreen}{HTML}{EAF8F3}
+\definecolor{orange}{HTML}{F28C28}
+\definecolor{lightorange}{HTML}{FFF4E8}
+\definecolor{graytext}{HTML}{4A4A4A}
+\definecolor{softgray}{HTML}{F6F8FA}
+\definecolor{rednote}{HTML}{D94A38}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=mainblue,
+    urlcolor=mainblue
+}
+
+% ===================== tcolorbox 样式 =====================
+\tcbuselibrary{skins,breakable}
+
+\newtcolorbox{conceptbox}[2][]{
+    enhanced,
+    breakable,
+    colback=lightblue,
+    colframe=mainblue,
+    coltitle=white,
+    title=\textbf{#2},
+    fonttitle=\large,
+    arc=2mm,
+    boxrule=0.8pt,
+    left=2mm,right=2mm,top=1mm,bottom=1mm,
+    #1
+}
+
+\newtcolorbox{greenbox}[2][]{
+    enhanced,
+    breakable,
+    colback=lightgreen,
+    colframe=deepgreen,
+    coltitle=white,
+    title=\textbf{#2},
+    fonttitle=\large,
+    arc=2mm,
+    boxrule=0.8pt,
+    left=2mm,right=2mm,top=1mm,bottom=1mm,
+    #1
+}
+
+\newtcolorbox{orangebox}[2][]{
+    enhanced,
+    breakable,
+    colback=lightorange,
+    colframe=orange,
+    coltitle=white,
+    title=\textbf{#2},
+    fonttitle=\large,
+    arc=2mm,
+    boxrule=0.8pt,
+    left=2mm,right=2mm,top=1mm,bottom=1mm,
+    #1
+}
+
+\newtcolorbox{redbox}[2][]{
+    enhanced,
+    breakable,
+    colback=rednote!8,
+    colframe=rednote,
+    coltitle=white,
+    title=\textbf{#2},
+    fonttitle=\large,
+    arc=2mm,
+    boxrule=0.8pt,
+    left=2mm,right=2mm,top=1mm,bottom=1mm,
+    #1
+}
+
+\newtcolorbox{formula}[1][]{
+    enhanced,
+    breakable,
+    colback=white,
+    colframe=mainblue,
+    arc=1.5mm,
+    boxrule=0.6pt,
+    left=2mm,right=2mm,top=1mm,bottom=1mm,
+    #1
+}
+
+\newtcolorbox{answerbox}[1][]{
+    enhanced,
+    breakable,
+    colback=softgray,
+    colframe=graytext,
+    arc=1.5mm,
+    boxrule=0.4pt,
+    left=2mm,right=2mm,top=1mm,bottom=1mm,
+    #1
+}
+
+% ===================== 标题与页眉 =====================
+\titleformat{\section}{\Large\bfseries\color{mainblue}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{deepgreen}}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{orange}}{\thesubsubsection}{0.6em}{}
+\setlist[itemize]{leftmargin=1.5em,itemsep=0.2em,topsep=0.2em}
+\setlist[enumerate]{leftmargin=1.8em,itemsep=0.2em,topsep=0.2em}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textcolor{mainblue}{M20 Pro 实习总结产出}}
+\rhead{\textcolor{graytext}{运动建模 / RL / Nav2 导航}}
+\cfoot{\textcolor{graytext}{第 \thepage 页 / 共 \pageref{LastPage} 页}}
+
+\title{M20 Pro 轮足机器人实习总结产出：运动建模、强化学习与 Nav2 导航验证}
+\author{}
+\date{2026-07-14}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\T}{^{\mathsf T}}
+\newcommand{\dd}{\mathrm d}
+\newcommand{\bs}[1]{\bm{#1}}
+\newcommand{\cross}[1]{\left[#1\right]_{\times}}
+\newcommand{\rx}{R_x}
+\newcommand{\ry}{R_y}
+\newcommand{\rz}{R_z}
+
+\begin{document}
+
+% ===================== 封面标题 =====================
+\begin{center}
+    {\Huge\bfseries\textcolor{mainblue}{M20 Pro 轮足机器人实习总结产出}}\\[0.4em]
+    {\large 从机器人模型 $\rightarrow$ 运动学/动力学 $\rightarrow$ 强化学习运控 $\rightarrow$ Nav2 导航 $\rightarrow$ 真机部署}\\[0.3em]
+    {\normalsize 适用方向：四足/轮足机器人入门、ROS2 仿真、MuJoCo/Isaac、RL 运动控制、Nav2 巡检导航、背部 x86 部署}\vspace{0.8em}
+\end{center}
+
+\begin{orangebox}{M20 建模 30 秒总回答模板}
+如果让我快速介绍 M20 Pro 的运动学和动力学模型，我会先把它看成一台
+\textbf{浮动基轮足机器人}：机身有 6 个自由度，四条腿分别连接在机身四角。
+每条腿从 \texttt{base\_link} 出发，依次经过 \texttt{hipx}、\texttt{hipy}、\texttt{knee} 和 \texttt{wheel}。
+其中 \texttt{hipx/hipy/knee} 主要决定轮心或足端位置，\texttt{wheel} 主要决定滚动速度。
+运动学上，用 URDF 的 \texttt{origin} 和 \texttt{axis} 推出
+\[
+\bs p_i^B=f_i(\bs q_i),\qquad
+\dot{\bs p}_i^B=\bs J_{p,i}(\bs q_i)\dot{\bs q}_i.
+\]
+动力学上，因为机身不是固定底座，所以要用浮动基方程
+\[
+\bs M(\bs q)\dot{\bs v}+\bs h(\bs q,\bs v)
+=
+\bs S\T\bs\tau+\bs J_c(\bs q)\T\bs\lambda.
+\]
+工程控制时，导航可以临时降阶成四轮差速模型；而 MuJoCo/Isaac/RL 训练会更关注接触力、执行器、PD 伺服和完整刚体动力学。
+\end{orangebox}
+
+\begin{greenbox}{这份笔记怎么读}
+\begin{enumerate}
+    \item 模块一是机器人模型基础：先读符号、坐标系、URDF/MJCF/USD 和 M20 关节链。
+    \item 模块二是运动学与动力学：重点看单腿正运动学、Jacobian、浮动基动力学、接触力和轮子约束。
+    \item 模块三是强化学习运动控制：重点看 \texttt{rl\_training} 学习路线、观察量、动作、奖励、PPO、play 和导出。
+    \item 模块四是 Nav2 导航验证：重点看三维点云转二维 \texttt{/scan}、costmap、TF、bag 回放验证和真机迁移边界。
+    \item 模块五是工程部署与接口集成：重点看项目包分工、ROS2 调试、背部 x86 接入、DrDDS/FastDDS 通信、Foxy 部署包、\texttt{/cmd\_vel} 到 M20 SDK 的接口边界。
+\end{enumerate}
+\end{greenbox}
+
+\begin{conceptbox}{实习总结模块总览}
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.15\linewidth}p{0.25\linewidth}p{0.46\linewidth}}
+\toprule
+\textbf{模块} & \textbf{主题} & \textbf{产出和理解目标}\\
+\midrule
+模块一 & 机器人模型基础 &
+从 M20 Pro 的 URDF/MJCF/USD 出发，理解 link、joint、axis、origin、TF、执行器和传感器挂载方式。\\
+模块二 & 运动学与动力学推导 &
+推清楚单腿正运动学、轮心速度 Jacobian、浮动基动力学、接触力到关节力矩的映射。\\
+模块三 & RL 运动控制 &
+理解 Isaac/MuJoCo/RL 部署链路中 observation、action、PD 执行器、奖励函数和策略导出的关系。\\
+模块四 & Nav2 导航与雷达感知 &
+基于官方 RoboSense 三维点云 bag，验证 \texttt{/LIDAR/POINTS} \(\rightarrow\) \texttt{/scan} \(\rightarrow\) Nav2 \texttt{obstacle\_layer} \(\rightarrow\) \texttt{/costmap/costmap} 是否可用。\\
+模块五 & 工程部署与接口集成 &
+把 ROS2、模型资产、x86 接入、Foxy 部署、实物排查和安全接口统一整理成可执行的部署路线和模块化接口契约。\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{conceptbox}
+
+\begin{conceptbox}{全文核心公式速查}
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.30\linewidth}p{0.30\linewidth}p{0.30\linewidth}}
+\toprule
+\textbf{问题} & \textbf{公式} & \textbf{直观含义}\\
+\midrule
+单腿正运动学 &
+\(\bs p_i^B=f_i(\bs q_i)\) &
+已知关节角，求轮心在机身坐标系的位置。\\
+单腿速度映射 &
+\(\dot{\bs p}_i^B=\bs J_{p,i}\dot{\bs q}_i\) &
+关节转得多快，轮心就按 Jacobian 映射成多快。\\
+浮动基速度 &
+\(\dot{\bs p}_i^W=\bs v_B^W+\bs R_B^W(\bs\omega_B^B\times\bs p_i^B+\bs J_{p,i}\dot{\bs q}_i)\) &
+轮心速度由机身平移、机身转动和腿部运动共同决定。\\
+完整动力学 &
+\(\bs M\dot{\bs v}+\bs h=\bs S\T\bs\tau+\bs J_c\T\bs\lambda\) &
+机器人加速需要电机力矩和地面接触力共同作用。\\
+接触力到关节力矩 &
+\(\bs\tau_i=\bs J_{p,i}\T\bs f_i\) &
+足端/轮地受力可以通过 Jacobian 转换成关节力矩。\\
+RL 控制链 &
+\(\bs a_t\rightarrow \bs q^{target},\dot{\bs q}^{target}\rightarrow \bs\tau\) &
+策略输出不是直接力矩，而是先变成目标位置/速度，再由执行器产生力矩。\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{conceptbox}
+
+\section{阅读说明：先把符号和名词讲清楚}
+
+这一节专门给初学者使用。后面的公式如果一开始看不懂，先回到这里查符号。
+
+\begin{answerbox}
+\textbf{小白理解：}机器人建模不是一上来就背公式，而是先分清三件事：
+\textbf{位置在哪里}、\textbf{速度怎么来}、\textbf{力怎么让它动}。
+运动学主要回答前两个问题，动力学回答第三个问题。
+\end{answerbox}
+
+\subsection{标量、向量、矩阵是什么}
+
+机器人学里经常同时使用标量、向量和矩阵。
+
+\begin{center}
+\begin{tabular}{p{0.18\linewidth}p{0.72\linewidth}}
+\toprule
+写法 & 含义 \\
+\midrule
+\(x\) & 标量，一个普通数字。例如速度大小、角度、质量。\\
+\(\bs p\) & 向量，一组数字。通常表示三维位置，例如 \(\bs p=[x,y,z]\T\)。\\
+\(\bs R\) & 矩阵，一张数字表。旋转矩阵 \(\bs R\in\R^{3\times 3}\) 用来描述坐标系之间的姿态关系。\\
+\(\bs q\) & 关节角向量，里面放很多个关节角。\\
+\(\dot{\bs q}\) & \(\bs q\) 对时间的一阶导数，即关节速度。\\
+\(\ddot{\bs q}\) & \(\bs q\) 对时间的二阶导数，即关节加速度。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+上标 \({}^{\mathsf T}\) 表示转置。例如
+\[
+\bs p =
+\begin{bmatrix}
+x\\y\\z
+\end{bmatrix},
+\qquad
+\bs p\T =
+\begin{bmatrix}
+x&y&z
+\end{bmatrix}.
+\]
+
+\subsection{上标和下标怎么看}
+
+本文常见写法是
+\[
+\bs p_i^B.
+\]
+
+它的读法是：
+\[
+\bs p_i^B
+=
+\text{第 } i \text{ 条腿的轮心位置，并且这个位置是在 } B \text{ 坐标系下表达的。}
+\]
+
+其中：
+
+\begin{center}
+\begin{tabular}{p{0.18\linewidth}p{0.72\linewidth}}
+\toprule
+符号 & 含义 \\
+\midrule
+\(i\) & 第 \(i\) 条腿，可能是左前、右前、左后、右后。\\
+\(B\) & body frame，机体系，也就是 \texttt{base\_link} 坐标系。\\
+\(W\) & world frame，世界坐标系。\\
+\(\bs p_i^B\) & 轮心位置，用机体系坐标表示。\\
+\(\bs p_i^W\) & 轮心位置，用世界系坐标表示。\\
+\(\bs R_B^W\) & 从机体系 \(B\) 转到世界系 \(W\) 的旋转矩阵。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+一个重要规则是：
+\[
+\text{同一个物理点，可以用不同坐标系表达。}
+\]
+
+例如轮心这个点：
+\[
+\bs p_i^B
+\quad\text{和}\quad
+\bs p_i^W
+\]
+描述的是同一个轮心，只是一个站在机器人身上看，一个站在世界地图里看。
+
+\subsection{为什么要有坐标系}
+
+机器人身上的零件会随着机器人运动而运动。如果只用世界坐标，会很难描述每条腿相对机身的位置。
+
+所以通常分两层：
+\[
+\text{机体系中描述腿怎么动}
+\quad+\quad
+\text{世界系中描述整机在哪里}.
+\]
+
+对应公式就是
+\[
+\bs p_i^W
+=
+\bs p_B^W+\bs R_B^W\bs p_i^B.
+\]
+
+逐项解释：
+
+\begin{center}
+\begin{tabular}{p{0.24\linewidth}p{0.66\linewidth}}
+\toprule
+项 & 含义 \\
+\midrule
+\(\bs p_i^W\) & 第 \(i\) 个轮心在世界系中的位置。\\
+\(\bs p_B^W\) & 机器人机身原点在世界系中的位置。\\
+\(\bs R_B^W\) & 机器人机身相对世界的朝向。\\
+\(\bs p_i^B\) & 第 \(i\) 个轮心相对机身的位置。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这句话翻译成人话就是：
+\[
+\text{轮心世界位置}
+=
+\text{机身世界位置}
++
+\text{把轮心相对机身的位置转到世界系}.
+\]
+
+\subsection{URDF 名词解释}
+
+\begin{center}
+\begin{tabular}{p{0.22\linewidth}p{0.68\linewidth}}
+\toprule
+名词 & 解释 \\
+\midrule
+URDF & Unified Robot Description Format，ROS 中描述机器人结构的 XML 文件。它告诉 ROS 机器人有哪些 link、joint、质量、碰撞体和外观。\\
+link & 刚体零件。可以理解成一个不会变形的部件，例如机身、大腿、小腿、轮子。\\
+joint & 关节。描述两个 link 怎么连接、能绕哪个轴转、角度范围是多少。\\
+parent link & 父 link，关节连接关系中的上一级。\\
+child link & 子 link，关节连接关系中的下一级。\\
+origin & 子坐标系相对父坐标系的位置和姿态。URDF 中通常写成 xyz 和 rpy。\\
+axis & 关节转轴方向，定义关节相对于自身坐标系的运动轴方向（围绕哪根轴转，或沿哪根轴移动）。例如 M20 的 hipy 关节轴是 \([0,-1,0]：表示是y轴负方向\)。\\
+visual & 可视化模型，主要给 RViz/Gazebo 显示外观。\\
+collision & 碰撞模型，给物理仿真和碰撞检测使用，通常比 visual 简单。\\
+inertial & 惯性参数，包括质量、质心、惯性矩阵。动力学仿真必须依赖它。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{机器人学名词解释}
+
+\begin{center}
+\begin{tabular}{p{0.26\linewidth}p{0.64\linewidth}}
+\toprule
+名词 & 解释 \\
+\midrule
+正运动学 FK & Forward Kinematics。已知关节角，求轮心/足端在哪里。公式形式是 \(\bs p=f(\bs q)\)。\\
+逆运动学 IK & Inverse Kinematics。已知轮心/足端想去的位置，反求关节角。公式形式是 \(\bs q=f^{-1}(\bs p)\)。\\
+Jacobian & 速度映射矩阵。它把关节速度变成轮心/足端速度：\(\dot{\bs p}=\bs J\dot{\bs q}\)。\\
+浮动基 & Floating base。机器狗机身不是固定在地上的，机身本身也有 6 个自由度：前后、左右、上下、滚转、俯仰、偏航。\\
+广义坐标 & 把机身位置姿态和所有关节角合在一起形成的大变量，记作 \(\bs q\)。\\
+广义速度 & 广义坐标的速度，通常包括机身线速度、角速度和关节速度，记作 \(\bs v\)。\\
+接触约束 & 轮子/脚接触地面后不能随便运动。例如不能穿过地面，轮子侧向不能滑。\\
+接触力 & 地面对机器人施加的力。机器人能站住、走动、转弯，本质上都靠地面接触力。\\
+质量矩阵 & 动力学中的 \(\bs M(\bs q)\)，描述机器人质量和惯量如何影响加速度。\\
+科氏/离心项 & 动力学中的速度相关项。机器人运动越快，这些项越明显。\\
+重力项 & 机器人各个 link 受重力产生的广义力。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{本文最重要的几个变量}
+
+\begin{center}
+\begin{tabular}{p{0.22\linewidth}p{0.68\linewidth}}
+\toprule
+符号 & 含义 \\
+\midrule
+\(a\) & 前后髋根半距，M20 中为 \(0.3141\ \mathrm m\)。\\
+\(b\) & 左右髋根半距，M20 中为 \(0.0685\ \mathrm m\)。\\
+\(b_1,b_2\) & 腿部侧向偏移，来自 URDF 中 knee 和 wheel 的 y 方向 origin。\\
+\(l_1,l_2\) & 大腿和小腿近似长度，M20 中都约为 \(0.25\ \mathrm m\)。\\
+\(r_w\) & 轮半径，M20 中为 \(0.09\ \mathrm m\)。\\
+\(\bs h_i\) & 第 \(i\) 条腿的髋根位置。\\
+\(\bs d_{1,i}\) & hipy 到 knee 的偏移。\\
+\(\bs d_{2,i}\) & knee 到 wheel 的偏移。\\
+\(\bs p_i^B\) & 第 \(i\) 个轮心在机体系中的位置。\\
+\(\bs J_{p,i}\) & 第 \(i\) 条腿的位置 Jacobian。\\
+\(\bs \tau\) & 电机输出的关节力矩。\\
+\(\bs \lambda\) & 地面对机器人施加的接触力/约束力。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{一个最小例子：什么是 Jacobian}
+
+如果一个点的位置只由一个关节角决定：
+\[
+p=f(q),
+\]
+那么速度就是
+\[
+\dot p =
+\frac{\partial f}{\partial q}\dot q.
+\]
+
+这里
+\[
+\frac{\partial f}{\partial q}
+\]
+就是一维情况下的 Jacobian。
+
+机器狗一条腿有多个关节，位置是三维的：
+\[
+\bs p =
+\begin{bmatrix}
+x\\y\\z
+\end{bmatrix},
+\qquad
+\bs q =
+\begin{bmatrix}
+q_x\\q_h\\q_k\\q_w           
+\end{bmatrix}.
+\]
+分别对应：
+
+Hip Abduction（髋关节外展/内收角）
+物理意义：控制大腿相对于机身侧摆的角度（侧抬腿/侧放腿）。
+
+Hip Pitch（髋关节俯仰角）
+物理意义：控制大腿前后摆动的角度。
+
+Knee Pitch（膝关节俯仰角）
+物理意义：控制小腿折叠/伸展的角度。
+
+Ankle Roll（踝关节侧摆角）
+物理意义：控制脚掌相对于小腿侧摆的角度。
+
+
+所以 Jacobian 就变成矩阵：
+\[
+\dot{\bs p}
+=
+\underbrace{
+\begin{bmatrix}
+\frac{\partial x}{\partial q_x} &
+\frac{\partial x}{\partial q_h} &
+\frac{\partial x}{\partial q_k} &
+\frac{\partial x}{\partial q_w}\\
+\frac{\partial y}{\partial q_x} &
+\frac{\partial y}{\partial q_h} &
+\frac{\partial y}{\partial q_k} &
+\frac{\partial y}{\partial q_w}\\
+\frac{\partial z}{\partial q_x} &
+\frac{\partial z}{\partial q_h} &
+\frac{\partial z}{\partial q_k} &
+\frac{\partial z}{\partial q_w}
+\end{bmatrix}
+}_{\bs J}
+\dot{\bs q}.
+\]
+
+这就是
+\[
+\dot{\bs p}=\bs J\dot{\bs q}.
+\]
+
+它的物理意义是：
+\[
+\text{关节转得多快}
+\quad\Longrightarrow\quad
+\text{轮心/足端移动得多快}.
+\]
+
+\begin{answerbox}
+\textbf{小白理解：}Jacobian 可以理解成“关节速度到轮心速度的换算表”。
+同样是某个关节转 \(1\,\mathrm{rad/s}\)，在不同姿态下轮心移动方向和速度可能不同，
+所以 \(\bs J\) 一般会随着关节角 \(\bs q\) 改变。
+\end{answerbox}
+
+\subsection{动力学公式在说什么}
+
+后面会出现完整动力学公式：
+\[
+\bs M(\bs q)\dot{\bs v}
++\bs h(\bs q,\bs v)
+=
+\bs S\T\bs \tau
++\bs J_c(\bs q)\T\bs \lambda.
+\]
+
+先把它翻译成人话：
+\[
+\text{机器人产生加速度需要的力}
++\text{重力/惯性杂项}
+=
+\text{电机给的力}
++\text{地面给的力}.
+\]
+
+逐项看：
+
+\begin{center}
+\begin{tabular}{p{0.24\linewidth}p{0.66\linewidth}}
+\toprule
+项 & 含义 \\
+\midrule
+\(\bs M(\bs q)\dot{\bs v}\) & 质量和惯量导致的加速度项。机器人越重，让它加速越难。\\
+\(\bs h(\bs q,\bs v)\) & 重力、科氏力、离心力等合在一起的项。\\
+\(\bs S\T\bs \tau\) & 电机通过关节施加的力矩。\\
+\(\bs J_c\T\bs \lambda\) & 地面接触力通过接触点传回整个机器人。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+所以机器狗动力学不是只看电机，还必须看地面接触。没有地面接触力，机器狗无法支撑、加速、刹车或转弯。
+
+\begin{answerbox}
+\textbf{面试表达：}机械臂常见模型是固定基座动力学，而机器狗是浮动基系统。
+浮动基没有被桌子固定住，机身的 6 个自由度本身也会运动，所以必须把地面接触力
+\(\bs\lambda\) 和接触 Jacobian \(\bs J_c\) 放进动力学方程。
+\end{answerbox}
+
+\section{建模对象与坐标约定}
+
+\begin{conceptbox}{2.1 M20 Pro 应该抽象成什么机器人？}
+M20 Pro 可以按轮足式四足机器人建模。每条腿的链路为
+(关节和其后面的连杆是一组)
+\[
+\text{\texttt{base\_link}}
+\rightarrow \text{\texttt{hipx}}
+\rightarrow \text{\texttt{hipy}}
+\rightarrow \text{\texttt{knee}}
+\rightarrow \text{\texttt{wheel}}.
+\]
+\end{conceptbox}
+
+采用 ROS/URDF 常见机体系约定：
+\[
+x:\text{前方}, \qquad y:\text{左方}, \qquad z:\text{上方}.
+\]
+
+第 \(i\) 条腿的关节变量定义为
+\[
+\bs q_i =
+\begin{bmatrix}
+q_{x,i} & q_{h,i} & q_{k,i} & q_{w,i}
+\end{bmatrix}\T,
+\]
+其中
+\[
+q_x:\text{hipx}, \qquad
+q_h:\text{hipy}, \qquad
+q_k:\text{knee}, \qquad
+q_w:\text{wheel}.
+\]
+
+\begin{answerbox}
+\textbf{12 维和 16 维不要混淆：}M20 每条腿确实有 4 个关节，所以本体共有
+\[
+4\ \text{条腿}\times 4\ \text{个关节}=16\ \text{个关节}.
+\]
+但在很多强化学习或运动学代码里，只对 \texttt{hipx/hipy/knee} 这 3 个腿部姿态关节做重排，
+即
+\[
+4\ \text{条腿}\times 3\ \text{个姿态关节}=12.
+\]
+轮子 \texttt{wheel} 是连续转动关节，主要影响滚动速度，不改变轮心位置，所以经常单独处理。
+\end{answerbox}
+
+URDF 中关节轴为
+\[
+\bs a_x =
+\begin{bmatrix}-1\\0\\0\end{bmatrix},
+\qquad
+\bs a_y =
+\begin{bmatrix}0\\-1\\0\end{bmatrix}.
+\]
+因此本文将腿部旋转写成
+\[
+\rx(-q_x), \qquad \ry(-q_h), \qquad \ry(-q_k), \qquad \ry(-q_w).
+\]
+
+\section{M20 URDF 中的几何参数}
+
+\begin{greenbox}{3.1 从 URDF 到数学参数}
+URDF 里的 \texttt{origin xyz} 和 \texttt{axis} 是推运动学最重要的信息。
+本文把这些 XML 参数整理成少量几何常数：
+\[
+a,b,b_1,b_2,l_1,l_2,r_w.
+\]
+它们分别描述髋根在机身上的位置、腿部侧向偏移、大腿/小腿长度以及轮半径。
+后面的正运动学、逆运动学和 Jacobian 都围绕这些量展开。
+\end{greenbox}
+
+从 URDF 读取到的主要几何常数为
+\[
+a = 0.3141,\qquad b=0.0685,
+\]
+\[
+b_1 = 0.0984,\qquad b_2 = 0.059676,
+\]
+\[
+l_1 = 0.25,\qquad l_2 = 0.25,
+\]
+\[
+r_w = 0.09.
+\]
+
+其中
+\[
+a:\text{前后髋根半距}, \qquad
+b:\text{左右髋根半距},
+\]
+\[
+b_1,b_2:\text{腿部侧向偏移}, \qquad
+l_1,l_2:\text{大腿/小腿近似长度}, \qquad
+r_w:\text{轮半径}.
+\]
+
+定义腿编号符号
+\[
+f_i =
+\begin{cases}
++1, & \text{前腿},\\
+-1, & \text{后腿},
+\end{cases}
+\qquad
+s_i =
+\begin{cases}
++1, & \text{左腿},\\
+-1, & \text{右腿}.
+\end{cases}
+\]
+
+第 \(i\) 条腿的髋根位置为
+\[
+\bs h_i =
+\begin{bmatrix}
+f_i a\\
+s_i b\\
+0
+\end{bmatrix}.
+\]
+
+大腿段和小腿/轮心段的 URDF 偏移为
+\[
+\bs d_{1,i} =
+\begin{bmatrix}
+0\\
+s_i b_1\\
+-l_1
+\end{bmatrix},
+\qquad
+\bs d_{2,i} =
+\begin{bmatrix}
+0\\
+s_i b_2\\
+-l_2
+\end{bmatrix}.
+\]
+
+四个轮心的零位左右距离约为
+\[
+W =
+2(b+b_1+b_2)
+= 2(0.0685+0.0984+0.059676)
+=0.453152\ \mathrm m.
+\]
+这与 Gazebo 插件中的
+\[
+\text{\texttt{wheel\_separation}} \approx 0.453
+\]
+一致。
+
+\section{旋转矩阵}
+
+本文采用
+
+绕x轴旋转矩阵
+\[
+\rx(\theta)=
+\begin{bmatrix}
+1&0&0\\
+0&\cos\theta&-\sin\theta\\
+0&\sin\theta&\cos\theta
+\end{bmatrix},
+\]
+
+绕y轴旋转矩阵
+\[
+\ry(\theta)=
+\begin{bmatrix}
+\cos\theta&0&\sin\theta\\
+0&1&0\\
+-\sin\theta&0&\cos\theta
+\end{bmatrix}.
+\]
+
+\section{单腿正运动学}
+
+\begin{conceptbox}{5.1 正运动学要解决什么？}
+单腿正运动学的目标是：
+\[
+\text{已知 } q_{x,i},q_{h,i},q_{k,i},q_{w,i}
+\quad\Longrightarrow\quad
+\text{求第 }i\text{ 条腿的轮心位置 } \bs p_i^B.
+\]
+对 M20 来说，轮心位置只和 \texttt{hipx/hipy/knee} 有关；
+\texttt{wheel} 自转只改变轮子滚动状态，不改变轮心几何位置。
+\end{conceptbox}
+
+轮心在机体系 \(B\) 下的位置为
+\begin{formula}
+\[
+\boxed{
+\bs p_i^B
+=
+\bs h_i
++ \rx(-q_{x,i})\ry(-q_{h,i})\bs d_{1,i}
++ \rx(-q_{x,i})\ry[-(q_{h,i}+q_{k,i})]\bs d_{2,i}
+}
+\]
+\end{formula}
+
+这条公式可以按三段理解：
+\[
+\bs h_i:
+\text{先从机身原点走到第 }i\text{ 条腿的髋根。}
+\]
+\[
+\rx(-q_x)\ry(-q_h)\bs d_1:
+\text{再经过 hipx 和 hipy 旋转后，走到膝关节。}
+\]
+\[
+\rx(-q_x)\ry[-(q_h+q_k)]\bs d_2:
+\text{最后经过 knee 旋转后，从膝关节走到轮心。}
+\]
+
+所以正运动学本质上就是：
+\[
+\text{一段一段地旋转，再一段一段地平移。}
+\]
+
+轮子自转 \(q_{w,i}\) 不改变轮心位置，因此 \(\bs p_i^B\) 不含 \(q_{w,i}\)。
+
+轮子坐标系相对机体系的姿态可写成
+\[
+\bs R_{w_i}^{B}
+=
+\rx(-q_{x,i})
+\ry[-(q_{h,i}+q_{k,i}+q_{w,i})].
+\]
+
+\begin{answerbox}
+\textbf{小白理解：}这条公式看起来长，本质上只有一句话：
+先从机身走到髋根，再让大腿绕关节转到膝盖，最后让小腿绕关节转到轮心。
+如果只是关心轮心在哪里，轮子自己转了多少圈并不重要。
+\end{answerbox}
+
+\section{单腿位置 Jacobian}
+
+轮心速度满足
+\[
+\dot{\bs p}_i^B
+=
+\bs J_{p,i}(\bs q_i)\dot{\bs q}_i.
+\]
+
+由于轮心位置与轮子自转 \(q_w\) 无关，所以
+\[
+\bs J_{p,i}
+=
+\begin{bmatrix}
+\bs J_{x,i} & \bs J_{h,i} & \bs J_{k,i} & \bs 0
+\end{bmatrix}
+\in \R^{3\times 4}.
+\]
+
+用几何 Jacobian 写最清楚。三个转动关节的轴在机体系中为
+\[
+\bs z_{x,i} =
+\begin{bmatrix}-1\\0\\0\end{bmatrix},
+\]
+\[
+\bs z_{h,i} =
+\rx(-q_{x,i})
+\begin{bmatrix}0\\-1\\0\end{bmatrix},
+\]
+\[
+\bs z_{k,i} =
+\rx(-q_{x,i})\ry(-q_{h,i})
+\begin{bmatrix}0\\-1\\0\end{bmatrix}.
+\]
+
+三个关节原点为
+\[
+\bs o_{x,i}=\bs h_i,
+\qquad
+\bs o_{h,i}=\bs h_i,
+\]
+\[
+\bs o_{k,i}
+=
+\bs h_i
++\rx(-q_{x,i})\ry(-q_{h,i})\bs d_{1,i}.
+\]
+
+因此
+\[
+\boxed{
+\bs J_{x,i}
+=
+\bs z_{x,i}\times(\bs p_i^B-\bs o_{x,i})
+}
+\]
+\[
+\boxed{
+\bs J_{h,i}
+=
+\bs z_{h,i}\times(\bs p_i^B-\bs o_{h,i})
+}
+\]
+\[
+\boxed{
+\bs J_{k,i}
+=
+\bs z_{k,i}\times(\bs p_i^B-\bs o_{k,i})
+}
+\]
+
+于是
+\[
+\boxed{
+\dot{\bs p}_i^B
+=
+\begin{bmatrix}
+\bs J_{x,i} & \bs J_{h,i} & \bs J_{k,i} & \bs 0
+\end{bmatrix}
+\begin{bmatrix}
+\dot q_{x,i}\\
+\dot q_{h,i}\\
+\dot q_{k,i}\\
+\dot q_{w,i}
+\end{bmatrix}.
+}
+\]
+
+这一式子的意思是：
+\[
+\text{轮心速度}
+=
+\text{hipx 造成的速度}
++\text{hipy 造成的速度}
++\text{knee 造成的速度}.
+\]
+
+最后一列是 \(\bs 0\)，因为轮子自转只改变轮子的朝向，不改变轮心的位置。
+
+几何 Jacobian 中的
+\[
+\bs z\times(\bs p-\bs o)
+\]
+可以这样理解：
+
+\begin{itemize}
+  \item \(\bs z\) 是关节转轴方向。
+  \item \(\bs o\) 是关节原点。
+  \item \(\bs p-\bs o\) 是从关节原点指向轮心的杆臂。
+  \item 转轴方向叉乘杆臂，就得到这个关节转动时轮心的瞬时速度方向。
+\end{itemize}
+
+\section{单腿逆运动学}
+
+\begin{greenbox}{7.1 逆运动学要解决什么？}
+逆运动学和正运动学方向相反：
+\[
+\text{已知轮心目标位置 } \bs p_{i,d}^B
+\quad\Longrightarrow\quad
+\text{反求关节角 }q_{x,i},q_{h,i},q_{k,i}.
+\]
+它常用于足端摆动轨迹、落脚点规划、轮心高度控制等场景。
+但 M20 的 URDF 关节轴有负方向，并且左右腿、前后腿存在镜像关系，所以公式推完后必须代回正运动学验证。
+\end{greenbox}
+
+目标：给定轮心期望位置 \(\bs p_{i,d}^B\)，求
+\[
+q_{x,i},\quad q_{h,i},\quad q_{k,i}.
+\]
+
+先定义髋根到目标点的向量
+\[
+\bs r_i =
+\bs p_{i,d}^B-\bs h_i
+=
+\begin{bmatrix}
+r_x\\r_y\\r_z
+\end{bmatrix}.
+\]
+
+\subsection{求 hipx 角}
+
+经过 hipx 反向旋转后，腿部点应落在腿平面中。令
+\[
+\tilde{\bs r}_i
+=
+\rx(q_{x,i})\bs r_i.
+\]
+
+由于 \(\ry\) 不改变 \(y\) 分量，理论上有
+\[
+\tilde r_y
+=
+s_i(b_1+b_2).
+\]
+
+代入 \(\rx(q_x)\) 得
+\[
+r_y\cos q_x-r_z\sin q_x
+=
+s_i(b_1+b_2).
+\]
+
+令
+\[
+\rho_y=\sqrt{r_y^2+r_z^2},\qquad
+\alpha=\operatorname{atan2}(r_z,r_y),
+\]
+则
+\[
+\rho_y\cos(q_x+\alpha)
+=
+s_i(b_1+b_2).
+\]
+
+因此
+\[
+\boxed{
+q_{x,i}
+=
+-\alpha
+\pm
+\arccos
+\left(
+\frac{s_i(b_1+b_2)}{\rho_y}
+\right)
+}
+\]
+
+实际使用时选满足 URDF 关节限位且姿态连续的分支。
+
+这里出现 \(\pm\) 是因为几何上可能有两个解。类似人的胳膊伸到同一个点，可以是“肘上”姿态，也可以是“肘下”姿态。机器狗腿也是一样，同一个轮心位置可能对应两个膝关节弯曲方向。
+
+\subsection{求 hipy 与 knee}
+
+得到 \(q_{x,i}\) 后，计算
+\[
+\tilde{\bs r}_i
+=
+\rx(q_{x,i})\bs r_i
+=
+\begin{bmatrix}
+\tilde x\\ \tilde y\\ \tilde z
+\end{bmatrix}.
+\]
+
+在腿平面内，有
+\[
+\tilde x =
+l_1\sin q_h+l_2\sin(q_h+q_k),
+\]
+\[
+\tilde z =
+-l_1\cos q_h-l_2\cos(q_h+q_k).
+\]
+
+令
+\[
+D =
+\frac{\tilde x^2+\tilde z^2-l_1^2-l_2^2}{2l_1l_2}.
+\]
+
+膝关节角为
+\[
+\boxed{
+q_k =
+\operatorname{atan2}
+\left(
+\pm\sqrt{1-D^2},\ D
+\right)
+}
+\]
+其中正负号对应膝盖弯曲的两个构型。
+
+再令
+\[
+\phi=\operatorname{atan2}(\tilde x,-\tilde z),
+\]
+则髋俯仰角为
+\[
+\boxed{
+q_h =
+\phi
+-
+\operatorname{atan2}
+\left(
+l_2\sin q_k,\,
+l_1+l_2\cos q_k
+\right)
+}
+\]
+
+注意：逆运动学的符号和分支必须结合 RViz/Gazebo 验证，因为 URDF 中关节轴为 \(-x\)、\(-y\)，且左右腿/前后腿存在镜像限位。
+
+逆运动学最容易错的地方不是公式本身，而是符号方向。推公式时通常按几何正方向推，但 URDF 里的关节轴可能是负方向，例如 M20 的 hipy 和 knee 都是 \([0,-1,0]\)。因此写完 IK 后一定要做一个小测试：
+
+\[
+\text{把求出来的 } q_x,q_h,q_k \text{ 代回正运动学，看是否回到目标点。}
+\]
+
+\section{机体位姿与轮心速度}
+
+设机体在世界系 \(W\) 中的位置和姿态为
+\[
+\bs p_B^W\in\R^3,\qquad \bs R_B^W\in SO(3).
+\]
+
+第 \(i\) 个轮心在世界系中的位置为
+\[
+\boxed{
+\bs p_i^W
+=
+\bs p_B^W
++\bs R_B^W\bs p_i^B
+}
+\]
+
+设机体线速度为 \(\bs v_B^W\)，机体角速度在机体系中表示为 \(\bs \omega_B^B\)，则
+\[
+\boxed{
+\dot{\bs p}_i^W
+=
+\bs v_B^W
++
+\bs R_B^W
+\left(
+\bs \omega_B^B\times \bs p_i^B
++\bs J_{p,i}\dot{\bs q}_i
+\right)
+}
+\]
+
+这条速度公式有三部分：
+\[
+\bs v_B^W:
+\text{机身整体平移带着轮心一起移动。}
+\]
+\[
+\bs R_B^W(\bs \omega_B^B\times \bs p_i^B):
+\text{机身转动时，轮心绕机身原点扫过的速度。}
+\]
+\[
+\bs R_B^W\bs J_{p,i}\dot{\bs q}_i:
+\text{腿部关节自己运动造成的轮心速度。}
+\]
+
+所以轮心速度不是只由腿决定，而是
+\[
+\text{机身平移}
++\text{机身转动}
++\text{腿部关节运动}
+\]
+三者叠加。
+
+等价地，
+\[
+\dot{\bs p}_i^W
+=
+\bs v_B^W
+-\bs R_B^W\cross{\bs p_i^B}\bs \omega_B^B
++\bs R_B^W\bs J_{p,i}\dot{\bs q}_i.
+\]
+
+\section{轮足接触约束}
+
+普通足式机器人在支撑相通常使用足端不动约束
+\[
+\bs J_c(\bs q)\bs v=0.
+\]
+
+轮足机器人不同。轮子接触点允许沿滚动方向运动，不允许法向穿透和侧向滑动。
+
+设第 \(i\) 个轮地接触点速度为 \(\bs v_{c,i}\)，地面法向为 \(\bs n_i\)，轮子滚动方向为 \(\bs t_i\)，侧滑方向为 \(\bs l_i\)。则理想轮地约束可写成
+\[
+\boxed{
+\bs n_i\T \bs v_{c,i}=0
+}
+\]
+\[
+\boxed{
+\bs l_i\T \bs v_{c,i}=0
+}
+\]
+\[
+\boxed{
+\bs t_i\T \bs v_{c,i}
+=
+\sigma r_w \dot q_{w,i}
+}
+\]
+
+其中 \(\sigma\) 是轮速符号修正。当前 Gazebo 四轮插件中
+\[
+\sigma=-1.
+\]
+
+\section{四轮差速简化运动学}
+
+\begin{orangebox}{8.1 这个模型什么时候用？}
+四轮差速模型是一个工程简化模型，适合 Nav2、Gazebo 导航避障和高层路径跟踪。
+它只关心底盘平面速度
+\[
+v_x,\qquad \omega_z
+\]
+如何转换成左右轮速度。它不描述腿部姿态调整、机身俯仰滚转、接触力分配，也不等价于 M20 的完整轮足动力学。
+\end{orangebox}
+
+在 Nav2/Gazebo 简化模型中，M20 被近似为四轮差速/滑移底盘。
+
+设
+\[
+v_x:\text{机体前向速度},\qquad
+\omega_z:\text{偏航角速度},
+\]
+\[
+\omega_L:\text{左侧两轮平均角速度},\qquad
+\omega_R:\text{右侧两轮平均角速度},
+\]
+\[
+r_w=0.09,\qquad W=0.453,\qquad \sigma=-1.
+\]
+
+则正向命令到轮速的关系为
+\[
+\boxed{
+\omega_L
+=
+\sigma\frac{v_x-\frac{W}{2}\omega_z}{r_w}
+}
+\]
+\[
+\boxed{
+\omega_R
+=
+\sigma\frac{v_x+\frac{W}{2}\omega_z}{r_w}
+}
+\]
+
+反解为
+\[
+\boxed{
+v_x
+=
+\frac{r_w}{2\sigma}(\omega_L+\omega_R)
+}
+\]
+\[
+\boxed{
+\omega_z
+=
+\frac{r_w}{\sigma W}(\omega_R-\omega_L)
+}
+\]
+
+四个轮子满足
+\[
+\omega_{fl}=\omega_{hl}=\omega_L,
+\qquad
+\omega_{fr}=\omega_{hr}=\omega_R.
+\]
+
+\begin{answerbox}
+\textbf{工程理解：}Gazebo/Nav2 里为了做导航，可以把 M20 当成一个会接收
+\texttt{/cmd\_vel} 的四轮差速底盘；但 MuJoCo 或强化学习控制里，机器人能不能真实站稳、受力、滚动和转弯，
+还要看腿部关节、轮地接触和执行器动力学。
+\end{answerbox}
+
+\section{完整浮动基动力学}
+
+\begin{conceptbox}{9.1 为什么 M20 要用浮动基动力学？}
+固定机械臂的底座通常不动，所以动力学只需要考虑关节。
+M20 不一样：机身会平移、升降、滚转、俯仰和偏航。
+因此完整模型必须同时包含：
+\[
+\text{机身 6 自由度}
++
+\text{16 个本体关节}
++
+\text{地面接触约束}.
+\]
+\end{conceptbox}
+
+机器狗是浮动基系统。广义坐标可写为
+\[
+\bs q =
+\begin{bmatrix}
+\bs p_B\\
+\bs R_B\\
+\bs q_j
+\end{bmatrix},
+\]
+广义速度可写为
+\[
+\bs v =
+\begin{bmatrix}
+\bs v_B\\
+\bs \omega_B\\
+\dot{\bs q}_j
+\end{bmatrix}.
+\]
+
+M20 本体有 \(16\) 个关节，因此
+\[
+\bs q_j\in\R^{16}.
+\]
+如果加 Piper 机械臂和夹爪，则关节维度增加。
+
+完整动力学标准形式为
+\[
+\boxed{
+\bs M(\bs q)\dot{\bs v}
++\bs h(\bs q,\bs v)
+=
+\bs S\T\bs \tau
++\bs J_c(\bs q)\T\bs \lambda
+}
+\]
+
+这条式子是整台机器狗的核心动力学。它比普通机械臂复杂，是因为机器狗的机身不是固定的：
+\[
+\text{机械臂底座通常固定在桌上，机器狗机身会在空间中运动。}
+\]
+
+因此机器狗动力学必须同时描述：
+\[
+\text{机身 6 自由度运动}
++\text{所有关节运动}
++\text{地面接触力}.
+\]
+
+其中
+\[
+\bs M(\bs q):\text{质量矩阵},
+\]
+\[
+\bs h(\bs q,\bs v):\text{科氏力、离心力、重力合项},
+\]
+\[
+\bs S\T\bs \tau:\text{关节电机广义力},
+\]
+\[
+\bs J_c(\bs q)\T\bs \lambda:\text{接触力广义力},
+\]
+\[
+\bs \lambda:\text{地面对轮/足的接触力}.
+\]
+
+若写成经典二阶形式：
+\[
+\boxed{
+\bs M(\bs q)\ddot{\bs q}
++\bs C(\bs q,\dot{\bs q})\dot{\bs q}
++\bs g(\bs q)
+=
+\bs S\T\bs \tau
++\bs J_c(\bs q)\T\bs \lambda
+}
+\]
+
+浮动基的前 6 个自由度没有电机直接驱动，所以选择矩阵可理解为
+\[
+\bs S =
+\begin{bmatrix}
+\bs 0_{n_j\times 6} & \bs I_{n_j}
+\end{bmatrix},
+\]
+其中 \(n_j\) 是关节数量。
+
+\section{接触约束动力学}
+
+如果接触点为非滑动足端，则速度约束为
+\[
+\bs J_c(\bs q)\bs v=0.
+\]
+
+对时间求导得到加速度约束：
+\[
+\boxed{
+\bs J_c(\bs q)\dot{\bs v}
++\dot{\bs J}_c(\bs q,\bs v)\bs v
+=0
+}
+\]
+
+轮足情况下，约束应替换为法向不穿透、侧向不滑、滚动方向与轮速一致：
+\[
+\bs A_c(\bs q)\bs v
+=
+\bs B_c\dot{\bs q}_w.
+\]
+
+求解动力学时通常联立
+\[
+\begin{cases}
+\bs M\dot{\bs v}+\bs h
+=
+\bs S\T\bs \tau+\bs J_c\T\bs \lambda,\\
+\bs J_c\dot{\bs v}+\dot{\bs J}_c\bs v=0.
+\end{cases}
+\]
+
+写成块矩阵：
+\[
+\boxed{
+\begin{bmatrix}
+\bs M & -\bs J_c\T\\
+\bs J_c & \bs 0
+\end{bmatrix}
+\begin{bmatrix}
+\dot{\bs v}\\
+\bs \lambda
+\end{bmatrix}
+=
+\begin{bmatrix}
+\bs S\T\bs \tau-\bs h\\
+-\dot{\bs J}_c\bs v
+\end{bmatrix}
+}
+\]
+
+\section{轮子转动动力学}
+
+单个轮子的转动动力学可写为
+\[
+\boxed{
+I_w\ddot q_w
+=
+\tau_w-r_w F_t
+}
+\]
+
+其中
+\[
+I_w:\text{轮子绕自转轴惯量},\quad
+\tau_w:\text{轮电机力矩},\quad
+F_t:\text{地面对轮子的切向摩擦力}.
+\]
+
+因此
+\[
+\boxed{
+F_t
+=
+\frac{\tau_w-I_w\ddot q_w}{r_w}
+}
+\]
+
+低速准静态时可忽略 \(I_w\ddot q_w\)，得到
+\[
+\boxed{
+F_t\approx \frac{\tau_w}{r_w}
+}
+\]
+
+\section{质心动力学简化模型}
+
+做平衡、MPC、力分配时，常用质心动力学：
+\[
+\boxed{
+m\ddot{\bs c}
+=
+m\bs g+\sum_{i=1}^{N_c}\bs f_i
+}
+\]
+
+转动部分：
+\[
+\boxed{
+\bs I_G\dot{\bs \omega}
++\bs \omega\times \bs I_G\bs \omega
+=
+\sum_{i=1}^{N_c}
+(\bs r_i-\bs c)\times \bs f_i
++\sum_{i=1}^{N_c}\bs \tau_{c,i}
+}
+\]
+
+其中
+\[
+\bs c:\text{质心位置},\quad
+\bs f_i:\text{第 }i\text{ 个接触力},\quad
+\bs r_i:\text{第 }i\text{ 个接触点位置}.
+\]
+
+\section{接触力到关节力矩}
+
+单腿接触力 \(\bs f_i\) 与关节力矩之间满足虚功关系
+\[
+\delta W
+=
+\bs f_i\T \delta \bs p_i
+=
+\bs f_i\T\bs J_{p,i}\delta \bs q_i
+=
+(\bs J_{p,i}\T\bs f_i)\T\delta\bs q_i.
+\]
+
+因此
+\[
+\boxed{
+\bs \tau_i
+=
+\bs J_{p,i}\T\bs f_i
+}
+\]
+
+对轮足机器人，可进一步把滚动方向切向力映射到轮力矩：
+\[
+\boxed{
+\tau_{w,i}
+\approx
+r_w F_{t,i}
+}
+\]
+
+所以一条腿的控制可理解为
+\[
+\text{hipx/hipy/knee 控制支撑与姿态},
+\qquad
+\text{wheel 控制滚动牵引}.
+\]
+
+\section{M20 三种模型文件的区别：URDF、MJCF、USD}
+
+\begin{orangebox}{模型文件选型 30 秒}
+如果只是看 M20 的 link、joint、TF 和基本几何，优先看 \textbf{URDF}。
+如果要在 MuJoCo 中研究接触、执行器、IMU 和强化学习策略效果，优先看 \textbf{MJCF}。
+如果要进入 Isaac Sim/Isaac Lab，做大规模并行训练、复杂场景和传感器仿真，优先看 \textbf{USD}。
+\end{orangebox}
+
+当前仓库中，M20 本体模型位于
+\[
+\text{\texttt{src/third\_party/deep\_robotics\_model/M20}}.
+\]
+
+这个目录下有三套模型：
+\[
+\text{\texttt{M20\_urdf}},\qquad
+\text{\texttt{M20\_mjcf}},\qquad
+\text{\texttt{M20\_usd}}.
+\]
+
+它们描述的是同一台 M20 轮足机器狗，但服务的仿真器和用途不同。最重要的一句话是：
+\[
+\boxed{
+\text{URDF 偏 ROS 结构描述，MJCF 偏 MuJoCo 动力学，USD 偏 Isaac/PhysX 场景表达。}
+}
+\]
+
+\subsection{三种模型入口文件}
+
+\begin{center}
+\begin{tabular}{p{0.22\linewidth}p{0.39\linewidth}p{0.29\linewidth}}
+\toprule
+格式 & 入口文件 & 主要使用场景 \\
+\midrule
+URDF &
+\texttt{M20/M20\_urdf/urdf/M20.urdf} &
+ROS、RViz、TF、robot\_state\_publisher、机器人结构学习。\\
+MJCF &
+\texttt{M20/M20\_mjcf/mjcf/M20.xml} &
+MuJoCo、强化学习、接触动力学、策略仿真验证。\\
+USD &
+\texttt{M20/M20\_usd/M20.usd} &
+Isaac Sim、Isaac Lab、PhysX、图形渲染、复杂传感器仿真。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{先看一句话区别}
+
+\begin{center}
+\begin{tabular}{p{0.22\linewidth}p{0.68\linewidth}}
+\toprule
+格式 & 可以怎么理解 \\
+\midrule
+URDF & 告诉 ROS：“机器人由哪些 link 和 joint 组成，它们怎么连，质量、惯量、碰撞体大概是什么。”\\
+MJCF & 告诉 MuJoCo：“这是一台可以在物理世界里自由落体、接触地面、由 motor 驱动、带 IMU 传感器的机器人。”\\
+USD & 告诉 Isaac/Omniverse：“这是一台带几何、物理、关节、驱动、传感器分层配置的机器人资产，可以放进复杂 3D 场景。”\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+因此，三者不是谁替代谁，而是同一机器人面向不同工具链的三种表达。
+
+\subsection{M20 URDF：ROS 结构模型}
+
+URDF 文件：
+\[
+\text{\texttt{src/third\_party/deep\_robotics\_model/M20/M20\_urdf/urdf/M20.urdf}}.
+\]
+
+这个文件适合学习：
+\[
+\text{link/joint 树结构、TF、正运动学、逆运动学、RViz 可视化。}
+\]
+
+从当前 M20 URDF 解析得到：
+
+\begin{center}
+\begin{tabular}{p{0.35\linewidth}p{0.45\linewidth}}
+\toprule
+项目 & 数值 \\
+\midrule
+robot name & \texttt{M20}\\
+link 数量 & 17\\
+joint 数量 & 16\\
+关节类型 & 12 个 \texttt{revolute}，4 个 \texttt{continuous}\\
+总质量 & 约 \(34.491\ \mathrm{kg}\)\\
+visual mesh 数量 & 17\\
+collision box 数量 & 9\\
+collision cylinder 数量 & 18\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+它的核心结构是
+\[
+\text{\texttt{base\_link}}
+\rightarrow
+\{\text{\texttt{fl}},\text{\texttt{fr}},\text{\texttt{hl}},\text{\texttt{hr}}\}
+\rightarrow
+\text{\texttt{hipx}}
+\rightarrow
+\text{\texttt{hipy}}
+\rightarrow
+\text{\texttt{knee}}
+\rightarrow
+\text{\texttt{wheel}}.
+\]
+
+URDF 中每个 link 通常包含三类信息：
+\[
+\text{\texttt{inertial}},\qquad
+\text{\texttt{visual}},\qquad
+\text{\texttt{collision}}.
+\]
+
+也就是：
+\[
+\text{质量惯量}
+\quad+\quad
+\text{显示外观}
+\quad+\quad
+\text{碰撞几何}.
+\]
+
+M20 URDF 的碰撞体是简化的 box/cylinder。例如：
+\[
+\text{\texttt{base\_link}}
+\]
+使用一个 box 和两个 cylinder 来近似机身，而不是直接用复杂 STL 做碰撞。这样更适合 ROS/Gazebo 基础仿真和碰撞检测。
+
+但 URDF 中没有完整控制仿真需要的内容：
+
+\begin{itemize}
+  \item 没有地面。
+  \item 没有光照。
+  \item 没有 MuJoCo actuator。
+  \item 没有 IMU 输出。
+  \item 没有接触排除规则。
+  \item 没有完整的控制器配置。
+\end{itemize}
+
+所以 URDF 更像是
+\[
+\boxed{
+\text{机器人结构说明书}
+}
+\]
+而不是完整的动力学仿真世界。
+
+\subsection{M20 MJCF：MuJoCo 动力学模型}
+
+MJCF 文件：
+\[
+\text{\texttt{src/third\_party/deep\_robotics\_model/M20/M20\_mjcf/mjcf/M20.xml}}.
+\]
+
+这个文件适合：
+\[
+\text{MuJoCo 仿真、强化学习、控制策略验证、接触动力学研究。}
+\]
+
+从当前 M20 MJCF 解析得到：
+
+\begin{center}
+\begin{tabular}{p{0.35\linewidth}p{0.45\linewidth}}
+\toprule
+项目 & 数值 \\
+\midrule
+model name & \texttt{M20}\\
+body 数量 & 17\\
+joint 数量 & 17，其中 1 个为 \texttt{freejoint}\\
+motor 数量 & 16\\
+geom 数量 & 47\\
+contact exclude 数量 & 16\\
+sensor & \texttt{framequat}，\texttt{accelerometer}，\texttt{gyro}\\
+motor ctrlrange & 腿部 \([-76.4,76.4]\)，轮子 \([-21.6,21.6]\)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+MJCF 相比 URDF 多了几类非常关键的动力学仿真内容。
+
+\subsubsection{1. MJCF 有 floating base}
+
+MJCF 中有
+\[
+\text{\texttt{<freejoint name="floating\_base"/>}}.
+\]
+
+这表示 M20 的机身不是固定在世界中的，而是可以在空间中自由运动：
+\[
+x,y,z,\quad roll,pitch,yaw.
+\]
+
+这正是前面动力学公式中“浮动基”的来源：
+\[
+\bs v =
+\begin{bmatrix}
+\bs v_B\\
+\bs \omega_B\\
+\dot{\bs q}_j
+\end{bmatrix}.
+\]
+
+URDF 也可以表达浮动基概念，但它本身不会自动生成 MuJoCo 里的自由基动力学；MJCF 中这个 freejoint 直接告诉 MuJoCo：
+\[
+\text{这台机器人会掉落、支撑、翻滚、与地面接触。}
+\]
+
+\subsubsection{2. MJCF 有地面、光照和接触参数}
+
+MJCF 中定义了地面：
+\[
+\text{\texttt{<geom name='floor' type='plane' .../>}}.
+\]
+
+还定义了接触参数，例如：
+\[
+\text{\texttt{friction="1 0.01 0.001"}},
+\qquad
+\text{\texttt{solref="0.005 1"}}.
+\]
+
+这些参数会直接影响：
+\[
+\text{轮子打滑程度、接触硬度、仿真是否抖动、机器人是否容易弹飞。}
+\]
+
+URDF 中的 collision 只是告诉你“哪里会碰撞”，而 MJCF 进一步告诉 MuJoCo：
+\[
+\text{碰撞之后如何产生接触力。}
+\]
+
+\subsubsection{3. MJCF 有 actuator}
+
+MJCF 中有 16 个 motor：
+\[
+\text{\texttt{fl\_hipx\_joint}},\ldots,\text{\texttt{hr\_wheel\_joint}}.
+\]
+
+腿部 hip/knee 电机控制范围是
+\[
+[-76.4,\ 76.4],
+\]
+轮子电机控制范围是
+\[
+[-21.6,\ 21.6].
+\]
+
+这和前面动力学中的输入力矩
+\[
+\bs \tau
+\]
+直接相关。
+
+URDF 里虽然也有
+\[
+\text{\texttt{effort="76.4"}}
+\]
+这样的关节限制，但它不是一个 MuJoCo actuator。MJCF 中的 motor 才是 MuJoCo 真正用来施加控制输入的对象。
+
+\subsubsection{4. MJCF 有 IMU 相关 sensor}
+
+MJCF 中定义了：
+\[
+\text{\texttt{imu\_site}},\qquad
+\text{\texttt{base\_site}}.
+\]
+
+并且 sensor 中有：
+\[
+\text{\texttt{framequat}},\qquad
+\text{\texttt{accelerometer}},\qquad
+\text{\texttt{gyro}}.
+\]
+
+这意味着 MJCF 可以直接在 MuJoCo 中产生类似 IMU 的信息：
+\[
+\text{机身姿态四元数、加速度、角速度。}
+\]
+
+这对强化学习和控制很重要，因为策略网络通常需要输入：
+\[
+\text{IMU}+\text{关节角}+\text{关节速度}+\text{期望速度}.
+\]
+
+\subsubsection{5. MJCF 有 contact exclude}
+
+M20 MJCF 中有 16 条 contact exclude，例如：
+\[
+\text{\texttt{base\_link}} \leftrightarrow \text{\texttt{fl\_hipx}},
+\qquad
+\text{\texttt{fl\_hipx}} \leftrightarrow \text{\texttt{fl\_hipy}}.
+\]
+
+它的意思是：
+\[
+\text{相邻 link 之间不要做碰撞检测。}
+\]
+
+因为相邻零件在真实机器人里本来就是通过关节连接的，如果仿真中它们互相碰撞，会造成不必要的接触力、抖动甚至炸仿真。
+
+\subsection{URDF 与 MJCF 的具体差异：以 M20 为例}
+
+虽然 URDF 和 MJCF 都描述 M20，但它们不是完全逐行等价。
+
+\begin{center}
+\begin{tabular}{p{0.25\linewidth}p{0.31\linewidth}p{0.31\linewidth}}
+\toprule
+对比项 & URDF & MJCF \\
+\midrule
+根模型 & \texttt{robot name="M20"} & \texttt{mujoco model="M20"}\\
+主体单元 & \texttt{link} & \texttt{body}\\
+关节单元 & \texttt{joint} & \texttt{joint}\\
+浮动基 & 没有显式 freejoint & 有 \texttt{floating\_base}\\
+执行器 & 无 actuator & 16 个 \texttt{motor}\\
+传感器 & 无 IMU sensor & 有 framequat、accelerometer、gyro\\
+地面 & 无 & 有 floor plane\\
+接触参数 & 主要是 collision 几何 & 有 friction、solref、contact exclude\\
+主要用途 & ROS 结构/TF/可视化 & MuJoCo 动力学/RL\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+还有一个容易忽略的点：两者的惯性参数不完全一样。
+
+例如 URDF 中 hipy/knee 质量为：
+\[
+m_{\text{hipy}}=2.493,\qquad
+m_{\text{knee}}=1.26.
+\]
+
+MJCF 中对应值为：
+\[
+m_{\text{hipy}}=2.618,\qquad
+m_{\text{knee}}=1.145.
+\]
+
+URDF 总质量约为
+\[
+34.491\ \mathrm{kg},
+\]
+MJCF 总质量约为
+\[
+34.526\ \mathrm{kg}.
+\]
+
+差异不大，但说明：
+\[
+\boxed{
+\text{不要默认 URDF 和 MJCF 的动力学参数完全一致。}
+}
+\]
+
+如果你要推运动学，URDF/MJCF 的 link-joint 树基本够用；如果你要做动力学仿真和控制策略，以实际仿真器使用的 MJCF 参数为准更稳。
+
+\subsection{M20 USD：Isaac/PhysX 场景资产}
+
+USD 文件入口：
+\[
+\text{\texttt{src/third\_party/deep\_robotics\_model/M20/M20\_usd/M20.usd}}.
+\]
+
+当前 USD 文件是二进制 USD crate，也就是
+\[
+\text{\texttt{USDC}}.
+\]
+
+它不能像普通文本 XML 那样直接阅读，通常需要：
+\[
+\text{\texttt{usdcat}},\qquad
+\text{Isaac Sim},\qquad
+\text{Omniverse 工具链}
+\]
+来查看完整 prim 层级。
+
+当前环境中没有 \texttt{usdcat}，但从文件结构可以看到 USD 使用分层配置：
+
+\begin{center}
+\begin{tabular}{p{0.35\linewidth}p{0.48\linewidth}}
+\toprule
+USD 配置层 & 作用理解 \\
+\midrule
+\texttt{M20.usd} & 顶层入口，组合不同 configuration layer。\\
+\texttt{configuration/M20\_base.usd} & 几何和基础 prim 层，保存 M20 link/mesh 的场景结构。\\
+\texttt{configuration/M20\_physics.usd} & PhysX 物理层，包含 rigid body、mass、joint、drive、collision、physics scene 等信息。\\
+\texttt{configuration/M20\_robot.usd} & Isaac robot 元数据层，包含 robot API、link/joint、DOF 相关配置。\\
+\texttt{configuration/M20\_sensor.usd} & 传感器配置层，当前更像给传感器扩展预留的 layer。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+USD 的优势不只是“能仿真”，而是：
+\[
+\text{能把机器人放进大型 3D 场景，并和渲染、相机、激光雷达、材质、光照、PhysX 物理集成。}
+\]
+
+因此 USD 更适合：
+
+\begin{itemize}
+  \item Isaac Sim 中做高质量可视化。
+  \item Isaac Lab 中做机器人学习环境。
+  \item 做相机、深度相机、激光雷达等传感器仿真。
+  \item 在复杂工厂、楼宇、室外场景中做数据生成。
+  \item 做 sim-to-real 前的高保真场景测试。
+\end{itemize}
+
+\subsection{三种模型和本文公式的关系}
+
+本文前面推导的公式主要来自 M20 的 kinematic tree：
+\[
+\text{\texttt{base\_link}}
+\rightarrow
+\text{\texttt{hipx}}
+\rightarrow
+\text{\texttt{hipy}}
+\rightarrow
+\text{\texttt{knee}}
+\rightarrow
+\text{\texttt{wheel}}.
+\]
+
+这个树在 URDF、MJCF、USD 中都能找到对应关系。
+
+但不同公式更适合参考不同文件：
+
+\begin{center}
+\begin{tabular}{p{0.34\linewidth}p{0.45\linewidth}}
+\toprule
+你要推/做什么 & 优先参考 \\
+\midrule
+正运动学 \(\bs p=f(\bs q)\) & URDF，因为 parent-child、origin、axis 清楚。\\
+Jacobian \(\dot{\bs p}=\bs J\dot{\bs q}\) & URDF 或 MJCF，重点看 joint axis 和 body offset。\\
+完整动力学 \(\bs M\dot{\bs v}+\bs h=\bs S\T\bs\tau+\bs J_c\T\bs\lambda\) & MJCF，因为有 freejoint、mass、motor、contact、sensor。\\
+轮地接触和摩擦 & MJCF，因为有 friction、solref、contact exclude。\\
+强化学习策略仿真 & MJCF 或 Isaac/PhysX，取决于训练框架。\\
+高质量场景和传感器仿真 & USD，因为它是 Isaac/Omniverse 的资产格式。\\
+RViz 显示和 ROS TF & URDF。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+所以可以这样分工：
+\[
+\boxed{
+\begin{aligned}
+\text{URDF} &:\quad \text{看懂机器人怎么连，适合推运动学。}\\
+\text{MJCF} &:\quad \text{让机器人在 MuJoCo 里真的受力运动，适合推/验动力学。}\\
+\text{USD} &:\quad \text{让机器人进入 Isaac 的复杂三维仿真世界。}
+\end{aligned}
+}
+\]
+
+\subsection{选择建议}
+
+\begin{center}
+\begin{tabular}{p{0.38\linewidth}p{0.42\linewidth}}
+\toprule
+目标 & 推荐模型 \\
+\midrule
+学习 M20 link/joint 命名 & URDF\\
+推单腿正逆运动学 & URDF\\
+写 robot\_state\_publisher / RViz 模型 & URDF\\
+MuJoCo 中跑控制策略 & MJCF\\
+研究接触力、轮地摩擦、IMU 输入 & MJCF\\
+做 RL 训练或 sim-to-sim 验证 & MJCF 或 USD，取决于平台\\
+在 Isaac Sim 中做工厂巡检场景 & USD\\
+做相机/激光雷达数据生成 & USD\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+最后要记住：
+\[
+\boxed{
+\text{同一个 M20，在不同仿真器里不是同一份“物理真相”，而是同一机器人面向不同工具的不同建模版本。}
+}
+\]
+
+因此做工程时最好明确：
+\[
+\text{你要的是 TF/几何？动力学接触？还是高保真场景？}
+\]
+然后再选择 URDF、MJCF 或 USD。
+
+\section{推荐推导路线}
+
+建议按以下顺序学习和验证：
+
+\begin{enumerate}
+  \item 从 URDF 抽取 \(\bs h_i,\bs d_{1,i},\bs d_{2,i},r_w\)。
+  \item 推单腿正运动学 \(\bs p_i^B=f(\bs q_i)\)。
+  \item 用几何法推 Jacobian：\(\dot{\bs p}_i^B=\bs J_{p,i}\dot{\bs q}_i\)。
+  \item 加入浮动基速度：\(\dot{\bs p}_i^W=\bs v_B+\bs \omega_B\times \bs r_i+\bs R_B\bs J_i\dot{\bs q}_i\)。
+  \item 写轮地约束：法向不穿透、侧向不滑、滚动方向等于轮速乘半径。
+  \item 写完整动力学：\(\bs M\dot{\bs v}+\bs h=\bs S\T\bs \tau+\bs J_c\T\bs \lambda\)。
+  \item 根据任务降阶：导航用四轮差速模型，平衡控制用质心模型，精细仿真用完整刚体动力学。
+\end{enumerate}
+
+\section{从官方 RL Training 包入门强化学习：以 M20 为例}
+
+\begin{conceptbox}{RL 章节先抓住一条主线}
+在 M20 的强化学习速度跟踪任务里，策略网络并不是直接替代物理引擎，也不是直接手写逆动力学。
+更准确的控制链是：
+\[
+\text{观测}
+\rightarrow
+\text{策略动作}
+\rightarrow
+\text{目标关节位置/轮速}
+\rightarrow
+\text{PD/执行器}
+\rightarrow
+\text{关节力矩}
+\rightarrow
+\text{刚体动力学和接触}
+\]
+所以它同时包含“运动学目标”和“动力学执行”两层：策略先给目标，执行器和仿真器再把目标变成力矩和运动结果。
+\end{conceptbox}
+
+这一节接在前面的运动学、动力学模型之后，目的是回答一个更工程化的问题：
+
+\[
+\boxed{
+\text{已经知道 M20 的结构和动力学之后，怎样从 } \text{\texttt{src/third\_party/rl\_training}}
+\text{ 开始学习强化学习？}
+}
+\]
+
+这个包不是一个从零开始写强化学习算法的玩具工程，而是一个面向机器人运动控制的训练工程。它主要做三件事：
+
+\begin{enumerate}
+  \item 用 Isaac Lab/Isaac Sim 构建 M20 的并行仿真环境。
+  \item 用 RSL-RL 中的 PPO 算法训练运动控制策略。
+  \item 把训练好的策略保存、回放、导出，供后续 sim-to-sim 或部署使用。
+\end{enumerate}
+
+所以初学时不要一上来就改网络、改奖励、改地形。更好的顺序是：
+
+\[
+\boxed{
+\text{先看懂“环境给策略什么，策略输出什么，奖励怎样评价它”。}
+}
+\]
+
+\subsection{强化学习先学什么：把大词拆开}
+
+强化学习可以先理解成一个闭环控制问题。每一个仿真步里，机器人和算法之间发生下面这件事：
+
+\[
+\boxed{
+\text{观测 } \bs o_t
+\rightarrow
+\text{策略输出动作 } \bs a_t
+\rightarrow
+\text{仿真器推进一步}
+\rightarrow
+\text{得到奖励 } r_t \text{ 和新观测 } \bs o_{t+1}
+}
+\]
+
+这里的下标 \(t\) 表示时间步。
+
+\begin{center}
+\begin{tabular}{p{0.22\linewidth}p{0.60\linewidth}}
+\toprule
+名词 & 初学者理解 \\
+\midrule
+agent & 智能体，也就是正在学习的控制器。对 M20 来说，就是控制腿关节和轮子的策略网络。\\
+environment & 环境，也就是 Isaac Lab 里的仿真世界，里面有 M20、地形、接触、传感器、物理引擎。\\
+observation & 观测，记作 \(\bs o_t\)。策略网络能看到的信息，例如角速度、重力方向、关节角、关节速度、速度指令等。\\
+state & 状态，记作 \(\bs s_t\)。严格来说是系统完整状态。仿真器知道完整状态，但策略不一定能全部看到。\\
+action & 动作，记作 \(\bs a_t\)。策略网络输出的控制量。M20 中主要对应腿部关节目标位置和轮子目标速度。\\
+reward & 奖励，记作 \(r_t\)。环境对当前行为打分。跑得准、姿态稳会加分，摔倒、关节力矩太大、碰撞异常会扣分。\\
+done & 回合结束标志。比如机器人摔倒、超时、非法接触等都可能结束一个 episode。\\
+episode & 一次完整尝试。从机器人 reset 开始，到终止或超时结束。\\
+policy & 策略，记作 \(\pi_\theta\)。它是一个带参数 \(\theta\) 的函数或神经网络，把观测映射成动作。\\
+return & 累计回报，也就是未来奖励的折扣和。强化学习想让它尽量大。\\
+value & 价值函数，估计当前状态以后大概还能拿到多少总奖励。\\
+actor & 动作网络，负责输出动作。\\
+critic & 价值网络，负责估计价值，帮助 actor 学得更稳定。\\
+PPO & 一种常用的策略梯度算法。它通过限制每次策略变化的幅度，避免训练突然崩掉。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+标准强化学习问题通常写成马尔可夫决策过程：
+
+\[
+\mathcal M=(\mathcal S,\mathcal A,P,r,\gamma).
+\]
+
+各个符号含义如下：
+
+\begin{center}
+\begin{tabular}{p{0.18\linewidth}p{0.65\linewidth}}
+\toprule
+符号 & 含义 \\
+\midrule
+\(\mathcal S\) & 状态空间。包含机器人位姿、速度、关节状态、接触状态等所有理论上描述系统所需的信息。\\
+\(\mathcal A\) & 动作空间。M20 里可以理解为策略能发给关节/轮子的控制命令范围。\\
+\(P(\bs s_{t+1}\mid \bs s_t,\bs a_t)\) & 状态转移规律。机器人执行动作后，下一步会变成什么状态。这个规律由物理引擎近似实现。\\
+\(r(\bs s_t,\bs a_t)\) & 奖励函数。它决定了什么行为是“好”的。\\
+\(\gamma\) & 折扣因子，通常 \(0<\gamma<1\)。越接近 1，算法越重视长远收益。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+训练目标可以写成：
+
+\[
+\boxed{
+J(\theta)
+=
+\mathbb E_{\pi_\theta}
+\left[
+\sum_{t=0}^{T-1}\gamma^t r_t
+\right]
+}
+\]
+
+意思是：寻找一组神经网络参数 \(\theta\)，让策略 \(\pi_\theta\) 在很多次尝试中的期望累计奖励最大。
+
+\subsection{强化学习必须掌握的基本概念：结合 M20 源码}
+
+前面已经知道强化学习的闭环是
+\[
+\text{observation}\rightarrow \text{action}\rightarrow \text{reward}\rightarrow \text{next observation}.
+\]
+但真正读 \texttt{rl\_training} 源码时，还必须把一批基础概念串起来。否则你会看到
+\texttt{ManagerBasedRLEnvCfg}、\texttt{ObservationTermCfg}、\texttt{RewardTermCfg}、
+\texttt{OnPolicyRunner}、\texttt{num\_steps\_per\_env} 这些名字，却不知道它们在强化学习理论里对应什么。
+
+\begin{greenbox}{先看源码和概念的对应关系}
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.24\linewidth}p{0.34\linewidth}p{0.32\linewidth}}
+\toprule
+\textbf{RL 概念} & \textbf{源码位置} & \textbf{在 M20 中的含义}\\
+\midrule
+环境 Environment &
+\texttt{velocity\_env\_cfg.py} 中的 \texttt{LocomotionVelocityRoughEnvCfg} &
+定义仿真步长、episode 时长、并行环境数量、场景、观测、动作、奖励等。\\
+场景 Scene &
+\texttt{MySceneCfg} &
+地形、机器人、接触传感器、高度扫描器、灯光。\\
+指令 Command &
+\texttt{CommandsCfg} 和 \texttt{commands.py} &
+随机采样 \(v_x^{cmd},v_y^{cmd},\omega_z^{cmd}\)，告诉机器人该怎么走。\\
+观测 Observation &
+\texttt{ObservationsCfg.PolicyCfg/CriticCfg} &
+策略和价值网络看到的输入，例如角速度、重力方向、关节状态、上一帧动作。\\
+动作 Action &
+\texttt{DeeproboticsM20ActionsCfg} &
+12 维腿部目标位置偏移 + 4 维轮子目标速度。\\
+奖励 Reward &
+\texttt{RewardsCfg} 和 \texttt{rewards.py} &
+速度跟踪、姿态稳定、能耗、动作平滑、接触力等加权求和。\\
+终止 Termination &
+\texttt{TerminationsCfg} &
+episode 什么时候结束，例如超时、出界、非法接触、姿态异常。\\
+随机化 Event &
+\texttt{EventCfg} &
+训练时随机摩擦、质量、质心、初始姿态、执行器增益、外力扰动。\\
+课程 Curriculum &
+\texttt{CurriculumCfg} &
+先易后难，例如逐渐提高地形难度或命令范围。\\
+算法 Agent &
+\texttt{rsl\_rl\_ppo\_cfg.py} &
+配置 PPO、actor/critic 网络、采样步数、学习率、折扣因子等。\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{greenbox}
+
+\subsubsection{1. RL 和监督学习有什么不同}
+
+监督学习像做题：
+\[
+\text{输入 }x
+\rightarrow
+\text{模型输出 }\hat y
+\rightarrow
+\text{标准答案 }y
+\rightarrow
+\text{计算误差}.
+\]
+
+强化学习更像练车：
+\[
+\text{看到路况}
+\rightarrow
+\text{做一个动作}
+\rightarrow
+\text{车和环境真的变了}
+\rightarrow
+\text{过一会儿才知道动作好不好}.
+\]
+
+所以强化学习难在：
+
+\begin{enumerate}
+  \item 没有每一步动作的标准答案，只有 reward。
+  \item 当前动作会改变未来能看到的状态。
+  \item 一开始策略很差，采样到的数据也很差。
+  \item 奖励设计不当时，策略可能学会投机行为。
+\end{enumerate}
+
+\begin{answerbox}
+\textbf{小白理解：}监督学习是在“看答案学”，强化学习是在“试错中学”。
+M20 没有人告诉它每个时刻 16 个关节应该是多少，环境只告诉它：
+速度跟踪得好不好、身体稳不稳、动作抖不抖、用力大不大。
+\end{answerbox}
+
+\subsubsection{2. step、episode、rollout 和 iteration}
+
+读训练脚本时会看到很多“步”的概念，它们不是一个东西。
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.25\linewidth}p{0.60\linewidth}}
+\toprule
+\textbf{名词} & \textbf{含义}\\
+\midrule
+physics step & 物理引擎积分一步。M20 通用配置中 \(\Delta t=0.005\,\mathrm s\)，也就是 200 Hz。\\
+control step / policy step & 策略输出一次动作。源码里 \(\texttt{decimation}=4\)，所以控制周期为 \(0.005\times4=0.02\,\mathrm s\)，约 50 Hz。\\
+episode & 一次完整尝试。M20 配置中 \(\texttt{episode\_length\_s}=20.0\)，超时或触发终止条件就 reset。\\
+parallel envs & 并行环境数量。源码默认 \(\texttt{num\_envs}=4096\)，表示一次同时训练很多台虚拟 M20。\\
+rollout & 用当前策略在环境里采样一段数据。M20 PPO 配置中 \(\texttt{num\_steps\_per\_env}=24\)。\\
+iteration & 一次 PPO 迭代，通常是“采样 rollout + 用这些数据更新网络”。\\
+mini-batch & 把 rollout 数据切成小批次做梯度下降。M20 中 \(\texttt{num\_mini\_batches}=4\)。\\
+epoch & 对同一批 rollout 数据重复训练的轮数。M20 中 \(\texttt{num\_learning\_epochs}=5\)。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+因此，一次 PPO iteration 大致会采样
+\[
+4096\times24=98304
+\]
+条并行时间步数据，然后用这些数据训练网络若干轮。
+
+\begin{formula}
+\[
+\text{一次训练迭代}
+=
+\underbrace{\text{当前策略采样 rollout}}_{\text{和环境交互}}
++
+\underbrace{\text{PPO 更新 actor/critic}}_{\text{优化神经网络}}.
+\]
+\end{formula}
+
+\subsubsection{3. policy、actor、critic、value 和 advantage}
+
+策略 policy 记作
+\[
+\pi_\theta(\bs a_t\mid \bs o_t).
+\]
+它表示：给定观测 \(\bs o_t\)，策略以某个概率分布输出动作 \(\bs a_t\)。
+
+在 RSL-RL 的 PPO 中，常见结构是 actor-critic：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.22\linewidth}p{0.62\linewidth}}
+\toprule
+\textbf{概念} & \textbf{含义}\\
+\midrule
+actor & 动作网络。输入 policy observation，输出动作分布或动作均值。M20 配置中 actor MLP 是 \(512\rightarrow256\rightarrow128\)。\\
+critic & 价值网络。输入 critic observation，估计当前局面未来还能拿到多少回报。M20 配置中 critic MLP 也是 \(512\rightarrow256\rightarrow128\)。\\
+value \(V_\phi(\bs o_t)\) & 价值函数，估计从当前观测开始的未来累计奖励。\\
+return \(G_t\) & 实际或估计的未来折扣奖励和。\\
+advantage \(\hat A_t\) & 优势函数，表示这个动作比当前平均水平好多少。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+优势函数可以先粗略理解为：
+\[
+\boxed{
+\hat A_t
+\approx
+G_t - V_\phi(\bs o_t)
+}
+\]
+
+如果 \(\hat A_t>0\)，说明这次动作比 critic 预期更好，PPO 会提高类似动作的概率；
+如果 \(\hat A_t<0\)，说明这次动作比预期差，PPO 会降低类似动作的概率。
+
+\begin{answerbox}
+\textbf{小白理解：}actor 像“驾驶员”，负责打方向、踩油门；
+critic 像“教练”，不直接控制车，但会评估当前驾驶局面值不值得继续。
+PPO 训练时，actor 根据 critic 的评价来调整自己的动作习惯。
+\end{answerbox}
+
+\subsubsection{4. policy observation 和 critic observation 为什么分开}
+
+\texttt{velocity\_env\_cfg.py} 里把观测分成两组：
+
+\[
+\texttt{observations.policy},
+\qquad
+\texttt{observations.critic}.
+\]
+
+这对应 actor-critic 的工程实现：
+
+\begin{itemize}
+  \item \textbf{policy observation} 给 actor 用，部署时也应该尽量能在真实机器人上得到。
+  \item \textbf{critic observation} 给 critic 用，只在训练时辅助估值，可以更干净、噪声更少，甚至在某些任务中可以包含更多仿真信息。
+\end{itemize}
+
+M20 当前配置里有几个关键处理：
+
+\begin{enumerate}
+  \item policy 默认开启 \(\texttt{enable\_corruption=True}\)，训练时给观测加噪声，提高鲁棒性。
+  \item critic 默认 \(\texttt{enable\_corruption=False}\)，让价值估计更稳定。
+  \item play 脚本会关闭 policy corruption，测试时不再故意加观测噪声。
+  \item M20 policy 不直接使用 \(\texttt{base\_lin\_vel}\)，因为真实机器人上机体线速度不一定能可靠直接测到。
+  \item M20 policy 当前也关闭 \(\texttt{height\_scan}\)，主要依赖本体感知、速度命令和随机化。
+  \item \texttt{joint\_pos\_rel\_without\_wheel} 会保留 16 维关节位置形状，但把 4 个轮子位置置零。
+\end{enumerate}
+
+\begin{formula}
+\[
+\bs o^{policy}
+=
+\mathrm{concat}
+\left[
+\text{base angular velocity},
+\text{projected gravity},
+\text{velocity command},
+\text{joint position},
+\text{joint velocity},
+\text{last action}
+\right].
+\]
+\end{formula}
+
+\begin{answerbox}
+\textbf{特别重要：}观测项的顺序、缩放、裁剪、是否加噪声，都是策略输入定义的一部分。
+如果训练时和部署时的观测顺序不一致，网络不会报错，但机器人动作会完全不对。
+\end{answerbox}
+
+\subsubsection{5. action 不是最终电机力矩}
+
+M20 的动作空间在 \texttt{rough\_env\_cfg.py} 里被拆成两类：
+
+\[
+\bs a_t=
+\begin{bmatrix}
+\bs a_{\mathrm{leg}}\\
+\bs a_{\mathrm{wheel}}
+\end{bmatrix},
+\qquad
+\bs a_{\mathrm{leg}}\in\mathbb R^{12},
+\quad
+\bs a_{\mathrm{wheel}}\in\mathbb R^{4}.
+\]
+
+腿部动作使用 \texttt{JointPositionActionCfg}：
+\[
+\boxed{
+\bs q_{\mathrm{leg}}^{target}
+=
+\bs q_{\mathrm{default}}
++
+\bs k_{\mathrm{leg}}\odot \bs a_{\mathrm{leg}}.
+}
+\]
+
+轮子动作使用 \texttt{JointVelocityActionCfg}：
+\[
+\boxed{
+\dot{\bs q}_{\mathrm{wheel}}^{target}
+=
+5.0\,\bs a_{\mathrm{wheel}}.
+}
+\]
+
+然后执行器再把目标位置/目标速度转换成关节力矩。M20 资产配置中：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.24\linewidth}p{0.28\linewidth}p{0.34\linewidth}}
+\toprule
+\textbf{执行器} & \textbf{源码参数} & \textbf{含义}\\
+\midrule
+腿部 12 关节 &
+\(\texttt{stiffness}=80.0,\ \texttt{damping}=2.0,\ \texttt{effort\_limit}=76.4\) &
+更像位置 PD 伺服，负责支撑和姿态。\\
+轮子 4 关节 &
+\(\texttt{stiffness}=0.0,\ \texttt{damping}=0.6,\ \texttt{effort\_limit}=21.6\) &
+更偏速度/阻尼控制，负责滚动牵引。\\
+延迟 &
+\(\texttt{min\_delay}=0,\ \texttt{max\_delay}=1\) &
+模拟控制延迟，避免策略只适应理想无延迟执行器。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+所以控制链一定要写成：
+\[
+\boxed{
+\text{policy action}
+\rightarrow
+\text{target position/velocity}
+\rightarrow
+\text{Delayed PD actuator}
+\rightarrow
+\text{joint torque}
+\rightarrow
+\text{PhysX dynamics}.
+}
+\]
+
+\subsubsection{6. on-policy、off-policy 和 PPO}
+
+\texttt{train.py} 中使用的是 RSL-RL 的
+\[
+\texttt{OnPolicyRunner}.
+\]
+
+on-policy 的意思是：用当前策略采样的数据，主要用于更新当前策略。PPO 就属于常见的 on-policy 算法。
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.25\linewidth}p{0.60\linewidth}}
+\toprule
+\textbf{类别} & \textbf{理解}\\
+\midrule
+on-policy & 数据来自当前策略，更新后旧数据很快过期。优点是稳定、适合机器人 PPO；缺点是样本利用率相对低。\\
+off-policy & 可以复用旧策略或历史经验池中的数据，例如 DQN、SAC、TD3。样本利用率高，但稳定性和实现细节更复杂。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+PPO 的核心是：不要让新策略相对旧策略变化太猛。
+
+定义新旧策略概率比：
+\[
+\rho_t(\theta)
+=
+\frac{
+\pi_\theta(\bs a_t\mid \bs o_t)
+}{
+\pi_{\theta_{\mathrm{old}}}(\bs a_t\mid \bs o_t)
+}.
+\]
+
+PPO clipped objective 为：
+\begin{formula}
+\[
+L^{\mathrm{CLIP}}(\theta)
+=
+\mathbb E_t
+\left[
+\min
+\left(
+\rho_t(\theta)\hat A_t,\,
+\operatorname{clip}
+\left(\rho_t(\theta),1-\epsilon,1+\epsilon\right)\hat A_t
+\right)
+\right].
+\]
+\end{formula}
+
+M20 配置中
+\[
+\epsilon=\text{\texttt{clip\_param}}=0.2.
+\]
+这表示如果新策略相对旧策略的概率变化超过一定范围，目标函数会被裁剪，避免一次更新把策略推崩。
+
+\subsubsection{7. GAE、折扣因子和 KL 散度}
+
+M20 PPO 配置中有两个很重要的参数：
+\[
+\gamma=0.99,\qquad \lambda=0.95.
+\]
+
+\(\gamma\) 是折扣因子，决定未来奖励的重要程度：
+\[
+G_t
+=
+r_t+\gamma r_{t+1}+\gamma^2 r_{t+2}+\cdots.
+\]
+
+\(\lambda\) 是 GAE，也就是 Generalized Advantage Estimation 的参数。它用于计算更稳定的优势函数估计：
+\[
+\hat A_t^{GAE}
+=
+\sum_{l=0}^{\infty}
+(\gamma\lambda)^l\delta_{t+l},
+\]
+其中
+\[
+\delta_t
+=
+r_t+\gamma V_\phi(\bs o_{t+1})-V_\phi(\bs o_t).
+\]
+
+直观理解：
+
+\begin{itemize}
+  \item \(\lambda\) 小：更看重短期 TD 误差，方差小但偏差可能大。
+  \item \(\lambda\) 大：更接近长期回报，偏差小但方差可能大。
+\end{itemize}
+
+配置里的
+\[
+\text{\texttt{desired\_kl}}=0.01
+\]
+用于 adaptive learning rate。KL 散度可以理解成“新旧策略分布差了多少”。如果 KL 太大，说明策略更新太猛，学习率会被压小。
+
+\subsubsection{8. reward shaping：奖励不是越多越好}
+
+源码里的 reward 函数通常返回一个形状为
+\[
+(\text{\texttt{num\_envs}},)
+\]
+的张量。RewardManager 再做：
+\[
+\boxed{
+r_t
+=
+\sum_k
+w_k\,r_k(\bs s_t,\bs a_t).
+}
+\]
+
+M20 rough 中比较核心的项包括：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.30\linewidth}p{0.18\linewidth}p{0.38\linewidth}}
+\toprule
+\textbf{项} & \textbf{权重} & \textbf{作用}\\
+\midrule
+\texttt{track\_lin\_vel\_xy\_exp} & \(2.0\) & 鼓励 \(v_x,v_y\) 跟踪速度指令。\\
+\texttt{track\_ang\_vel\_z\_exp} & \(1.0\) & 鼓励偏航角速度跟踪指令。\\
+\texttt{lin\_vel\_z\_l2} & \(-2.0\) & 惩罚上下跳动。\\
+\texttt{base\_height\_l2} & \(-0.5\) & 惩罚机体高度偏离目标。\\
+\texttt{joint\_torques\_l2} & \(-2.5\times10^{-5}\) & 惩罚腿部力矩过大。\\
+\texttt{joint\_acc\_l2} & \(-2\times10^{-7}\) & 惩罚腿部加速度过大。\\
+\texttt{action\_rate\_l2} & \(-0.01\) & 惩罚动作突变，减少抖动。\\
+\texttt{undesired\_contacts} & \(-1.0\) & 惩罚非轮端接触地面。\\
+\texttt{contact\_forces} & \(-1.5\times10^{-4}\) & 惩罚过大的轮地接触冲击。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+reward shaping 的难点是平衡：
+\[
+\text{任务完成}
++
+\text{姿态稳定}
++
+\text{动作平滑}
++
+\text{能耗低}
++
+\text{接触合理}.
+\]
+
+如果任务奖励太强，机器人可能学会高冲击、高能耗甚至奇怪姿态来“刷分”；
+如果惩罚太强，机器人可能宁愿不动，也不愿冒险跟踪速度。
+
+\begin{answerbox}
+\textbf{调 reward 的原则：}一次只改一项，先看 TensorBoard 曲线，再看 play 里的实际动作。
+不要同时改速度奖励、能耗惩罚、动作平滑和终止条件，否则很难知道是哪一项导致效果变化。
+\end{answerbox}
+
+\subsubsection{9. exploration：为什么策略一开始要有随机性}
+
+PPO actor 通常不是直接输出一个确定动作，而是输出动作分布。M20 配置中：
+\[
+\text{\texttt{init\_noise\_std}}=1.0,\qquad
+\text{\texttt{noise\_std\_type=log}}.
+\]
+
+这表示训练初期动作有较明显随机性，方便探索不同控制方式。PPO 损失中还有熵奖励：
+\[
+\text{\texttt{entropy\_coef}}=0.01.
+\]
+
+熵 entropy 可以理解为“策略的不确定性”。熵太低，策略过早固定，容易卡在局部最优；
+熵太高，策略一直乱试，训练不收敛。
+
+\subsubsection{10. termination、timeout 和 reset}
+
+强化学习里 episode 结束并不总是“失败”。源码中有：
+
+\begin{itemize}
+  \item \texttt{time\_out}：达到最大 episode 时长，正常结束。
+  \item \texttt{terrain\_out\_of\_bounds}：走出地形范围，类似边界结束。
+  \item \texttt{illegal\_contact}：不该接触地面的 body 接触了地面。
+  \item \texttt{bad\_orientation\_2}：姿态异常，例如翻倒。
+\end{itemize}
+
+M20 rough 当前把
+\[
+\text{\texttt{illegal\_contact=None}},\qquad
+\text{\texttt{bad\_orientation\_2=None}}
+\]
+关掉了。这样可以避免训练早期机器人频繁摔倒导致 episode 过早结束，使策略有更多机会从坏状态中学习恢复。但更严格的训练或真机部署前，通常需要重新考虑这些终止和安全条件。
+
+\subsubsection{11. domain randomization 和 curriculum}
+
+domain randomization 是 sim-to-real 中非常核心的概念。源码 \texttt{EventCfg} 把随机化分成三种模式：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.20\linewidth}p{0.64\linewidth}}
+\toprule
+\textbf{mode} & \textbf{含义}\\
+\midrule
+\texttt{startup} & 环境创建时执行，例如随机摩擦、质量、惯量、质心。\\
+\texttt{reset} & 每次 episode reset 时执行，例如随机初始姿态、速度、外力、执行器增益。\\
+\texttt{interval} & 训练过程中隔一段时间执行，例如随机推机器人。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+M20 rough 中实际用到或覆盖的随机化包括：
+
+\begin{itemize}
+  \item 地面静摩擦、动摩擦和弹性系数。
+  \item base 和其他 body 的质量。
+  \item base 质心位置。
+  \item reset 初始位置、roll/pitch/yaw 和速度。
+  \item 外力和外力矩扰动。
+  \item 执行器刚度、阻尼随机化。
+\end{itemize}
+
+curriculum 是“先易后难”。通用环境有地形课程和命令课程；M20 rough 当前保留地形难度调整，但把命令范围课程关掉，直接使用：
+\[
+v_x^{cmd}\in[-2,2],
+\qquad
+v_y^{cmd}\in[-1,1],
+\qquad
+\omega_z^{cmd}\in[-1,1].
+\]
+
+\subsubsection{12. train 和 play 的区别}
+
+\texttt{train.py} 的主流程是：
+\[
+\boxed{
+\text{\texttt{gym.make}}
+\rightarrow
+\text{\texttt{RslRlVecEnvWrapper}}
+\rightarrow
+\text{\texttt{OnPolicyRunner}}
+\rightarrow
+\text{\texttt{runner.learn}}.
+}
+\]
+
+它会创建环境、采样 rollout、更新网络、保存 checkpoint、写入 \texttt{env.yaml} 和 \texttt{agent.yaml}。
+
+\texttt{play.py} 的主流程是：
+\[
+\boxed{
+\text{加载 checkpoint}
+\rightarrow
+\text{关闭训练噪声/随机扰动}
+\rightarrow
+\text{获得 inference policy}
+\rightarrow
+\text{循环 } \bs a=\pi(\bs o),\ \text{\texttt{env.step(a)}}.
+}
+\]
+
+play 不是继续训练，而是评估和导出。源码里会关闭观测噪声、外力扰动、命令课程，并导出 \texttt{policy.pt} 或 \texttt{policy.onnx}。
+
+\begin{answerbox}
+\textbf{部署前必须检查：}观测顺序、观测缩放、动作缩放、默认关节角、关节顺序、PD 参数、控制频率、clip 范围。
+这些任意一个和训练时不一致，策略都可能在仿真或真机上表现异常。
+\end{answerbox}
+
+\subsubsection{13. Flat 和 Rough 环境应该怎么学}
+
+\texttt{flat\_env\_cfg.py} 继承 \texttt{rough\_env\_cfg.py}，然后做了几件事：
+
+\begin{enumerate}
+  \item 把地形从 rough generator 改成 plane。
+  \item 关闭高度扫描器。
+  \item 关闭地形课程学习。
+  \item 保留 M20 的机器人资产、动作、观测和大部分奖励逻辑。
+\end{enumerate}
+
+因此初学路线应该是：
+\[
+\boxed{
+\text{先用 flat 理解闭环和日志}
+\rightarrow
+\text{再用 rough 理解随机化、地形、接触和鲁棒性}.
+}
+\]
+
+\subsubsection{14. 初学者最容易漏掉的 RL 概念清单}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.30\linewidth}p{0.55\linewidth}}
+\toprule
+\textbf{概念} & \textbf{为什么必须懂}\\
+\midrule
+MDP & 这是 RL 问题定义的骨架：状态、动作、转移、奖励、折扣。\\
+trajectory / rollout & PPO 不是看单步数据，而是采集一段交互序列后更新。\\
+return & RL 优化的是未来累计奖励，不只是当前这一步奖励。\\
+value function & critic 要估计当前局面未来值多少钱。\\
+advantage & actor 更新时真正关心“这个动作比预期好多少”。\\
+on-policy & PPO 采样数据很快过期，不能像经验池算法那样无限复用旧数据。\\
+entropy & 控制探索强度，防止策略太早变死。\\
+KL divergence & 衡量新旧策略差异，防止一次更新过猛。\\
+observation noise & 训练时故意加噪声，让策略更鲁棒。\\
+domain randomization & 训练时随机摩擦、质量、质心、执行器，降低仿真到真实的落差。\\
+reward scale & 不同奖励项量级不同，权重不合理会让某些目标压倒其他目标。\\
+termination vs timeout & 摔倒失败和正常超时对学习含义不同。\\
+action scaling & 网络输出不是物理单位，必须经过 scale 和执行器转换。\\
+control frequency & 策略频率和物理仿真频率不同，M20 中约 50 Hz 控制、200 Hz 物理。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{为什么机器人强化学习不能只看算法}
+
+机器人强化学习和普通游戏强化学习不太一样。对 M20 来说，训练是否成功往往取决于下面这些工程细节：
+
+\begin{enumerate}
+  \item 机器人模型是否正确：质量、惯量、关节限位、执行器能力是否合理。
+  \item 动作定义是否合理：策略到底输出关节位置、关节速度，还是力矩。
+  \item 观测是否可用：训练时看到的信息，真实部署时能不能得到。
+  \item 奖励是否稳定：奖励项既要鼓励完成任务，也要避免奇怪动作。
+  \item 随机化是否充分：摩擦、质量、质心、外力等变化能提升鲁棒性。
+  \item 训练过程是否可复现：日志、配置、checkpoint 要保存好。
+\end{enumerate}
+
+因此学习这个包时，建议把它看成一个完整闭环：
+
+\[
+\boxed{
+\text{模型资产}
+\rightarrow
+\text{环境配置}
+\rightarrow
+\text{观测/动作/奖励}
+\rightarrow
+\text{PPO 训练}
+\rightarrow
+\text{回放和导出}
+}
+\]
+
+\subsection{RL Training 包的总体结构}
+
+\texttt{src/third\_party/rl\_training} 是一个 Isaac Lab 风格的训练包。核心入口可以按下面理解：
+
+\begin{center}
+\begin{tabular}{p{0.37\linewidth}p{0.47\linewidth}}
+\toprule
+路径 & 作用 \\
+\midrule
+\texttt{README.md} & 官方使用说明，包含安装、训练、回放、导出 ONNX 的命令。\\
+\texttt{scripts/tools/list\_envs.py} & 列出当前注册的 Isaac Lab 训练环境。\\
+\texttt{scripts/reinforcement\_learning/rsl\_rl/train.py} & RSL-RL 训练入口。启动 Isaac Sim、创建环境、运行 PPO。\\
+\texttt{scripts/reinforcement\_learning/rsl\_rl/play.py} & 策略回放入口。加载 checkpoint，让机器人按训练好的策略运动。\\
+\texttt{scripts/tools/export\_onnx\_fast.py} & 快速导出 ONNX 策略，方便后续部署或跨仿真验证。\\
+\texttt{source/rl\_training/rl\_training/assets/deeprobotics.py} & M20 机器人资产配置，指定 USD 模型、初始姿态、执行器参数。\\
+\texttt{source/rl\_training/rl\_training/tasks/.../velocity\_env\_cfg.py} & 通用速度跟踪任务配置，定义场景、命令、观测、事件、奖励等大框架。\\
+\texttt{source/rl\_training/rl\_training/tasks/.../config/wheeled/deeprobotics\_m20/rough\_env\_cfg.py} & M20 粗糙地形环境配置，是学习重点。\\
+\texttt{source/rl\_training/rl\_training/tasks/.../config/wheeled/deeprobotics\_m20/flat\_env\_cfg.py} & M20 平地环境配置，比 rough 简单，适合入门先看。\\
+\texttt{source/rl\_training/rl\_training/tasks/.../config/wheeled/deeprobotics\_m20/agents/rsl\_rl\_ppo\_cfg.py} & PPO 算法和网络超参数。\\
+\texttt{source/rl\_training/rl\_training/tasks/.../mdp/rewards.py} & 奖励函数实现。\\
+\texttt{source/rl\_training/rl\_training/tasks/.../mdp/observations.py} & 观测函数实现。\\
+\texttt{source/rl\_training/rl\_training/tasks/.../mdp/commands.py} & 速度指令采样逻辑。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这个包里已经注册了两个 M20 训练任务：
+
+\begin{center}
+\begin{tabular}{p{0.32\linewidth}p{0.50\linewidth}}
+\toprule
+任务名 & 含义 \\
+\midrule
+\texttt{Flat-Deeprobotics-M20-v0} & 平地速度跟踪任务。地形简单，适合第一次训练和调试。\\
+\texttt{Rough-Deeprobotics-M20-v0} & 粗糙地形速度跟踪任务。包含更复杂地形和随机化，更接近鲁棒运动控制训练。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+推荐先从 flat 看起，再看 rough：
+
+\[
+\boxed{
+\text{\texttt{flat\_env\_cfg.py}}
+\quad\rightarrow\quad
+\text{\texttt{rough\_env\_cfg.py}}
+\quad\rightarrow\quad
+\text{\texttt{rewards.py}}
+\quad\rightarrow\quad
+\text{\texttt{rsl\_rl\_ppo\_cfg.py}}
+}
+\]
+
+\subsection{先跑通哪些命令}
+
+如果已经安装好 Isaac Sim、Isaac Lab 和这个训练包，官方 README 给出的典型流程如下。
+
+列出可用环境：
+
+\begin{verbatim}
+python scripts/tools/list_envs.py
+\end{verbatim}
+
+训练 rough 环境：
+
+\begin{verbatim}
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=Rough-Deeprobotics-M20-v0 \
+  --headless
+\end{verbatim}
+
+回放策略：
+
+\begin{verbatim}
+python scripts/reinforcement_learning/rsl_rl/play.py \
+  --task=Rough-Deeprobotics-M20-v0 \
+  --num_envs=10
+\end{verbatim}
+
+键盘控制回放：
+
+\begin{verbatim}
+python scripts/reinforcement_learning/rsl_rl/play.py \
+  --task=Rough-Deeprobotics-M20-v0 \
+  --num_envs=1 \
+  --keyboard
+\end{verbatim}
+
+查看训练曲线：
+
+\begin{verbatim}
+tensorboard --logdir=logs
+\end{verbatim}
+
+导出 ONNX：
+
+\begin{verbatim}
+python scripts/tools/export_onnx_fast.py \
+  --checkpoint_path logs/rsl_rl/deeprobotics_m20_rough/<run>/model_5000.pt \
+  --robot m20 \
+  --output_path exported/m20_policy.onnx
+\end{verbatim}
+
+对初学者来说，第一次不要追求训练出很好的策略。第一次目标应该是：
+
+\[
+\boxed{
+\text{能启动环境，能产生日志，能保存 checkpoint，能用 play 回放。}
+}
+\]
+
+\subsection{M20 强化学习环境在学什么}
+
+这个训练任务的本质是速度跟踪：
+
+\[
+\boxed{
+\text{给 M20 一个期望速度指令，让它用腿和轮子稳定地跟踪这个指令。}
+}
+\]
+
+速度指令通常可以写成：
+
+\[
+\bs c_t =
+\begin{bmatrix}
+v_x^{cmd} \\
+v_y^{cmd} \\
+\omega_z^{cmd}
+\end{bmatrix},
+\]
+
+其中：
+
+\begin{center}
+\begin{tabular}{p{0.22\linewidth}p{0.58\linewidth}}
+\toprule
+符号 & 含义 \\
+\midrule
+\(v_x^{cmd}\) & 期望前后方向速度。正值一般表示向前。\\
+\(v_y^{cmd}\) & 期望左右方向速度。\\
+\(\omega_z^{cmd}\) & 期望绕竖直轴转动的角速度，也就是转弯速度。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+在 M20 rough 配置中，指令范围大致是：
+
+\[
+v_x^{cmd}\in[-2,2],\qquad
+v_y^{cmd}\in[-1,1],\qquad
+\omega_z^{cmd}\in[-1,1].
+\]
+
+环境会定期重新采样速度命令。策略需要在不同速度命令下学会：
+
+\begin{enumerate}
+  \item 前进、后退、横向调整和转向；
+  \item 保持机身姿态稳定；
+  \item 避免腿部动作太大或力矩太大；
+  \item 在粗糙地形上保持接触和速度跟踪。
+\end{enumerate}
+
+\subsection{M20 资产配置：机器人从哪里来}
+
+M20 资产配置在：
+
+\begin{verbatim}
+source/rl_training/rl_training/assets/deeprobotics.py
+\end{verbatim}
+
+其中 M20 使用的是 USD 文件：
+
+\[
+\text{\texttt{M20/M20\_usd/M20.usd}}.
+\]
+
+这和前文三种模型文件的关系是：
+
+\[
+\boxed{
+\text{训练包中的 Isaac Lab 环境主要使用 USD 资产，而不是直接使用 URDF 或 MJCF。}
+}
+\]
+
+资产配置里有几个很重要的点。
+
+\subsubsection{1. 初始位置}
+
+机器人初始机体高度约为：
+
+\[
+z_0 = 0.52.
+\]
+
+这表示 reset 后，机器人 base link 会被放到离地面约 \(0.52\,\mathrm m\) 的高度。这个值不能随便改。如果太低，机器人一开始就可能插进地面；如果太高，落地冲击会变大。
+
+\subsubsection{2. 默认关节姿态}
+
+M20 的默认腿部姿态大致为：
+
+\[
+\begin{aligned}
+q_{\mathrm{hipx}} &= 0,\\
+q_{\mathrm{front\ hipy}} &= -0.6,\\
+q_{\mathrm{hind\ hipy}} &= 0.6,\\
+q_{\mathrm{front\ knee}} &= 1.0,\\
+q_{\mathrm{hind\ knee}} &= -1.0,\\
+q_{\mathrm{wheel}} &= 0.
+\end{aligned}
+\]
+
+这表示前腿和后腿的默认弯曲方向不同。原因是 M20 的前后腿在几何安装方向上是镜像关系。
+
+\subsubsection{3. 执行器}
+
+M20 中腿部关节和轮子关节的控制方式不同。
+
+\begin{center}
+\begin{tabular}{p{0.22\linewidth}p{0.24\linewidth}p{0.32\linewidth}}
+\toprule
+部分 & 控制特性 & 主要参数 \\
+\midrule
+腿部 12 个关节 & 位置伺服/PD 执行器 & 最大力矩约 \(76.4\)，刚度 \(80.0\)，阻尼 \(2.0\)。\\
+4 个轮子关节 & 速度型执行器倾向 & 最大力矩约 \(21.6\)，刚度 \(0.0\)，阻尼 \(0.6\)。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这很符合轮足机器人的直觉：
+
+\[
+\boxed{
+\text{腿负责调姿态和支撑，轮子负责产生主要行进速度。}
+}
+\]
+
+\subsection{动作空间：策略到底输出什么}
+
+M20 的动作可以理解成 16 维：
+
+\[
+\bs a_t =
+\begin{bmatrix}
+\bs a_{\mathrm{leg},t}\\
+\bs a_{\mathrm{wheel},t}
+\end{bmatrix}
+\in \mathbb R^{16},
+\]
+
+其中：
+
+\[
+\bs a_{\mathrm{leg},t}\in\mathbb R^{12},\qquad
+\bs a_{\mathrm{wheel},t}\in\mathbb R^{4}.
+\]
+
+12 维腿部动作对应：
+
+\[
+\begin{aligned}
+&\text{\texttt{fl\_hipx\_joint}},\ \text{\texttt{fl\_hipy\_joint}},\ \text{\texttt{fl\_knee\_joint}},\\
+&\text{\texttt{fr\_hipx\_joint}},\ \text{\texttt{fr\_hipy\_joint}},\ \text{\texttt{fr\_knee\_joint}},\\
+&\text{\texttt{hl\_hipx\_joint}},\ \text{\texttt{hl\_hipy\_joint}},\ \text{\texttt{hl\_knee\_joint}},\\
+&\text{\texttt{hr\_hipx\_joint}},\ \text{\texttt{hr\_hipy\_joint}},\ \text{\texttt{hr\_knee\_joint}}.
+\end{aligned}
+\]
+
+4 维轮子动作对应：
+
+\[
+\text{\texttt{fl\_wheel\_joint}},\quad
+\text{\texttt{fr\_wheel\_joint}},\quad
+\text{\texttt{hl\_wheel\_joint}},\quad
+\text{\texttt{hr\_wheel\_joint}}.
+\]
+
+腿部动作不是直接当作关节角使用，而是经过缩放后叠加在默认关节角上：
+
+\[
+\boxed{
+\bs q_{\mathrm{leg}}^{target}
+=
+\bs q_{\mathrm{leg}}^{default}
++
+\bs k_{\mathrm{leg}}\odot \bs a_{\mathrm{leg}}
+}
+\]
+
+这里：
+
+\begin{center}
+\begin{tabular}{p{0.20\linewidth}p{0.58\linewidth}}
+\toprule
+符号 & 含义 \\
+\midrule
+\(\bs q_{\mathrm{leg}}^{target}\) & 腿部关节目标位置。\\
+\(\bs q_{\mathrm{leg}}^{default}\) & 默认站立姿态下的腿部关节角。\\
+\(\bs a_{\mathrm{leg}}\) & 策略输出的腿部动作。\\
+\(\bs k_{\mathrm{leg}}\) & 动作缩放系数。\\
+\(\odot\) & 逐元素相乘。比如 \([1,2]\odot[3,4]=[3,8]\)。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+M20 rough 环境中，腿部动作缩放大致是：
+
+\[
+k_{\mathrm{hipx}}=0.125,\qquad
+k_{\mathrm{hipy/knee}}=0.25.
+\]
+
+也就是说，hipx 外展/内收关节动作范围更谨慎，hipy 和 knee 的动作幅度更大一些。
+
+轮子动作则更像目标速度：
+
+\[
+\boxed{
+\dot{\bs q}_{\mathrm{wheel}}^{target}
+=
+5.0\,\bs a_{\mathrm{wheel}}
+}
+\]
+
+这说明策略输出的轮子动作会被放大为轮子的目标角速度。
+
+因此可以把 M20 策略输出理解成：
+
+\[
+\boxed{
+\text{12 个腿部目标角度偏移}
++
+\text{4 个轮子目标速度}
+}
+\]
+
+\subsection{观测空间：策略能看到什么}
+
+策略不是直接看到完整仿真状态，而是看到环境设计者给它的 observation。M20 rough 环境的策略观测重点包括：
+
+\begin{center}
+\begin{tabular}{p{0.28\linewidth}p{0.52\linewidth}}
+\toprule
+观测项 & 含义 \\
+\midrule
+base angular velocity & 机体角速度，帮助判断是否在翻滚、俯仰、偏航。\\
+projected gravity & 重力方向在机体系下的投影，帮助策略知道身体倾斜程度。\\
+velocity commands & 期望速度命令，也就是希望机器人往哪里走、走多快。\\
+joint position & 关节位置。M20 中轮子位置会被特殊处理，因为轮子连续旋转角度本身意义不大。\\
+joint velocity & 关节速度，包括腿部和轮子。\\
+actions & 上一时刻动作，帮助策略感知控制历史，减少抖动。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+一个很关键的设计是：
+
+\[
+\boxed{
+\text{M20 策略观测中不直接使用 base linear velocity。}
+}
+\]
+
+base linear velocity 指机体线速度。仿真器很容易知道它，但真实机器人上不一定能准确直接测到。训练时如果强依赖这个量，部署时可能出现 sim-to-real 问题。因此这里把 policy 的 base linear velocity 去掉，是比较贴近工程部署的选择。
+
+另外，轮子关节位置在观测中会被置零：
+
+\[
+\text{\texttt{joint\_pos\_rel\_without\_wheel}}.
+\]
+
+原因是轮子是连续旋转关节，绝对角度会一直增长或循环，通常不像腿部关节角那样有明确姿态含义。轮子的速度更重要。
+
+\subsection{奖励函数：怎么告诉 M20 什么叫做得好}
+
+强化学习中最重要也最难调的是 reward。M20 的奖励可以粗略分成三类：
+
+\[
+\boxed{
+\text{任务奖励}
++
+\text{稳定性奖励/惩罚}
++
+\text{能耗和动作平滑惩罚}
+}
+\]
+
+速度跟踪奖励的典型形式是指数函数：
+
+\[
+r_{v}
+=
+\exp
+\left(
+-
+\frac{
+\left\|
+\bs v_{xy}^{cmd}
+-
+\bs v_{xy}
+\right\|^2
+}{
+\sigma_v^2
+}
+\right).
+\]
+
+偏航角速度跟踪奖励可以写成：
+
+\[
+r_{\omega}
+=
+\exp
+\left(
+-
+\frac{
+\left(
+\omega_z^{cmd}
+-
+\omega_z
+\right)^2
+}{
+\sigma_\omega^2
+}
+\right).
+\]
+
+这种形式的特点是：
+
+\begin{enumerate}
+  \item 跟踪误差越小，奖励越接近 1。
+  \item 误差越大，奖励快速下降。
+  \item 奖励始终为正，训练比较稳定。
+\end{enumerate}
+
+M20 rough 环境中的主要奖励项可以按下面理解：
+
+\begin{center}
+\begin{tabular}{p{0.30\linewidth}p{0.16\linewidth}p{0.38\linewidth}}
+\toprule
+奖励项 & 权重 & 作用 \\
+\midrule
+\texttt{track\_lin\_vel\_xy\_exp} & \(2.0\) & 鼓励机体平面速度跟踪指令。\\
+\texttt{track\_ang\_vel\_z\_exp} & \(1.0\) & 鼓励偏航角速度跟踪指令。\\
+\texttt{lin\_vel\_z\_l2} & \(-2.0\) & 惩罚竖直方向速度过大，避免跳动。\\
+\texttt{ang\_vel\_xy\_l2} & \(-0.02\) & 惩罚 roll/pitch 方向角速度过大。\\
+\texttt{base\_height\_l2} & \(-0.5\) & 惩罚机身高度偏离目标高度。\\
+\texttt{joint\_torques\_l2} & \(-2.5\times 10^{-5}\) & 惩罚腿部关节力矩过大。\\
+\texttt{joint\_acc\_l2} & \(-2\times 10^{-7}\) & 惩罚腿部关节加速度过大。\\
+\texttt{joint\_acc\_wheel\_l2} & \(-1\times 10^{-7}\) & 惩罚轮子加速度过大。\\
+\texttt{joint\_pos\_limits} & \(-5.0\) & 惩罚腿部关节接近或超过位置限制。\\
+\texttt{joint\_power} & \(-2\times 10^{-5}\) & 惩罚功率消耗。\\
+\texttt{action\_rate\_l2} & \(-0.01\) & 惩罚动作变化太快，减少抖动。\\
+\texttt{undesired\_contacts} & \(-1.0\) & 惩罚不希望发生的碰撞。\\
+\texttt{contact\_forces} & \(-1.5\times 10^{-4}\) & 惩罚过大的接触力。\\
+\texttt{joint\_mirror} & \(-0.03\) & 鼓励对角腿动作具有一定对称性。\\
+\texttt{upward} & \(0.08\) & 鼓励机身保持向上姿态。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+看 reward 时要记住一个规则：
+
+\[
+\boxed{
+\text{正权重通常是鼓励，负权重通常是惩罚。}
+}
+\]
+
+但这并不表示负权重不好。机器人运动控制中，大量负奖励是必要的，因为它们在告诉策略：
+
+\begin{enumerate}
+  \item 不要摔；
+  \item 不要乱晃；
+  \item 不要用太大的力；
+  \item 不要关节打到限位；
+  \item 不要用高频抖动来骗奖励。
+\end{enumerate}
+
+对初学者来说，调 reward 最容易犯的错误是一次改很多项。更推荐：
+
+\[
+\boxed{
+\text{一次只改一个 reward 权重，然后比较 TensorBoard 曲线和 play 效果。}
+}
+\]
+
+\subsection{随机化：为什么训练时故意把世界弄得不稳定}
+
+在 \texttt{rough\_env\_cfg.py} 和通用环境配置中，可以看到很多随机化：
+
+\begin{center}
+\begin{tabular}{p{0.28\linewidth}p{0.52\linewidth}}
+\toprule
+随机化内容 & 目的 \\
+\midrule
+地面摩擦系数 & 让策略适应不同材质地面。\\
+机器人质量 & 避免策略只适应某一个精确质量。\\
+质心位置 & 提高对负载变化、建模误差的鲁棒性。\\
+惯量 & 减少仿真模型惯量不准带来的影响。\\
+初始姿态和速度 & 让机器人从不同状态恢复稳定。\\
+外力和外力矩 & 模拟推搡、扰动、碰撞等情况。\\
+粗糙地形高度 & 训练越障和不平地面上的稳定性。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这类方法叫 domain randomization，也就是领域随机化。它的核心思想是：
+
+\[
+\boxed{
+\text{如果仿真世界每次都略有不同，策略就不容易死记某一个完美仿真模型。}
+}
+\]
+
+这对 sim-to-real 很重要。真实机器人永远不可能和仿真完全一致，所以训练时故意加入变化，反而更容易得到鲁棒策略。
+
+\subsection{PPO 配置：算法文件怎么看}
+
+PPO 配置主要在：
+
+\begin{verbatim}
+source/rl_training/rl_training/tasks/manager_based/locomotion/velocity/
+config/wheeled/deeprobotics_m20/agents/rsl_rl_ppo_cfg.py
+\end{verbatim}
+
+M20 rough 的主要配置包括：
+
+\begin{center}
+\begin{tabular}{p{0.28\linewidth}p{0.24\linewidth}p{0.32\linewidth}}
+\toprule
+参数 & 数值 & 初学者理解 \\
+\midrule
+\texttt{num\_steps\_per\_env} & \(24\) & 每个环境一次采样多少步再更新网络。\\
+\texttt{max\_iterations} & \(20000\) & 最大训练迭代次数。\\
+\texttt{save\_interval} & \(100\) & 每隔多少迭代保存一次模型。\\
+\texttt{actor\_hidden\_dims} & \(512,256,128\) & actor 网络隐藏层宽度。\\
+\texttt{critic\_hidden\_dims} & \(512,256,128\) & critic 网络隐藏层宽度。\\
+\texttt{activation} & \texttt{elu} & 神经网络激活函数。\\
+\texttt{learning\_rate} & \(10^{-3}\) & 学习率。太大可能不稳定，太小训练慢。\\
+\texttt{gamma} & \(0.99\) & 折扣因子，表示重视较长远回报。\\
+\texttt{lam} & \(0.95\) & GAE 参数，用于平衡优势估计的偏差和方差。\\
+\texttt{clip\_param} & \(0.2\) & PPO 裁剪范围，限制策略每次更新变化过大。\\
+\texttt{entropy\_coef} & \(0.01\) & 探索奖励系数，鼓励策略不要过早变得太确定。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+PPO 的核心思想可以用下面的式子感受一下：
+
+\[
+L^{\mathrm{CLIP}}(\theta)
+=
+\mathbb E_t
+\left[
+\min
+\left(
+\rho_t(\theta)\hat A_t,\,
+\operatorname{clip}
+\left(
+\rho_t(\theta),1-\epsilon,1+\epsilon
+\right)
+\hat A_t
+\right)
+\right],
+\]
+
+其中：
+
+\[
+\rho_t(\theta)
+=
+\frac{
+\pi_\theta(\bs a_t\mid \bs o_t)
+}{
+\pi_{\theta_{\mathrm{old}}}(\bs a_t\mid \bs o_t)
+}.
+\]
+
+初学时不用急着完全推导 PPO。先记住：
+
+\[
+\boxed{
+\text{PPO 会用旧策略采样数据，再小心地更新新策略，避免新策略一下子变太多。}
+}
+\]
+
+\(\hat A_t\) 叫优势函数估计。它表示：
+
+\[
+\boxed{
+\text{这个动作比当前平均水平好多少。}
+}
+\]
+
+如果 \(\hat A_t>0\)，说明这个动作比预期好，算法会提高它以后被选到的概率；如果 \(\hat A_t<0\)，说明这个动作比预期差，算法会降低它的概率。
+
+\subsection{训练脚本做了什么}
+
+\texttt{train.py} 可以按下面流程理解：
+
+\[
+\boxed{
+\text{读取命令行参数}
+\rightarrow
+\text{启动 Isaac Sim}
+\rightarrow
+\text{创建 Gym 环境}
+\rightarrow
+\text{包装成 RSL-RL 环境}
+\rightarrow
+\text{创建 PPO Runner}
+\rightarrow
+\text{循环采样和更新}
+\rightarrow
+\text{保存日志和模型}
+}
+\]
+
+训练日志通常在：
+
+\[
+\text{\texttt{logs/rsl\_rl/<experiment\_name>/<timestamp>}}.
+\]
+
+对 M20 来说，rough 训练实验名一般是：
+
+\[
+\text{\texttt{deeprobotics\_m20\_rough}}.
+\]
+
+flat 训练实验名一般是：
+
+\[
+\text{\texttt{deeprobotics\_m20\_flat}}.
+\]
+
+训练后常见文件包括：
+
+\begin{center}
+\begin{tabular}{p{0.30\linewidth}p{0.50\linewidth}}
+\toprule
+文件 & 作用 \\
+\midrule
+\texttt{model\_*.pt} & RSL-RL 保存的策略 checkpoint。\\
+\texttt{env.yaml} & 训练时使用的环境配置。\\
+\texttt{agent.yaml} & 训练时使用的 PPO/网络配置。\\
+\texttt{events.out.tfevents.*} & TensorBoard 日志。\\
+\texttt{exported/policy.onnx} & 导出的 ONNX 策略，回放或部署时可能用到。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+学习时一定要养成一个习惯：
+
+\[
+\boxed{
+\text{每次实验都记录：改了什么、训练了多久、曲线怎样、play 效果怎样。}
+}
+\]
+
+\subsection{play 脚本和导出脚本怎么看}
+
+\texttt{play.py} 的作用不是训练，而是加载已经训练好的 checkpoint 来看效果。它通常会：
+
+\begin{enumerate}
+  \item 找到指定实验目录下的 checkpoint；
+  \item 创建同样的环境；
+  \item 关闭一部分训练用随机化；
+  \item 用训练好的策略控制机器人；
+  \item 可选导出 JIT 或 ONNX 策略。
+\end{enumerate}
+
+如果加上 \texttt{--keyboard}，就可以用键盘修改速度指令，观察策略是否能跟踪。
+
+\texttt{export\_onnx\_fast.py} 更偏部署工具。它不依赖完整 Isaac Sim 启动，而是从 checkpoint 中重建 actor 网络并导出 ONNX。对 M20，它还会写入一些和部署相关的元数据，例如：
+
+\begin{enumerate}
+  \item 16 个关节的顺序；
+  \item 默认关节角；
+  \item 动作缩放；
+  \item PD 参数；
+  \item 腿部关节和轮子关节的区分。
+\end{enumerate}
+
+这一步非常重要，因为部署时最怕的问题之一是：
+
+\[
+\boxed{
+\text{训练时的关节顺序和部署时的关节顺序对不上。}
+}
+\]
+
+如果顺序错了，策略输出的第 1 维本来想控制 \texttt{fl\_hipx\_joint}，结果部署时发到了别的关节，机器人会立刻表现异常。
+
+\subsection{建议的初学路线}
+
+下面是一条比较稳的学习路线。
+
+\subsubsection{阶段 1：先建立强化学习闭环概念}
+
+先不改 M20，只理解这几个问题：
+
+\begin{enumerate}
+  \item observation 是什么？
+  \item action 是什么？
+  \item reward 是什么？
+  \item episode 什么时候结束？
+  \item checkpoint 保存在哪里？
+  \item TensorBoard 曲线怎么看？
+\end{enumerate}
+
+目标是能用一句话描述这个任务：
+
+\[
+\boxed{
+\text{M20 策略根据机体姿态、关节状态和速度命令，输出腿部目标角度与轮子目标速度，使机器人稳定跟踪速度指令。}
+}
+\]
+
+\subsubsection{阶段 2：先看 flat，再看 rough}
+
+建议先看：
+
+\[
+\text{\texttt{flat\_env\_cfg.py}}.
+\]
+
+flat 环境没有复杂地形，更容易理解。等你明白 flat 之后，再看：
+
+\[
+\text{\texttt{rough\_env\_cfg.py}}.
+\]
+
+rough 环境增加了粗糙地形和更多随机化。它更接近真实训练，但也更复杂。
+
+\subsubsection{阶段 3：只改一个小地方做实验}
+
+初学者最推荐的实验是改 reward 权重，而不是先改 PPO 算法。
+
+例如可以尝试：
+
+\begin{enumerate}
+  \item 把 \texttt{track\_lin\_vel\_xy\_exp} 从 \(2.0\) 改成 \(1.0\)，看速度跟踪是否变差。
+  \item 把 \texttt{action\_rate\_l2} 的惩罚调大，看动作是否更平滑但速度跟踪变慢。
+  \item 改 \texttt{base\_height\_l2} 的目标高度，看机器人姿态和支撑高度如何变化。
+\end{enumerate}
+
+每次只改一项，并记录：
+
+\[
+\text{修改项}
+\quad
+\rightarrow
+\quad
+\text{训练曲线}
+\quad
+\rightarrow
+\quad
+\text{play 效果}
+\quad
+\rightarrow
+\quad
+\text{结论}.
+\]
+
+\subsubsection{阶段 4：再理解 PPO 超参数}
+
+等你能看懂环境和 reward 之后，再去理解 PPO 参数：
+
+\begin{enumerate}
+  \item 学习率影响训练快慢和稳定性。
+  \item \(\gamma\) 影响策略看多远。
+  \item \(\lambda\) 影响优势估计。
+  \item entropy 系数影响探索。
+  \item clip 参数影响每次更新幅度。
+\end{enumerate}
+
+不要一开始就调很多 PPO 参数。机器人任务里，环境设计和 reward 往往比算法小改动更关键。
+
+\subsubsection{阶段 5：最后再看导出和部署}
+
+当 play 效果稳定之后，再看：
+
+\[
+\text{\texttt{export\_onnx\_fast.py}}.
+\]
+
+这时重点检查：
+
+\begin{enumerate}
+  \item ONNX 输入维度是否和 observation 一致；
+  \item ONNX 输出维度是否为 16；
+  \item 关节顺序是否和训练时一致；
+  \item 动作缩放是否正确；
+  \item 默认关节角是否正确；
+  \item 轮子速度动作是否和部署控制器匹配。
+\end{enumerate}
+
+\subsection{一张总流程图}
+
+从代码到策略的流程可以总结为：
+
+\[
+\boxed{
+\begin{array}{c}
+\text{\texttt{M20.usd}}
+\\
+\downarrow
+\\
+\text{\texttt{DEEPRobotics/M20 asset cfg}}
+\\
+\downarrow
+\\
+\text{\texttt{Flat/Rough Env Config}}
+\\
+\downarrow
+\\
+\text{observation, action, reward, event, command}
+\\
+\downarrow
+\\
+\text{\texttt{RSL-RL PPO Runner}}
+\\
+\downarrow
+\\
+\text{\texttt{model\_*.pt}}
+\\
+\downarrow
+\\
+\text{\texttt{play.py / export\_onnx\_fast.py}}
+\end{array}
+}
+\]
+
+如果把它翻译成控制系统语言，就是：
+
+\[
+\boxed{
+\text{机器人模型}
+\rightarrow
+\text{仿真环境}
+\rightarrow
+\text{策略训练}
+\rightarrow
+\text{闭环控制器}
+\rightarrow
+\text{回放/部署}
+}
+\]
+
+\subsection{学习时最容易混淆的几个点}
+
+\subsubsection{1. state 和 observation 不是一回事}
+
+仿真器内部知道完整 state，比如机器人真实位置、速度、接触力等。但策略只能看到 observation。训练时最好让 observation 接近真实机器人能测到的量，否则部署时会很麻烦。
+
+\subsubsection{2. action 不是电机最终力矩}
+
+在 M20 这个环境中，策略输出动作后，还会经过动作缩放、目标关节位置/速度转换、PD 执行器等步骤，最后才变成仿真中的关节力矩。
+
+因此链条是：
+
+\[
+\boxed{
+\bs a_t
+\rightarrow
+\bs q^{target},\dot{\bs q}^{target}
+\rightarrow
+\text{PD/执行器}
+\rightarrow
+\bs \tau
+\rightarrow
+\text{刚体动力学}
+}
+\]
+
+\subsubsection{3. reward 不是越多越好}
+
+reward 项太少，策略可能学出投机行为；reward 项太多，调参会变得困难。好的 reward 应该能表达任务目标，又不过度约束策略。
+
+\subsubsection{4. rough 比 flat 更难，不适合第一眼就全部改}
+
+rough 环境里地形、随机化、接触、奖励都更复杂。建议先在 flat 上学会观察训练过程，再去 rough 上追求鲁棒性。
+
+\subsubsection{5. 训练成功不等于可以直接上真机}
+
+从仿真策略到真机还有很多步骤：
+
+\begin{enumerate}
+  \item 控制频率是否一致；
+  \item 观测归一化是否一致；
+  \item 关节方向和零位是否一致；
+  \item 动作缩放是否一致；
+  \item 电机限幅是否一致；
+  \item 安全保护是否完善；
+  \item 地面摩擦和负载是否在训练随机化范围内。
+\end{enumerate}
+
+所以训练包主要解决的是：
+
+\[
+\boxed{
+\text{在仿真中学习一个可用策略。}
+}
+\]
+
+而真机部署还需要单独的部署框架、安全层和大量验证。
+
+\subsection{建议阅读顺序清单}
+
+最后给一个非常具体的阅读清单：
+
+\begin{enumerate}
+  \item 读 \texttt{README.md}：知道官方推荐命令。
+  \item 读 \texttt{assets/deeprobotics.py}：知道 M20 模型、初始姿态和执行器参数。
+  \item 读 M20 的 \texttt{\_\_init\_\_.py}：知道环境名字如何注册。
+  \item 读 \texttt{flat\_env\_cfg.py}：先理解简单环境。
+  \item 读 \texttt{rough\_env\_cfg.py}：重点看 actions、observations、rewards、events。
+  \item 读 \texttt{observations.py}：理解轮子关节位置为什么特殊处理。
+  \item 读 \texttt{commands.py}：理解速度命令如何采样。
+  \item 读 \texttt{rewards.py}：把每个 reward 和机器人行为对应起来。
+  \item 读 \texttt{rsl\_rl\_ppo\_cfg.py}：理解 PPO 网络和训练超参数。
+  \item 读 \texttt{train.py}：理解训练主循环。
+  \item 读 \texttt{play.py}：理解 checkpoint 如何回放。
+  \item 读 \texttt{export\_onnx\_fast.py}：理解策略如何导出和保持关节顺序一致。
+\end{enumerate}
+
+如果按这个顺序学习，\texttt{rl\_training} 就不会是一团散乱代码，而是一条清楚的链：
+
+\[
+\boxed{
+\text{M20 模型}
+\rightarrow
+\text{速度跟踪任务}
+\rightarrow
+\text{观测/动作/奖励设计}
+\rightarrow
+\text{PPO 训练}
+\rightarrow
+\text{策略回放}
+\rightarrow
+\text{ONNX 导出}
+}
+\]
+
+% ===================== 官方 RL 与 Gazebo/Nav2 代码级补充 =====================
+\section{官方 \texttt{rl\_training}：从代码逻辑理解 M20 强化学习}
+
+前面已经从概念上介绍了 observation、action、reward 和 PPO。这里再把它们和官方包里的
+M20 代码一一对上。学习强化学习时最容易“飘”的地方，就是只背算法名，却不知道代码里哪一行在定义
+状态、动作、奖励和执行器。对 M20 来说，建议先把它看成下面这个闭环：
+
+\[
+\boxed{
+\begin{array}{c}
+\text{Isaac Lab 仿真状态}
+\rightarrow
+\text{观测函数}
+\rightarrow
+\bs o_t
+\rightarrow
+\pi_\theta(\bs a_t\mid \bs o_t)
+\rightarrow
+\text{动作缩放/执行器}
+\rightarrow
+\bs\tau_t
+\rightarrow
+\text{刚体动力学}
+\rightarrow
+\bs o_{t+1}, r_t
+\end{array}
+}
+\]
+
+\begin{greenbox}{先记住一句话}
+官方 M20 强化学习任务不是直接让神经网络输出电机力矩，而是让神经网络输出
+\textbf{腿部目标角度偏移}和\textbf{轮子目标角速度}。这些动作再经过 Isaac Lab 的 action manager
+和执行器模型，最后才变成电机力矩并驱动浮动基刚体动力学。
+\end{greenbox}
+
+\subsection{MDP 在代码里对应什么}
+
+强化学习常把问题写成 MDP：
+
+\[
+\mathcal M=(\mathcal S,\mathcal A,P,r,\gamma).
+\]
+
+对官方 M20 速度跟踪任务，可以这样对应：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.18\linewidth}p{0.30\linewidth}p{0.38\linewidth}}
+\toprule
+\textbf{MDP 符号} & \textbf{代码位置} & \textbf{M20 中的实际含义}\\
+\midrule
+\(\mathcal S\) &
+\texttt{Isaac Lab Articulation / Scene} &
+仿真器内部完整状态：机身位姿、速度、关节状态、接触力、地形等。策略不一定全部能看见。\\
+\(\bs o_t\) &
+\texttt{ObservationsCfg} &
+策略实际输入：IMU 类信息、速度命令、关节位置/速度、上一帧动作等。\\
+\(\mathcal A\) &
+\texttt{DeeproboticsM20ActionsCfg} &
+16 维动作：12 个腿部位置动作 + 4 个轮子速度动作。\\
+\(P\) &
+Isaac/PhysX 物理仿真 &
+由刚体动力学、接触、摩擦、执行器和时间步推进共同决定。\\
+\(r_t\) &
+\texttt{RewardsCfg} 和 \texttt{mdp/rewards.py} &
+速度跟踪、姿态、高度、力矩、接触、动作平滑等加权求和。\\
+\(\gamma\) &
+\texttt{rsl\_rl\_ppo\_cfg.py} &
+折扣因子，M20 rough 配置中为 \(0.99\)，表示重视较长远的运动效果。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+所以读源码时，不要一开始就找“神经网络在哪里”。更推荐按下面顺序：
+
+\[
+\boxed{
+\text{任务注册}
+\rightarrow
+\text{机器人资产}
+\rightarrow
+\text{观测}
+\rightarrow
+\text{动作}
+\rightarrow
+\text{奖励}
+\rightarrow
+\text{PPO 参数}
+\rightarrow
+\text{train/play/export}
+}
+\]
+
+\subsection{任务注册：为什么 \texttt{--task} 能找到 M20}
+
+M20 的任务名是在下面文件里通过 \texttt{gym.register(...)} 注册的：
+
+\begin{verbatim}
+source/rl_training/rl_training/tasks/manager_based/locomotion/velocity/
+config/wheeled/deeprobotics_m20/__init__.py
+\end{verbatim}
+
+核心逻辑可以理解成：
+
+\begin{verbatim}
+gym.register(
+    id="Rough-Deeprobotics-M20-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": "...rough_env_cfg:DeeproboticsM20RoughEnvCfg",
+        "rsl_rl_cfg_entry_point": "...rsl_rl_ppo_cfg:DeeproboticsM20RoughPPORunnerCfg",
+    },
+)
+\end{verbatim}
+
+这段注册把三个东西绑在一起：
+
+\begin{enumerate}
+  \item \textbf{任务名}：\texttt{Rough-Deeprobotics-M20-v0}。
+  \item \textbf{环境类}：\texttt{ManagerBasedRLEnv}。
+  \item \textbf{配置入口}：M20 rough 环境配置和 PPO 配置。
+\end{enumerate}
+
+因此运行训练命令时：
+
+\begin{verbatim}
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=Rough-Deeprobotics-M20-v0
+\end{verbatim}
+
+程序不是凭空知道 M20 的，而是通过 Gym registry 找到对应的环境配置和 PPO 配置。
+
+\subsection{机器人资产：USD 模型和执行器参数}
+
+M20 资产配置位于：
+
+\begin{verbatim}
+source/rl_training/rl_training/assets/deeprobotics.py
+\end{verbatim}
+
+其中 \texttt{DEEPROBOTICS\_M20\_CFG} 指向 M20 的 USD 文件，并配置初始姿态和执行器参数。工程上最重要的是：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.26\linewidth}p{0.25\linewidth}p{0.35\linewidth}}
+\toprule
+\textbf{部分} & \textbf{参数量级} & \textbf{含义}\\
+\midrule
+腿部关节 &
+\(K_p\approx 80,\ K_d\approx 2,\ \tau_{\max}\approx 76.4\) &
+腿部关节主要承担支撑、伸缩和姿态调节。\\
+轮子关节 &
+\(K_p=0,\ K_d\approx 0.6,\ \tau_{\max}\approx 21.6\) &
+轮子更像速度执行器，主要提供滚动前进能力。\\
+初始 base 高度 &
+\(z_0\approx 0.52\) &
+reset 时避免机器人插进地面或从太高处跌落。\\
+默认关节角 &
+前后腿镜像弯曲 &
+策略动作是在默认站姿附近微调，而不是从全零姿态开始。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这对应了一个很重要的控制思想：
+
+\[
+\boxed{
+\text{强化学习不是替代机器人模型，而是在机器人模型和执行器模型上学习一个反馈策略。}
+}
+\]
+
+\subsection{观测：策略到底能看到什么}
+
+官方通用环境在 \texttt{velocity\_env\_cfg.py} 中定义了 \texttt{ObservationsCfg}。M20 rough 再在
+\texttt{rough\_env\_cfg.py} 中覆盖其中一部分。
+
+通用 policy 观测原本包含：
+
+\[
+\bs o_t=
+\left[
+\bs v_B,\,
+\bs\omega_B,\,
+\bs g_B,\,
+\bs c_t,\,
+\bs q-\bs q_0,\,
+\dot{\bs q},\,
+\bs a_{t-1},\,
+\text{height scan}
+\right].
+\]
+
+但 M20 rough 对 policy 做了两个关键删减：
+
+\begin{verbatim}
+self.observations.policy.base_lin_vel = None
+self.observations.policy.height_scan = None
+\end{verbatim}
+
+这表示部署用 actor 不直接看仿真真值线速度，也不直接看地形高度扫描。最终 policy 主要看到：
+
+\[
+\boxed{
+\bs o_t^{\pi}
+=
+\left[
+\bs\omega_B,\,
+\bs g_B,\,
+\bs c_t,\,
+\bs q_{\mathrm{rel}},\,
+\dot{\bs q},\,
+\bs a_{t-1}
+\right]
+\in\R^{57}.
+}
+\]
+
+维度可以这样数：
+
+\[
+3\ (\text{base ang vel})
++3\ (\text{projected gravity})
++3\ (\text{command})
++16\ (\text{joint pos})
++16\ (\text{joint vel})
++16\ (\text{last action})
+=57.
+\]
+
+\begin{orangebox}{为什么 policy 不直接看 \texttt{base\_lin\_vel} 和 \texttt{height\_scan}}
+这是一种偏部署的设计。仿真中精确线速度和地形扫描很容易拿到，但真机上不一定可靠。
+因此官方 M20 policy 更偏向使用 IMU、关节编码器、速度命令和上一帧动作这些较容易获得的数据。
+不过 critic 在训练阶段可以保留更多信息，所以它像一个“训练时的裁判”，不一定和部署时 actor 的输入完全一样。
+\end{orangebox}
+
+\subsection{轮子关节位置为什么置零}
+
+M20 有 4 个轮子连续旋转关节。轮子角度会一直累积：
+
+\[
+q_{\mathrm{wheel}}(t)
+=
+q_{\mathrm{wheel}}(0)+\int_0^t \omega_{\mathrm{wheel}}(\tau)\,\dd \tau.
+\]
+
+这个绝对角度本身不能说明腿部姿态，也不能说明机器人是否稳定。因此官方写了
+\texttt{joint\_pos\_rel\_without\_wheel}：
+
+\begin{verbatim}
+joint_pos_rel = joint_pos - default_joint_pos
+joint_pos_rel[:, wheel_joint_ids] = 0
+return joint_pos_rel
+\end{verbatim}
+
+注意这里是\textbf{把轮子位置置零，不是删除轮子维度}。这样做有两个好处：
+
+\begin{enumerate}
+  \item 保持输入维度仍然是 16 维关节位置，方便和动作/部署顺序对齐。
+  \item 避免网络学习无意义的轮子累计角度。
+\end{enumerate}
+
+轮子的真实运动状态仍然通过 \(\dot q_{\mathrm{wheel}}\) 进入 joint velocity 观测。
+
+\subsection{动作：16 维输出如何变成目标关节量}
+
+M20 rough 的动作配置在 \texttt{DeeproboticsM20ActionsCfg} 中。它把动作拆成两组：
+
+\[
+\bs a_t=
+\begin{bmatrix}
+\bs a_{\mathrm{leg},t}\\
+\bs a_{\mathrm{wheel},t}
+\end{bmatrix},
+\qquad
+\bs a_{\mathrm{leg},t}\in\R^{12},\quad
+\bs a_{\mathrm{wheel},t}\in\R^4.
+\]
+
+腿部 12 维使用 \texttt{JointPositionActionCfg}：
+
+\[
+\boxed{
+\bs q_{\mathrm{leg}}^{des}
+=
+\bs q_{\mathrm{leg},0}
++
+\bs D_{\mathrm{leg}}\bs a_{\mathrm{leg}}.
+}
+\]
+
+其中 \(\bs q_{\mathrm{leg},0}\) 是默认站姿，\(\bs D_{\mathrm{leg}}\) 是动作缩放。M20 中：
+
+\[
+D_{\mathrm{hipx}}=0.125,\qquad
+D_{\mathrm{hipy/knee}}=0.25.
+\]
+
+轮子 4 维使用 \texttt{JointVelocityActionCfg}：
+
+\[
+\boxed{
+\dot{\bs q}_{\mathrm{wheel}}^{des}
+=
+5.0\,\bs a_{\mathrm{wheel}}.
+}
+\]
+
+所以策略输出不是物理力矩，而是比较抽象的目标量：
+
+\[
+\boxed{
+\text{policy action}
+\rightarrow
+\text{腿部目标角度}
++
+\text{轮子目标角速度}
+\rightarrow
+\text{执行器}
+\rightarrow
+\bs\tau.
+}
+\]
+
+如果把执行器近似成 PD，可以写成：
+
+\[
+\boxed{
+\tau_i
+=
+K_{p,i}(q_i^{des}-q_i)
++
+K_{d,i}(\dot q_i^{des}-\dot q_i).
+}
+\]
+
+腿部关节的 \(K_p\) 较大，适合跟踪位置；轮子关节的 \(K_p=0\)，更偏速度控制。这就是你之前理解的：
+RL 输出运动学目标量，执行器再把它转换成动力学力矩。
+
+\subsection{奖励：为什么没有“爬楼梯专用奖励”}
+
+官方 M20 rough 任务的核心奖励不是“爬上台阶给多少分”，而是速度跟踪和稳定性组合。线速度跟踪奖励在
+\texttt{mdp/rewards.py} 中大致是：
+
+\[
+\boxed{
+r_v
+=
+\exp\left(
+-
+\frac{
+\left\|
+\bs v_{xy}^{cmd}-\bs v_{xy}
+\right\|^2
+}{\sigma_v^2}
+\right).
+}
+\]
+
+偏航角速度跟踪奖励是：
+
+\[
+\boxed{
+r_\omega
+=
+\exp\left(
+-
+\frac{
+(\omega_z^{cmd}-\omega_z)^2
+}{\sigma_\omega^2}
+\right).
+}
+\]
+
+总奖励可以抽象成：
+
+\[
+\boxed{
+r_t
+=
+2.0\,r_v
++1.0\,r_\omega
+-2.0\,\dot z_B^2
+-0.5\,e_h^2
+-2.5\times10^{-5}\|\bs\tau_{\mathrm{leg}}\|^2
+-0.01\|\bs a_t-\bs a_{t-1}\|^2
+\cdots
+}
+\]
+
+其中高度误差 \(e_h\) 在粗糙地形上不是简单的 \(z_B-h_0\)，而是：
+
+\[
+\boxed{
+e_h
+=
+z_B
+-
+\left(
+h_{\mathrm{terrain}}+h_{\mathrm{target}}
+\right).
+}
+\]
+
+源码中 \texttt{base\_height\_l2} 会用 \texttt{height\_scanner\_base} 的射线命中高度估计
+\(h_{\mathrm{terrain}}\)。这点非常关键：如果直接用世界系 \(z_B\)，机器人爬上楼梯后高度变大，奖励会误以为它“站太高”，反过来惩罚爬楼梯。
+
+\begin{greenbox}{爬楼梯能力怎么学出来}
+M20 rough 配置里没有一个显式的“楼梯奖励”。策略能越障，主要来自这几件事共同作用：
+\begin{enumerate}
+  \item 粗糙地形中有 \texttt{boxes} 和 \texttt{random\_rough}，让机器人不断遇到小台阶和不平地面。
+  \item 速度跟踪奖励要求它不能停在障碍前。
+  \item 姿态、高度、竖直速度和接触力惩罚要求它不能乱跳、硬砸或翻倒。
+  \item 轮子提供持续推进，腿部关节调整机身高度和轮地接触位置。
+\end{enumerate}
+因此“爬楼梯”不是单独写死的动作，而是在大量粗糙地形速度跟踪试错中自然筛选出来的控制策略。
+\end{greenbox}
+
+\subsection{随机化：为什么训练时故意让世界变化}
+
+M20 rough 的 \texttt{EventCfg} 和 \texttt{rough\_env\_cfg.py} 会随机化：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.28\linewidth}p{0.54\linewidth}}
+\toprule
+\textbf{随机化项} & \textbf{目的}\\
+\midrule
+地面摩擦 \(\mu_s,\mu_d\) & 避免策略只适应一种地面材质。\\
+质量和惯量 & 避免模型质量误差导致策略崩溃。\\
+base 质心 & 模拟载荷、装配误差和模型误差。\\
+初始 roll/pitch/yaw & 让策略能从不同姿态恢复。\\
+初始线速度/角速度 & 让策略不只会从完全静止开始。\\
+外力和外力矩 & 增强抗扰动能力。\\
+PD 增益 & 避免策略过度依赖某一组精确执行器参数。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+用公式看，训练时不再是优化单一世界 \(p(\xi)=\delta(\xi-\xi_0)\)，而是优化一族随机世界：
+
+\[
+\boxed{
+\max_\theta
+\mathbb E_{\xi\sim p(\xi)}
+\left[
+\sum_{t=0}^{T-1}\gamma^t r_t
+\right].
+}
+\]
+
+其中 \(\xi\) 可以包含摩擦、质量、质心、扰动、地形等参数。这样训练出来的策略通常更慢、更难，但更鲁棒。
+
+\subsection{PPO：官方配置如何对应算法公式}
+
+M20 rough 的 PPO 配置在：
+
+\begin{verbatim}
+config/wheeled/deeprobotics_m20/agents/rsl_rl_ppo_cfg.py
+\end{verbatim}
+
+关键参数包括：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.28\linewidth}p{0.20\linewidth}p{0.38\linewidth}}
+\toprule
+\textbf{参数} & \textbf{数值} & \textbf{代码含义}\\
+\midrule
+\texttt{num\_steps\_per\_env} & \(24\) & 每个并行环境采 24 步 rollout 后更新一次。\\
+\texttt{max\_iterations} & \(20000\) & rough 任务训练很长，不能用几十轮判断效果。\\
+\texttt{init\_noise\_std} & \(1.0\) & 初始动作探索噪声。\\
+\texttt{actor\_hidden\_dims} & \(512,256,128\) & actor 网络结构。\\
+\texttt{critic\_hidden\_dims} & \(512,256,128\) & critic 网络结构。\\
+\texttt{learning\_rate} & \(10^{-3}\) & 学习率。\\
+\texttt{entropy\_coef} & \(0.01\) & 熵奖励，鼓励探索。\\
+\texttt{desired\_kl} & \(0.01\) & 自适应学习率参考的 KL 目标。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+PPO 的实际训练可以拆成三步。
+
+\subsubsection{1. 采样 rollout}
+
+对 \(N\) 个并行环境，每个环境采 \(T=24\) 步：
+
+\[
+\mathcal D
+=
+\{(\bs o_t,\bs a_t,r_t,\bs o_{t+1},d_t,\log\pi_{\theta_{\mathrm{old}}}(\bs a_t|\bs o_t))\}.
+\]
+
+这里 \(d_t\) 表示 done。注意 PPO 是 on-policy，旧策略采样的数据不能无限重复用。
+
+\subsubsection{2. 计算 return 和 advantage}
+
+折扣回报：
+
+\[
+G_t
+=
+\sum_{k=0}^{T-t-1}\gamma^k r_{t+k}.
+\]
+
+优势函数常用 GAE：
+
+\[
+\delta_t
+=
+r_t+\gamma V_\phi(\bs o_{t+1})-V_\phi(\bs o_t),
+\]
+
+\[
+\boxed{
+\hat A_t
+=
+\sum_{l=0}^{T-t-1}
+(\gamma\lambda)^l\delta_{t+l}.
+}
+\]
+
+\(\hat A_t>0\) 表示这一步动作比 critic 原来预期更好；\(\hat A_t<0\) 表示更差。
+
+\subsubsection{3. 用 clipped objective 更新 actor}
+
+\[
+\rho_t(\theta)
+=
+\frac{\pi_\theta(\bs a_t|\bs o_t)}
+{\pi_{\theta_{\mathrm{old}}}(\bs a_t|\bs o_t)}.
+\]
+
+\[
+\boxed{
+L^{\mathrm{clip}}(\theta)
+=
+\mathbb E_t
+\left[
+\min
+\left(
+\rho_t\hat A_t,\,
+\operatorname{clip}(\rho_t,1-\epsilon,1+\epsilon)\hat A_t
+\right)
+\right].
+}
+\]
+
+这里 \(\epsilon=0.2\)。直观理解是：
+
+\[
+\boxed{
+\text{如果新策略比旧策略变化太猛，PPO 会把这次更新裁掉。}
+}
+\]
+
+完整损失还包括 critic 的 value loss 和 entropy：
+
+\[
+\mathcal L
+=
+-L^{\mathrm{clip}}
++c_v\|V_\phi-G_t\|^2
+-c_H\mathcal H(\pi_\theta).
+\]
+
+其中 \(\mathcal H\) 是熵，鼓励策略保留探索。
+
+\subsection{从 \texttt{train.py} 到 \texttt{play.py} 的完整闭环}
+
+训练和回放可以按下面理解：
+
+\[
+\boxed{
+\begin{array}{c}
+\text{\texttt{train.py}}
+\rightarrow
+\text{创建环境}
+\rightarrow
+\text{RSL-RL Runner}
+\rightarrow
+\text{采样 rollout}
+\rightarrow
+\text{PPO 更新}
+\rightarrow
+\text{\texttt{model\_*.pt}}
+\\[0.4em]
+\text{\texttt{play.py}}
+\rightarrow
+\text{加载 checkpoint}
+\rightarrow
+\text{获得 inference policy}
+\rightarrow
+\bs a_t=\pi(\bs o_t)
+\rightarrow
+\text{\texttt{env.step}}
+\rightarrow
+\text{可选导出 ONNX}
+\end{array}
+}
+\]
+
+这里最需要初学者注意的是：
+
+\begin{enumerate}
+  \item \texttt{train.py} 是学习参数 \(\theta\)，会有探索噪声、随机化和日志。
+  \item \texttt{play.py} 是评估参数 \(\theta\)，通常会关闭训练噪声，动作更确定。
+  \item 导出 ONNX 时必须保持 observation 顺序、动作顺序、scale、默认关节角和部署端完全一致。
+\end{enumerate}
+
+\subsection{用官方代码反查训练不出效果的常见原因}
+
+如果 M20 训练出来乱跳、不走、不爬台阶，可以按下面顺序排查：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.30\linewidth}p{0.52\linewidth}}
+\toprule
+\textbf{检查项} & \textbf{为什么重要}\\
+\midrule
+动作维度是否为 16 & M20 是 12 个腿部动作 + 4 个轮子速度动作。\\
+轮子位置是否置零 & 轮子累计角度无意义，直接输入会干扰学习。\\
+动作 scale 是否正确 & hipx、hipy/knee、wheel 的 scale 不同，弄错会动作剧烈或无力。\\
+base height 是否相对地形 & 楼梯/粗糙地形必须用局部地形高度修正目标高度。\\
+reward 权重是否失衡 & 任务奖励太强会乱冲，惩罚太强会不动。\\
+是否有足够随机地形 & 只在平地或单一台阶上硬训，很难学出鲁棒越障。\\
+训练步数是否足够 & 官方 rough 是大规模并行 + 长迭代，不能用很短训练判断最终能力。\\
+play 和 train 观测是否一致 & 部署或回放时输入顺序错，策略会直接失控。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Gazebo/Nav2 巡检导航避障：公式、代码逻辑与 M20 接口}
+
+这一节专门对应：
+
+\begin{verbatim}
+src/m20_industrial_inspection_gazebo
+\end{verbatim}
+
+这个 Gazebo 巡检包。它和上面的强化学习控制不是同一个层级：
+
+\[
+\boxed{
+\text{RL/MuJoCo/Isaac 主要解决：底层怎么像真实机器狗一样稳定运动。}
+}
+\]
+
+\[
+\boxed{
+\text{Gazebo/Nav2 巡检主要解决：在二维工厂地图中如何定位、规划、避障并到达巡检点。}
+}
+\]
+
+当前 Gazebo 巡检包里，M20 被简化成可以接收 \texttt{/cmd\_vel} 的四轮差速/滑移底盘代理。
+这非常适合验证导航避障逻辑，但不等价于完整轮足动力学。
+
+\subsection{整体启动链路}
+
+\texttt{full\_m20\_factory\_inspection.launch.py} 把系统分成三段延时启动：
+
+\[
+\boxed{
+\text{Gazebo 世界 + 机器人 + 传感器}
+\rightarrow
+\text{Nav2 地图导航}
+\rightarrow
+\text{巡检任务点下发}
+}
+\]
+
+对应源码逻辑是：
+
+\begin{enumerate}
+  \item 先 include \texttt{gazebo\_sensor\_m20\_factory.launch.py}，启动 Gazebo、spawn M20、发布 TF 和雷达。
+  \item 延时启动 \texttt{nav2\_map\_navigation\_m20\_factory.launch.py}，加载地图和 Nav2 参数。
+  \item 再延时启动 \texttt{factory\_inspection\_mission.launch.py}，向 Nav2 的 \texttt{NavigateToPose} action 下发巡检点。
+\end{enumerate}
+
+写成控制链：
+
+\[
+\boxed{
+\text{巡检点}
+\rightarrow
+\text{Nav2 NavigateToPose}
+\rightarrow
+\text{全局路径}
+\rightarrow
+\text{局部控制器}
+\rightarrow
+\text{\texttt{/cmd\_vel}}
+\rightarrow
+\text{Gazebo 四轮插件}
+\rightarrow
+\text{M20 nav proxy 运动}.
+}
+\]
+
+\subsection{传感器链路：从 3D 点云到 2D 激光}
+
+URDF 中的雷达传感器配置在 \texttt{m20\_gazebo\_combined.urdf}：
+
+\begin{itemize}
+  \item Gazebo ray sensor 发布 \texttt{/LIDAR/POINTS}。
+  \item \texttt{pointcloud\_to\_laserscan} 把点云投影成 \texttt{/scan}。
+  \item Nav2 的 AMCL 和 costmap 都订阅 \texttt{/scan}。
+\end{itemize}
+
+点云转 2D 激光可以理解为：
+
+\[
+\boxed{
+\mathcal P=\{(x_i,y_i,z_i)\}
+\rightarrow
+\{(x_i,y_i,z_i): z_{\min}<z_i<z_{\max}\}
+\rightarrow
+r(\theta)=\min_i\sqrt{x_i^2+y_i^2}.
+}
+\]
+
+当前 launch 中高度过滤大致是：
+
+\[
+z_{\min}=-0.30,\qquad z_{\max}=0.30.
+\]
+
+这表示只保留接近水平扫描平面的点。太高的点可能是天花板或上层结构，太低的点可能是地面噪声，
+都不适合直接作为 2D 障碍。
+
+\subsection{定位：AMCL 的贝叶斯滤波思想}
+
+Nav2 参数里 AMCL 使用：
+
+\begin{verbatim}
+robot_model_type: nav2_amcl::DifferentialMotionModel
+scan_topic: /scan
+global_frame_id: map
+odom_frame_id: odom
+base_frame_id: base_link
+\end{verbatim}
+
+AMCL 的核心是粒子滤波。它估计机器人在地图中的位姿：
+
+\[
+\bs x_t=
+\begin{bmatrix}
+x_t & y_t & \theta_t
+\end{bmatrix}\T.
+\]
+
+贝叶斯递推可以写成：
+
+\[
+\boxed{
+\operatorname{bel}(\bs x_t)
+=
+\eta\,
+p(\bs z_t\mid \bs x_t,m)
+\int
+p(\bs x_t\mid \bs u_t,\bs x_{t-1})
+\operatorname{bel}(\bs x_{t-1})
+\dd \bs x_{t-1}.
+}
+\]
+
+其中：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.24\linewidth}p{0.56\linewidth}}
+\toprule
+\textbf{符号} & \textbf{含义}\\
+\midrule
+\(\bs x_t\) & 当前机器人位姿。\\
+\(\bs u_t\) & 里程计运动增量，来自 \texttt{/odom}。\\
+\(\bs z_t\) & 当前激光观测，来自 \texttt{/scan}。\\
+\(m\) & 静态地图，来自 \texttt{map\_server}。\\
+\(p(\bs x_t\mid\bs u_t,\bs x_{t-1})\) & 运动模型，预测机器人可能走到哪里。\\
+\(p(\bs z_t\mid\bs x_t,m)\) & 观测模型，判断这个位姿下看到的激光和地图是否匹配。\\
+\(\eta\) & 归一化系数。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+直观理解：\texttt{/odom} 负责短期连续运动，\texttt{/scan + map} 负责把累计漂移拉回地图。
+
+\subsection{代价地图：障碍如何变成不能走的区域}
+
+Nav2 使用 global costmap 和 local costmap：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.22\linewidth}p{0.28\linewidth}p{0.36\linewidth}}
+\toprule
+\textbf{地图} & \textbf{坐标系} & \textbf{作用}\\
+\midrule
+global costmap & \texttt{map} & 用静态地图和障碍层规划全局路线。\\
+local costmap & \texttt{odom} & 用滚动窗口实时避障，范围约 \(5\mathrm m\times5\mathrm m\)。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+参数中可以看到：
+
+\begin{itemize}
+  \item local costmap 使用 \texttt{obstacle\_layer} 和 \texttt{inflation\_layer}。
+  \item global costmap 使用 \texttt{static\_layer}、\texttt{obstacle\_layer} 和 \texttt{inflation\_layer}。
+  \item local inflation radius 约 \(0.55\mathrm m\)，global inflation radius 约 \(0.65\mathrm m\)。
+\end{itemize}
+
+障碍膨胀可以抽象成：
+
+\[
+C(d)=
+\begin{cases}
+C_{\max}, & d\le r_{\mathrm{robot}},\\
+C_{\max}\exp[-\alpha(d-r_{\mathrm{robot}})], & r_{\mathrm{robot}}<d<r_{\mathrm{inflation}},\\
+0, & d\ge r_{\mathrm{inflation}}.
+\end{cases}
+\]
+
+其中 \(d\) 是栅格到最近障碍的距离。这样做的意义是：
+
+\[
+\boxed{
+\text{不是只有撞上障碍才危险，离障碍太近也应该付出更高代价。}
+}
+\]
+
+\subsection{全局规划：从当前位置到目标点}
+
+当前参数中 planner 使用：
+
+\begin{verbatim}
+plugin: nav2_navfn_planner/NavfnPlanner
+use_astar: false
+allow_unknown: true
+\end{verbatim}
+
+\texttt{use\_astar=false} 表示更接近 Dijkstra/NavFn 的势场传播。可以把全局路径理解为在栅格图上最小化：
+
+\[
+\boxed{
+J(\mathcal P)
+=
+\sum_{k=0}^{N-1}
+\left(
+w_d\|\bs p_{k+1}-\bs p_k\|
++
+w_c C(\bs p_k)
+\right).
+}
+\]
+
+其中 \(C(\bs p_k)\) 来自 costmap。路径会尽量短，同时避开高代价障碍区。
+
+如果打开 A*，还会加入启发式函数 \(h(\bs p)\)：
+
+\[
+f(\bs p)=g(\bs p)+h(\bs p),
+\]
+
+其中 \(g\) 是起点到当前点的累计代价，\(h\) 是当前点到目标的估计距离。
+
+\subsection{局部控制：Regulated Pure Pursuit 如何产生 \texttt{/cmd\_vel}}
+
+当前 controller 使用：
+
+\begin{verbatim}
+plugin: nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+desired_linear_vel: 0.40
+lookahead_dist: 0.45
+use_collision_detection: true
+use_cost_regulated_linear_velocity_scaling: true
+\end{verbatim}
+
+Pure Pursuit 的核心是找路径前方一个 lookahead 点，常叫 carrot point。设机器人到该点的距离为 \(L_d\)，
+该点在机器人坐标系下的夹角为 \(\alpha\)，则路径曲率近似为：
+
+\[
+\boxed{
+\kappa
+=
+\frac{2\sin\alpha}{L_d}.
+}
+\]
+
+然后根据线速度 \(v\) 得到角速度：
+
+\[
+\boxed{
+\omega_z
+=
+v\kappa.
+}
+\]
+
+因此局部控制器输出的就是：
+
+\[
+\boxed{
+\text{\texttt{/cmd\_vel}}
+=
+\begin{bmatrix}
+v_x\\
+0\\
+\omega_z
+\end{bmatrix}.
+}
+\]
+
+Regulated Pure Pursuit 比普通 Pure Pursuit 多了几个“调速器”：
+
+\begin{enumerate}
+  \item 转弯半径太小，降低线速度。
+  \item costmap 代价太高，降低线速度。
+  \item 预测到一定时间内可能碰撞，降低速度或停止。
+  \item 接近目标点时降低速度。
+\end{enumerate}
+
+这就是 Nav2 避障的核心：不是底层腿部主动感知受力，而是在二维代价地图上选择更安全的速度命令。
+
+\subsection{动态避障实验：MPPI 局部控制器}
+
+除了上面的 RPP 稳定基线，Gazebo 导航包里还准备了另一套更适合动态避障测试的局部控制器：
+
+\begin{verbatim}
+src/m20_industrial_inspection_gazebo/config/nav2_params_mppi.yaml
+src/m20_industrial_inspection_gazebo/launch/nav2_map_navigation_mppi_sandbox.launch.py
+\end{verbatim}
+
+其中 controller 的核心配置是：
+
+\begin{verbatim}
+FollowPath:
+  plugin: nav2_mppi_controller::MPPIController
+  time_steps: 44
+  model_dt: 0.05
+  batch_size: 900
+  vx_std: 0.25
+  vy_std: 0.0
+  wz_std: 0.60
+  vx_max: 0.50
+  vx_min: -0.10
+  vy_max: 0.0
+  wz_max: 0.95
+  motion_model: DiffDrive
+  critics: [ConstraintCritic, CostCritic, GoalCritic,
+            PathAlignCritic, PathFollowCritic,
+            PathAngleCritic, PreferForwardCritic]
+\end{verbatim}
+
+MPPI 是 Model Predictive Path Integral 的缩写。它可以先粗略理解成一种“采样版 MPC”：
+
+\begin{itemize}
+  \item Model Predictive：使用一个简化运动模型预测机器人未来几秒怎么走。
+  \item Path Integral：不是只算一条轨迹，而是随机采样很多条未来控制序列，再按代价加权选择更优的控制。
+  \item 在 Nav2 里，MPPI 不是训练出来的强化学习策略，而是一个在线优化的局部规划器。
+\end{itemize}
+
+对于当前 M20 Gazebo 导航代理，它仍然使用二维差速底盘模型。状态和控制量可以写成：
+
+\[
+\bs x_k =
+\begin{bmatrix}
+x_k\\
+y_k\\
+\theta_k
+\end{bmatrix},
+\qquad
+\bs u_k =
+\begin{bmatrix}
+v_k\\
+\omega_k
+\end{bmatrix}.
+\]
+
+由于配置里 \texttt{vy\_std: 0.0}、\texttt{vy\_max: 0.0}，说明它不考虑横向速度 \(v_y\)，而是按差速机器人运动学预测：
+
+\[
+\boxed{
+\begin{aligned}
+x_{k+1} &= x_k + v_k\cos\theta_k\Delta t,\\
+y_{k+1} &= y_k + v_k\sin\theta_k\Delta t,\\
+\theta_{k+1} &= \theta_k + \omega_k\Delta t.
+\end{aligned}
+}
+\]
+
+在本项目参数中：
+
+\[
+\boxed{
+H=44,\qquad
+\Delta t=0.05\,\mathrm{s},\qquad
+T=H\Delta t=2.2\,\mathrm{s},\qquad
+K=900.
+}
+\]
+
+也就是说，每次控制循环，MPPI 会向前看约 \(2.2\,\mathrm{s}\)，一次采样 \(900\) 条候选轨迹。第 \(i\) 条候选轨迹的控制序列可以写成：
+
+\[
+\bs u_k^{(i)}
+=
+\bar{\bs u}_k + \bs\epsilon_k^{(i)},
+\qquad
+\bs\epsilon_k^{(i)}
+\sim
+\mathcal N(\bs 0,\Sigma).
+\]
+
+其中本项目近似对应：
+
+\[
+\epsilon_v\sim\mathcal N(0,0.25^2),
+\qquad
+\epsilon_\omega\sim\mathcal N(0,0.60^2).
+\]
+
+所以可以把 \texttt{vx\_std}、\texttt{wz\_std} 理解成“随机试探的幅度”。数值越大，MPPI 越敢尝试偏离当前控制；数值太小则可能绕不开动态障碍，数值太大则容易控制抖动。
+
+\subsubsection{MPPI 如何判断哪条轨迹更好}
+
+每条候选轨迹都会被多个 critic 打分。一个简化总成本可以写成：
+
+\[
+\boxed{
+S_i
+=
+\sum_{k=0}^{H-1}
+\left(
+w_c C_{\mathrm{obs}}(\bs x_k^{(i)})
++w_p d_{\mathrm{path}}(\bs x_k^{(i)})
++w_g d_{\mathrm{goal}}(\bs x_k^{(i)})
++w_\theta e_\theta(\bs x_k^{(i)})
++w_u \phi_{\mathrm{limit}}(\bs u_k^{(i)})
+\right).
+}
+\]
+
+这些项和配置文件里的 critic 基本一一对应：
+
+\begin{longtable}{p{0.24\linewidth}p{0.68\linewidth}}
+\toprule
+Critic & 初学者理解 \\
+\midrule
+\texttt{ConstraintCritic} & 检查速度、加速度等控制约束，避免采样轨迹超过机器人能力。\\
+\texttt{CostCritic} & 查看轨迹是否进入障碍物代价地图，高代价区、膨胀区、碰撞区会被重罚。配置里 \texttt{collision\_cost: 1000000.0}，碰撞几乎一定被淘汰。\\
+\texttt{GoalCritic} & 接近目标点时，让轨迹更偏向最终目标。\\
+\texttt{PathAlignCritic} & 让局部轨迹方向尽量贴合全局路径，不要乱绕。\\
+\texttt{PathFollowCritic} & 鼓励机器人沿着全局路径向前推进。\\
+\texttt{PathAngleCritic} & 控制机器人朝向，避免以很别扭的姿态贴近路径或目标。\\
+\texttt{PreferForwardCritic} & 倾向向前走，减少频繁倒车。\\
+\bottomrule
+\end{longtable}
+
+打分之后，MPPI 不是简单取“唯一最短路径”，而是用类似 softmax 的方式给低成本轨迹更高权重：
+
+\[
+\boxed{
+\alpha_i
+=
+\frac{
+\exp\left(-S_i/\lambda\right)
+}{
+\sum_{j=1}^{K}\exp\left(-S_j/\lambda\right)
+}.
+}
+\]
+
+配置中的 \texttt{temperature: 0.25} 可以理解成这里的温度系数 \(\lambda\)。温度越低，算法越偏向少数最低成本轨迹；温度越高，控制会更平均、更保守。
+
+最终输出的第一拍控制可以近似写成：
+
+\[
+\boxed{
+\bs u_0^\ast
+=
+\sum_{i=1}^{K}
+\alpha_i \bs u_0^{(i)}.
+}
+\]
+
+Nav2 最终发布的仍然是：
+
+\[
+\text{\texttt{/cmd\_vel}}
+=
+\begin{bmatrix}
+v_x^\ast\\
+0\\
+\omega_z^\ast
+\end{bmatrix}.
+\]
+
+\subsubsection{为什么说 MPPI 更适合动态避障}
+
+这里的“动态避障”要理解准确：MPPI 预测的是机器人自己的未来轨迹，不是自动预测行人、车辆或移动障碍物的未来轨迹。
+
+本项目动态避障链路是：
+
+\[
+\boxed{
+\text{\texttt{/scan}}
+\rightarrow
+\text{local costmap obstacle layer}
+\rightarrow
+\text{inflation layer}
+\rightarrow
+\text{MPPI CostCritic}
+\rightarrow
+\text{\texttt{/cmd\_vel}}.
+}
+\]
+
+当动态障碍物被 Gazebo 雷达扫到后，它会被写入局部代价地图。MPPI 每秒约 \(20\) 次重新采样未来轨迹，穿过障碍物膨胀区的候选轨迹会被 \texttt{CostCritic} 赋予更高代价，于是控制器倾向选择减速、绕行、等待或贴着全局路径重新回正的轨迹。
+
+因此 MPPI 相比 RPP 的优势是：
+
+\begin{enumerate}
+  \item RPP 更像“沿路径找前视点并跟踪”，遇到动态障碍时主要依赖碰撞检测和速度调节。
+  \item MPPI 会同时比较大量未来局部轨迹，所以在障碍物横穿路径时更容易找到绕行候选。
+  \item MPPI 的效果很依赖 costmap、膨胀半径、采样速度范围、critic 权重和计算性能。
+\end{enumerate}
+
+但它也有边界：
+
+\begin{enumerate}
+  \item 如果动态障碍物没有被 \texttt{/scan} 感知到，MPPI 就不知道它存在。
+  \item 如果障碍物移动很快，而 costmap 更新频率、雷达范围或控制频率不够，避障会滞后。
+  \item 如果想预测“人下一秒会走到哪里”，需要额外加入动态目标跟踪、速度估计和预测型 costmap layer，当前配置还没有做到这一层。
+\end{enumerate}
+
+RPP 和 MPPI 可以这样对比：
+
+\begin{longtable}{p{0.18\linewidth}p{0.35\linewidth}p{0.35\linewidth}}
+\toprule
+局部控制器 & 更像什么 & 适合场景 \\
+\midrule
+RPP & 几何路径跟踪器，找前视点，然后算曲率和角速度。& 静态地图、低动态障碍、稳定巡检基线。\\
+MPPI & 采样优化器，向前模拟很多条轨迹并按代价选控制。& 动态障碍测试、狭窄区域绕行、需要更主动局部选择的场景。\\
+\bottomrule
+\end{longtable}
+
+如果要启动 MPPI 版本的 Nav2，可使用：
+
+\begin{verbatim}
+ros2 launch m20_industrial_inspection_gazebo nav2_map_navigation_mppi_sandbox.launch.py
+\end{verbatim}
+
+如果同时对比 RPP 和 MPPI，建议保持 Gazebo 世界、地图和目标点一致，只替换 Nav2 参数文件或启动文件，并重点观察：
+
+\begin{itemize}
+  \item RViz 中的 \texttt{local\_costmap} 是否实时出现动态障碍；
+  \item \texttt{/cmd\_vel} 是否在障碍靠近时减速、转向或等待；
+  \item 机器人绕开障碍后是否能回到全局路径；
+  \item 是否出现角速度抖动，如果抖动明显，需要调小 \texttt{wz\_std}、\texttt{wz\_max} 或加强速度平滑。
+\end{itemize}
+
+\subsection{速度平滑：避免 \texttt{/cmd\_vel} 突变}
+
+参数中 \texttt{velocity\_smoother} 约束：
+
+\[
+v_x\in[-0.20,0.45],\qquad
+\omega_z\in[-0.65,0.65],
+\]
+
+\[
+|\dot v_x|\le 0.8,\qquad
+|\dot\omega_z|\le 1.2.
+\]
+
+可以理解成对 Nav2 输出再过一层限幅器：
+
+\[
+\boxed{
+\bs u_t
+=
+\operatorname{clip}
+\left(
+\bs u_{t-1}
++
+\operatorname{clip}(\bs u_t^{raw}-\bs u_{t-1},-\dot{\bs u}_{\max}\Delta t,\dot{\bs u}_{\max}\Delta t),
+\bs u_{\min},\bs u_{\max}
+\right).
+}
+\]
+
+这样可以减少 Gazebo 机器人突然加速、急转造成的抖动。
+
+\subsection{底层驱动：\texttt{/cmd\_vel} 如何变成四个轮子转速}
+
+Gazebo 包中真正驱动 M20 nav proxy 的关键文件是：
+
+\begin{verbatim}
+src/m20_industrial_inspection_gazebo/src/four_wheel_drive_plugin.cpp
+\end{verbatim}
+
+插件订阅 \texttt{/cmd\_vel}，读取：
+
+\[
+v = \text{\texttt{linear.x}},\qquad
+\omega = \text{\texttt{angular.z}}.
+\]
+
+然后用差速模型计算左右轮角速度：
+
+\[
+\boxed{
+\omega_L
+=
+s\frac{v-\omega L/2}{r_w},
+\qquad
+\omega_R
+=
+s\frac{v+\omega L/2}{r_w}.
+}
+\]
+
+其中：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.18\linewidth}p{0.60\linewidth}}
+\toprule
+\textbf{符号} & \textbf{含义}\\
+\midrule
+\(r_w=0.09\mathrm m\) & 轮半径，对应 URDF 插件参数 \texttt{wheel\_radius}。\\
+\(L=0.453\mathrm m\) & 左右轮等效间距，对应 \texttt{wheel\_separation}。\\
+\(s=-1.0\) & 轮速符号修正，对应 \texttt{wheel\_velocity\_sign}。\\
+\(\omega_L,\omega_R\) & 左右侧轮子的目标角速度。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+源码逻辑可以简化成：
+
+\begin{verbatim}
+left_velocity  = sign * (linear_x - angular_z * separation * 0.5) / radius
+right_velocity = sign * (linear_x + angular_z * separation * 0.5) / radius
+
+setJointVelocity(fl_wheel_joint, left_velocity)
+setJointVelocity(hl_wheel_joint, left_velocity)
+setJointVelocity(fr_wheel_joint, right_velocity)
+setJointVelocity(hr_wheel_joint, right_velocity)
+\end{verbatim}
+
+插件还做了几件工程保护：
+
+\begin{enumerate}
+  \item 如果 \texttt{/cmd\_vel} 超过 \texttt{command\_timeout\_sec}，就认为指令过期，输出零速度。
+  \item 对 \(v\) 和 \(\omega\) 做限幅，避免 Nav2 或键盘输入过大。
+  \item 设置每个轮子关节的 \texttt{fmax} 和 \texttt{vel}。
+  \item 发布 \texttt{/odom} 和 \texttt{odom}\(\rightarrow\)\texttt{base\_link} TF。
+  \item 当前 URDF 中 \texttt{use\_planar\_velocity=true}，插件还会直接设置模型平面速度，使导航代理更稳定。
+\end{enumerate}
+
+\begin{orangebox}{这里和真实 M20/RL 控制的区别}
+Gazebo 巡检包里的四轮插件是导航代理模型。它关心的是 Nav2 能不能根据地图、雷达和目标点规划出合理的
+\texttt{/cmd\_vel}，并让机器人图标在工厂地图里走起来。它没有完整求解 M20 的腿部支撑、机身俯仰、接触力分配和 RL 策略输出。
+\end{orangebox}
+
+\subsection{巡检任务：多个目标点如何自动执行}
+
+\texttt{factory\_inspection\_nav2\_mission} 是一个简单的任务状态机。它从
+\texttt{factory\_inspection\_midpoints.yaml} 读取巡检点：
+
+\[
+\{(x_i,y_i,\psi_i,t_i^{dwell})\}_{i=1}^{N}.
+\]
+
+其中 \(\psi_i\) 是目标朝向，代码里用：
+
+\[
+q_z=\sin(\psi_i/2),\qquad
+q_w=\cos(\psi_i/2)
+\]
+
+把 yaw 转成四元数。
+
+任务状态机可以写成：
+
+\[
+\boxed{
+\texttt{WAITING\_START}
+\rightarrow
+\texttt{WAITING\_SERVER}
+\rightarrow
+\texttt{DISPATCHING}
+\rightarrow
+\texttt{NAVIGATING}
+\rightarrow
+\texttt{DWELL}
+\rightarrow
+\text{下一个点或结束}.
+}
+\]
+
+每个点会通过 Nav2 action 下发：
+
+\begin{verbatim}
+goal = NavigateToPose.Goal()
+goal.pose = pose
+action_client.send_goal_async(goal, feedback_callback=...)
+\end{verbatim}
+
+如果成功到达，进入 \texttt{DWELL}，等待 \(t_i^{dwell}\) 秒；如果超时或 Nav2 返回失败，根据
+\texttt{continue\_on\_failure} 决定停止还是跳到下一个点。
+
+\subsection{导航避障和强化学习运控如何预留接口}
+
+最终工程上更合理的分层是：
+
+\[
+\boxed{
+\begin{array}{c}
+\text{任务层：巡检点/任务状态机}
+\\
+\downarrow
+\\
+\text{导航层：Nav2 规划和避障，输出 \texttt{/cmd\_vel}}
+\\
+\downarrow
+\\
+\text{运动控制层：Gazebo 四轮插件 或 SDK/RL 底层控制器}
+\\
+\downarrow
+\\
+\text{机器人/仿真物理}
+\end{array}
+}
+\]
+
+因此后续如果把 Gazebo 导航和官方 \texttt{sdk\_deploy} 或 RL 运控结合，接口最好保持：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.28\linewidth}p{0.52\linewidth}}
+\toprule
+\textbf{接口} & \textbf{作用}\\
+\midrule
+\texttt{/cmd\_vel} & Nav2 输出的高层速度命令，底层控制器输入。\\
+\texttt{/odom} & 底层/仿真反馈给 Nav2 的里程计。\\
+\texttt{odom} \(\rightarrow\) \texttt{base\_link} & 机器人局部位姿 TF。\\
+\texttt{/scan} & Nav2 避障和 AMCL 定位使用的 2D 激光。\\
+\texttt{/map} & 全局静态地图。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这样可以把底层替换成不同实现：
+
+\begin{itemize}
+  \item Gazebo 导航调试：\texttt{/cmd\_vel} \(\rightarrow\) 四轮差速插件。
+  \item MuJoCo/RL 运控调试：\texttt{/cmd\_vel} \(\rightarrow\) 速度命令 \(\bs c_t\) \(\rightarrow\) RL policy \(\rightarrow\) 关节目标。
+  \item 真机部署：\texttt{/cmd\_vel} \(\rightarrow\) SDK deploy 状态机/安全层 \(\rightarrow\) 电机命令。
+\end{itemize}
+
+\begin{greenbox}{学习导航避障时的阅读顺序}
+\begin{enumerate}
+  \item 看 \texttt{full\_m20\_factory\_inspection.launch.py}：知道系统启动顺序。
+  \item 看 \texttt{m20\_gazebo\_combined.urdf}：知道雷达和四轮插件怎么挂上机器人。
+  \item 看 \texttt{rslidar\_pointcloud\_to\_scan.launch.py}：知道点云如何变成 \texttt{/scan}。
+  \item 看 \texttt{nav2\_params.yaml}：重点看 AMCL、costmap、planner、controller、velocity smoother。
+  \item 看 \texttt{four\_wheel\_drive\_plugin.cpp}：理解 \texttt{/cmd\_vel} 如何驱动轮子。
+  \item 看 \texttt{factory\_inspection\_nav2\_mission}：理解巡检点如何下发给 Nav2。
+\end{enumerate}
+\end{greenbox}
+
+\subsection{导航避障调试速查}
+
+如果 Gazebo 巡检导航“不走、乱走、撞障碍、定位漂”，可以按下面查：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.30\linewidth}p{0.52\linewidth}}
+\toprule
+\textbf{现象} & \textbf{优先检查}\\
+\midrule
+Nav2 不动 & 是否有 \texttt{/map}、\texttt{/scan}、\texttt{/odom}、\texttt{map} \(\rightarrow\) \texttt{odom} \(\rightarrow\) \texttt{base\_link} TF。\\
+机器人不响应 \texttt{/cmd\_vel} & 四轮插件是否加载，\texttt{/cmd\_vel} topic 是否一致，指令是否超时。\\
+定位漂移 & AMCL 初始位姿、地图、雷达 frame、\texttt{/scan} 是否和真实障碍对齐。\\
+绕障太保守 & inflation radius、robot radius、cost scaling factor 是否过大。\\
+贴障太近 & inflation radius 或 robot radius 可能太小。\\
+转弯抖动 & lookahead distance、速度平滑、角速度/角加速度限幅需要调。\\
+局部规划卡住 & local costmap 是否看到障碍，progress checker 是否过严，目标容差是否过小。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{模块四：Nav2 导航与 RoboSense 三维雷达感知验证}
+
+前面的 Gazebo/Nav2 章节主要讲的是“有仿真世界、有机器人模型、有地图、有里程计”的完整导航仿真。
+本节记录的是另一个更贴近真机的数据验证任务：
+\textbf{没有对应 Gazebo 世界模型时，如何使用官方三维雷达 bag 验证 Nav2 的感知和避障层是否可用。}
+
+\begin{orangebox}{本模块的核心结论}
+官方 bag 只包含三维点云和 IMU：
+\[
+\texttt{/LIDAR/POINTS}:\text{PointCloud2},\qquad
+\texttt{/IMU}:\text{Imu}.
+\]
+它没有 \texttt{/odom}、没有完整 \texttt{/tf}、没有对应 Gazebo world，也没有机器人运动反馈。
+因此它不能单独证明“Nav2 可以闭环导航到目标点”，但可以证明：
+\[
+\boxed{
+\texttt{/LIDAR/POINTS}
+\rightarrow
+\texttt{/scan}
+\rightarrow
+\text{Nav2 obstacle\_layer}
+\rightarrow
+\texttt{/costmap/costmap}
+}
+\]
+也就是说，官方三维雷达数据经过点云切片转换后，确实可以进入 Nav2 的局部代价地图，用于避障感知验证。
+\end{orangebox}
+
+\subsection{Nav2 系统到底由哪些部分组成}
+
+Nav2 不是一个单独算法，而是一组 ROS2 lifecycle 节点和插件的组合。
+从工程视角看，可以把它分成四层：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.20\linewidth}p{0.30\linewidth}p{0.38\linewidth}}
+\toprule
+\textbf{层级} & \textbf{典型节点/插件} & \textbf{作用}\\
+\midrule
+地图与定位层 &
+\texttt{map\_server}、\texttt{amcl}、SLAM Toolbox &
+提供 \texttt{/map}，并估计 \texttt{map} \(\rightarrow\) \texttt{odom}。\\
+感知与代价地图层 &
+\texttt{local\_costmap}、\texttt{global\_costmap}、ObstacleLayer、InflationLayer &
+把 \texttt{/scan} 或点云变成 costmap，告诉规划器哪里能走、哪里有障碍。\\
+规划与控制层 &
+Planner、Controller、Smoother、Velocity Smoother &
+全局规划路径，局部跟踪路径，并输出 \texttt{/cmd\_vel}。\\
+任务行为层 &
+BT Navigator、Waypoint Follower、自定义巡检状态机 &
+管理导航目标、失败恢复、巡检点顺序和任务状态。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{answerbox}
+\textbf{小白理解：}
+Nav2 的核心输入不是“世界模型”，而是运行时的 \texttt{/map}、\texttt{/tf}、\texttt{/odom}、\texttt{/scan}。
+Gazebo world 只是产生这些输入的一种方式；真实 bag 回放、真机传感器、SLAM 输出也都可以成为 Nav2 的输入来源。
+\end{answerbox}
+
+\subsection{为什么没有 Gazebo 世界也能验证一部分 Nav2}
+
+完整导航闭环需要：
+\[
+\boxed{
+\texttt{/map},\quad
+\texttt{map} \rightarrow \texttt{odom} \rightarrow \texttt{base\_link},\quad
+\texttt{/odom},\quad
+\texttt{/scan},\quad
+\texttt{/cmd\_vel},\quad
+\text{运动反馈}
+}
+\]
+而官方雷达 bag 当前只有：
+\[
+\boxed{
+\texttt{/LIDAR/POINTS},\quad \texttt{/IMU}
+}
+\]
+
+所以它不适合直接做“给目标点，看机器人能不能走过去”的完整闭环测试。
+但它非常适合做感知链路验证：
+
+\[
+\boxed{
+\text{真实/官方雷达数据}
+\rightarrow
+\text{二维激光转换}
+\rightarrow
+\text{Nav2 obstacle layer}
+\rightarrow
+\text{局部 costmap}
+}
+\]
+
+\begin{greenbox}{本次验证的边界}
+\begin{itemize}
+  \item \textbf{能验证：}三维点云能否转换成 Nav2 可订阅的 \texttt{sensor\_msgs/LaserScan}。
+  \item \textbf{能验证：}\texttt{/scan} 能否被 Nav2 ObstacleLayer 接收，并生成 \texttt{/costmap/costmap}。
+  \item \textbf{不能验证：}没有真实 \texttt{/odom} 和定位时，Nav2 是否能闭环到达目标点。
+  \item \textbf{不能验证：}没有对应 Gazebo world 时，仿真障碍物是否和 bag 中点云障碍物空间一致。
+\end{itemize}
+\end{greenbox}
+
+\subsection{三维点云转二维 LaserScan 的原理}
+
+Nav2 经典配置中，AMCL 和 costmap 的 ObstacleLayer 最常用输入是二维激光 \texttt{/scan}。
+但是 M20 实际搭载的是三维雷达，输出是 \texttt{sensor\_msgs/PointCloud2}。
+因此需要把三维点云切出一个高度范围，再投影到水平面，形成二维 LaserScan。
+
+设点云中的一个点为：
+\[
+\bs p_k=(x_k,y_k,z_k).
+\]
+高度切片条件是：
+\[
+z_{\min}\le z_k\le z_{\max}.
+\]
+满足条件的点再转换成极坐标：
+\[
+r_k=\sqrt{x_k^2+y_k^2},\qquad
+\theta_k=\operatorname{atan2}(y_k,x_k).
+\]
+在每个角度 bin 内取最近距离，得到 LaserScan 的 range：
+\[
+\texttt{ranges}[j]=\min_{\theta_k\in \text{bin}_j} r_k.
+\]
+
+本项目中对应的参数文件是：
+\[
+\texttt{src/m20\_lidar\_to\_scan/config/rslidar\_pointcloud\_to\_scan.yaml}.
+\]
+关键参数如下：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.24\linewidth}p{0.26\linewidth}p{0.38\linewidth}}
+\toprule
+\textbf{参数} & \textbf{当前默认值} & \textbf{作用}\\
+\midrule
+\texttt{min\_height} & \(-0.30\) & 点云高度切片下界。\\
+\texttt{max\_height} & \(0.30\) & 点云高度切片上界。\\
+\texttt{angle\_min/max} & \(-\pi\) 到 \(\pi\) & 输出 360 度二维扫描。\\
+\texttt{angle\_increment} & \(0.00349\) rad & 角分辨率，约 0.2 度。\\
+\texttt{range\_min/max} & \(0.20\) 到 \(30.0\) m & 有效距离范围。\\
+\texttt{target\_frame} & 空字符串 & 不做 TF 变换，直接使用点云自身 frame。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{本仓库中新增的 Nav2 感知验证包}
+
+为了不污染原来的 Gazebo/Nav2 sandbox，本次新建了独立功能包：
+\[
+\texttt{src/m20\_lidar\_to\_scan}.
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.38\linewidth}p{0.46\linewidth}}
+\toprule
+\textbf{文件} & \textbf{作用}\\
+\midrule
+\texttt{launch/pointcloud\_to\_scan.launch.py} &
+启动 \texttt{pointcloud\_to\_laserscan}，将 \texttt{/LIDAR/POINTS} 转成 \texttt{/scan}。\\
+\texttt{launch/bag\_to\_scan\_test.launch.py} &
+播放官方 bag，并用 \texttt{scan\_probe} 自动采样 \texttt{/scan} 统计信息。\\
+\texttt{launch/bag\_to\_scan\_rviz.launch.py} &
+RViz 同屏显示原始三维点云、转换后的二维 \texttt{/scan}、PCD 地图和栅格地图。\\
+\texttt{launch/bag\_to\_nav2\_costmap.launch.py} &
+播放官方 bag，发布测试用 TF，转换 \texttt{/scan}，启动 Nav2 costmap，验证 \texttt{/costmap/costmap}。\\
+\texttt{config/nav2\_costmap\_from\_bag.yaml} &
+只配置 Nav2 costmap 的 ObstacleLayer 和 InflationLayer，用于感知链路验证。\\
+\texttt{scripts/scan\_probe} &
+订阅 \texttt{/scan} 并打印 ranges 数量、有效点数量、最近/最远距离。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{官方 bag 到 Nav2 costmap 的验证链路}
+
+本次验证使用的启动命令是：
+
+\begin{verbatim}
+cd /home/virdyn/robodog_nav_system
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+export ROS_LOCALHOST_ONLY=1
+ros2 launch m20_lidar_to_scan bag_to_nav2_costmap.launch.py
+\end{verbatim}
+
+验证 launch 做了五件事：
+
+\begin{enumerate}
+  \item 播放官方 bag：发布 \texttt{/LIDAR/POINTS}、\texttt{/IMU} 和 \texttt{/clock}。
+  \item 发布测试用静态 TF：\texttt{odom} \(\rightarrow\) \texttt{base\_link} 和 \texttt{base\_link} \(\rightarrow\) \texttt{lidar\_link}。
+  \item 启动点云转二维激光：\texttt{/LIDAR/POINTS} \(\rightarrow\) \texttt{/scan}。
+  \item 启动 Nav2 costmap：ObstacleLayer 订阅 \texttt{/scan}。
+  \item 在 RViz 中显示 \texttt{Converted 2D LaserScan} 和 \texttt{Nav2 Local Costmap}。
+\end{enumerate}
+
+验证过程中观察到关键日志：
+
+\begin{verbatim}
+Subscribed to Topics: scan
+Got a subscriber to laserscan, starting pointcloud subscriber
+/costmap/costmap [nav_msgs/msg/OccupancyGrid]
+average rate: 1.667 Hz
+\end{verbatim}
+
+这说明：
+
+\[
+\boxed{
+\texttt{/scan}
+\text{ 已经被 Nav2 ObstacleLayer 接收，并生成了 }
+\texttt{/costmap/costmap}.
+}
+\]
+
+\begin{orangebox}{重要工程判断}
+\texttt{/costmap/costmap} 能发布，说明 Nav2 的感知避障层是通的；
+但这不等价于“完整导航闭环已经通了”。
+完整闭环还需要真实或仿真的 \texttt{/odom}、定位产生的 \texttt{map} \(\rightarrow\) \texttt{odom}、机器人运动反馈，以及能执行 \texttt{/cmd\_vel} 的底层控制器。
+\end{orangebox}
+
+\subsection{Nav2 costmap 参数怎么理解}
+
+当前测试只关心局部障碍物感知，所以配置尽量小：
+
+\[
+\texttt{src/m20\_lidar\_to\_scan/config/nav2\_costmap\_from\_bag.yaml}.
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.26\linewidth}p{0.22\linewidth}p{0.40\linewidth}}
+\toprule
+\textbf{参数} & \textbf{当前值} & \textbf{含义}\\
+\midrule
+\texttt{global\_frame} & \texttt{odom} & 局部 costmap 固定在 odom 坐标系下。\\
+\texttt{robot\_base\_frame} & \texttt{base\_link} & 机器人本体坐标系。\\
+\texttt{rolling\_window} & true & 局部地图随机器人移动。当前测试中机器人不动，但保持真实配置习惯。\\
+\texttt{width/height} & 8 m / 8 m & 局部 costmap 覆盖范围。\\
+\texttt{resolution} & 0.05 m & 每个栅格 5 cm。\\
+\texttt{robot\_radius} & 0.28 m & 机器人膨胀前的近似半径。\\
+\texttt{obstacle\_max\_range} & 6.0 m & 多远以内的 \texttt{/scan} 点会标记障碍。\\
+\texttt{raytrace\_max\_range} & 8.0 m & 清除空闲空间的最大距离。\\
+\texttt{inflation\_radius} & 0.55 m & 障碍物周围膨胀的安全距离。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+其中最影响效果的是：
+\[
+\texttt{min\_height/max\_height}
+\quad\text{和}\quad
+\texttt{inflation\_radius}.
+\]
+前者决定 \texttt{/scan} 里有哪些点，后者决定 costmap 中障碍物周围留多大安全边界。
+
+\subsection{学习 Nav2 时该怎么读代码}
+
+如果要系统学习 Nav2，不建议从源码深处直接看 planner 或 controller。
+更适合从 launch 和参数入手：
+
+\begin{enumerate}
+  \item 先看 \texttt{bag\_to\_nav2\_costmap.launch.py}：理解一个最小 Nav2 感知测试需要哪些节点。
+  \item 再看 \texttt{pointcloud\_to\_scan.launch.py}：理解三维雷达如何变成二维 \texttt{/scan}。
+  \item 再看 \texttt{nav2\_costmap\_from\_bag.yaml}：理解 ObstacleLayer 和 InflationLayer。
+  \item 再对比 \texttt{m20\_nav2\_gazebo\_sandbox/config/nav2\_params.yaml}：理解完整导航中还需要 AMCL、planner、controller、BT navigator。
+  \item 最后看 \texttt{m20\_nav2\_gazebo\_sandbox/rviz/nav2\_sandbox.rviz} 和本包 \texttt{rviz/lidar\_to\_scan.rviz}：理解每个话题在 RViz 里对应哪一层显示。
+\end{enumerate}
+
+\begin{greenbox}{Nav2 学习路线总结}
+\begin{enumerate}
+  \item \textbf{第一阶段：看得见。} RViz 中能看到 \texttt{/scan}、\texttt{/map}、\texttt{/tf}。
+  \item \textbf{第二阶段：进 costmap。} \texttt{/scan} 能进入 ObstacleLayer，并生成 \texttt{/costmap/costmap}。
+  \item \textbf{第三阶段：能定位。} 有匹配地图和 \texttt{map} \(\rightarrow\) \texttt{odom}，AMCL 或 SLAM 可以稳定估计机器人位姿。
+  \item \textbf{第四阶段：能规划。} planner 能在 global costmap 上生成路径。
+  \item \textbf{第五阶段：能跟踪。} controller 能根据 local costmap 和局部路径输出 \texttt{/cmd\_vel}。
+  \item \textbf{第六阶段：能上车。} \texttt{/cmd\_vel} 接入 SDK/RL 底层控制器，并加入限速、急停、人工接管等安全层。
+\end{enumerate}
+\end{greenbox}
+
+\subsection{从 bag 验证迁移到真机部署}
+
+当前 bag 验证和真机部署之间的对应关系如下：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.28\linewidth}p{0.28\linewidth}p{0.32\linewidth}}
+\toprule
+\textbf{bag 验证} & \textbf{真机部署} & \textbf{注意点}\\
+\midrule
+\texttt{ros2 bag play} 发布 \texttt{/LIDAR/POINTS} &
+RoboSense 官方驱动或 M20 GOS/NOS 发布实时 \texttt{/LIDAR/POINTS} &
+真机侧要确认 DDS 网络、话题名、QoS 和 frame。\\
+静态 \texttt{base\_link} \(\rightarrow\) \texttt{lidar\_link} &
+真实 URDF/TF 发布雷达外参 &
+外参错会导致 costmap 障碍位置整体偏移。\\
+静态 \texttt{odom} \(\rightarrow\) \texttt{base\_link} &
+底盘里程计或状态估计发布 \texttt{odom} \(\rightarrow\) \texttt{base\_link} &
+没有 odom 就只能看感知，不能做闭环控制。\\
+\texttt{/scan} \(\rightarrow\) \texttt{/costmap/costmap} &
+同样使用 Nav2 ObstacleLayer &
+重点调高度切片、range、inflation 和 robot radius。\\
+无 \texttt{/cmd\_vel} 执行 &
+\texttt{/cmd\_vel} 接入 SDK/RL 控制层 &
+必须加速度限制、急停和人工接管。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{answerbox}
+\textbf{一句话总结 Nav2 模块：}
+这次不是在没有 Gazebo world 的情况下硬做完整导航，而是把官方三维雷达 bag 当成真实传感器回放，
+验证 \texttt{/LIDAR/POINTS} 经二维化后是否能进入 Nav2 的 obstacle layer。
+验证结果说明这条感知避障链路是可用的，下一步才是接入真机 TF、里程计、定位和 \texttt{/cmd\_vel} 执行链。
+\end{answerbox}
+
+\section{模块五：工程部署、接口集成与真机资料整理}
+
+前面的章节偏“原理和验证”：模型是什么、运动学怎么推、RL 策略怎么工作、Nav2 感知链路是否可用。
+本模块把实机调试资料统一整理成可执行的实习产出，回答更落地的问题：
+
+\[
+\text{这个项目有哪些包}
+\rightarrow
+\text{每个包解决什么问题}
+\rightarrow
+\text{背部 x86 如何接入 M20}
+\rightarrow
+\text{Nav2 或其他导航算法如何接到底层 SDK}.
+\]
+
+\begin{orangebox}{模块五的核心结论}
+真机部署不能把系统写成“Nav2 专用一体化程序”。
+更稳妥的方式是分成清晰接口：
+\[
+\texttt{/LIDAR/POINTS},\ \texttt{/odom},\ \texttt{/tf}
+\rightarrow
+\text{感知/定位/规划模块}
+\rightarrow
+\texttt{/cmd\_vel}
+\rightarrow
+\text{M20 SDK 速度适配层}.
+\]
+这样当前可以用 Nav2，后续也可以替换成三维点云直接避障、voxel map、elevation map、自研 planner 或学习型策略。
+\end{orangebox}
+
+\subsection{实机资料提炼出的工程主线}
+
+本节把背部主机接入、雷达抓包、ROS2 话题审计、时间同步和 Lightning-LM 部署记录中的可复用结论，
+整理成下面这条实物导航主线：
+
+\[
+\text{网络可达}
+\rightarrow
+\text{UDP 组播可达}
+\rightarrow
+\text{本地点云可解码}
+\rightarrow
+\text{ROS2 话题可持续收样}
+\rightarrow
+\text{TF/时间戳可信}
+\rightarrow
+\text{安全限速后接入运动}.
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{p{0.24\linewidth}p{0.62\linewidth}}
+\toprule
+\textbf{实机结论} & \textbf{整理进本文后的工程含义}\\
+\midrule
+背部主机接入业务网 &
+背部主机有线口为 \texttt{10.21.31.192/24}，WiFi 只做远程维护；组播路由必须指向有线口，否则雷达 UDP 会走错网卡。\\
+前后雷达本地解码 &
+NOS 正常转发 \texttt{6691/6692} 与 \texttt{7781/7782} 后，背部主机用 \texttt{rslidar\_sdk} 可发布
+\texttt{/rslidar\_points\_front} 与 \texttt{/rslidar\_points\_rear}，两路均已验证约 \texttt{10Hz}。\\
+官方原始点云边界 &
+\texttt{/LIDAR/POINTS} 仍主要在 AOS/NOS 侧可直接使用；背部主机和 GOS 默认不能把它当作稳定输入，
+应优先使用本地解码点云或桥接后的降采样障碍云。\\
+ROS2 接口审计 &
+\texttt{topic list} 只能说明名字可见，\texttt{info -v} 只能说明端点存在；
+只有 \texttt{hz/echo} 或轻量订阅脚本收到样本，才算可进入导航、建图或安全监督链路。\\
+公开版 \texttt{drdds} 边界 &
+公开接口已能解析电池和关节状态等基础消息，但不能覆盖全部内部状态类型；
+故障、运动状态、规划状态等还需完整内部消息定义才能在背部主机可靠解析。\\
+时间同步 &
+背部主机、AOS、GOS、NOS 曾出现分钟级偏差；经 \texttt{chronyd -q} 与内部 PTP/PHC 跟随后，可达到毫秒级。
+导航前必须复测时间，否则 TF 和 costmap 会误判点云时间。\\
+运动安全 &
+\texttt{/cmd\_vel} 仍只是速度意图，必须经过安全 mux、限速、急停、人工接管和 SDK adapter；
+背部主机不应直接发布 \texttt{/JOINTS\_CMD}。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{orangebox}{本轮资料整理后的核心判断}
+当前最可落地的路线是：
+背部主机用官方 UDP 组播转发解码前后雷达点云，做 RViz、bag、状态监控、参数调试和低速监督；
+GOS 资源最适合承载后续导航主算法，但前提是先获得高频点云或降采样障碍云；
+AOS 是原始 \texttt{/LIDAR/POINTS} 入口和轻量桥接候选；
+NOS 保持官方 relay、passable、localization、localPlanner 等链路，不叠加自研重算法。
+\end{orangebox}
+
+\subsection{项目包分工：先分清每个包解决的问题}
+
+整理后的项目不应该理解成“一个包做完全部事情”，而是多个包按层次协作：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.30\linewidth}p{0.28\linewidth}p{0.30\linewidth}}
+\toprule
+\textbf{包或目录} & \textbf{主要职责} & \textbf{当前定位}\\
+\midrule
+\texttt{src/m20\_industrial\_inspection} &
+巡检业务、速度安全仲裁、运动适配、任务配置 &
+后续业务主线，连接导航和执行。\\
+\texttt{src/m20\_industrial\_inspection\_gazebo} &
+Gazebo 工厂世界、Nav2、SLAM、AMCL、巡检任务点 &
+导航避障仿真主线。\\
+\texttt{src/m20\_industrial\_inspection\_mujoco} &
+MuJoCo 动力学、SDK/RL 底层响应、\texttt{/cmd\_vel} 回放验证 &
+底层运动控制验证主线。\\
+\texttt{src/m20\_lidar\_to\_scan} &
+RoboSense 三维点云到二维 \texttt{/scan}、bag/PCD 到 Nav2 costmap 和 planner 验证 &
+真实雷达数据到 Nav2 的感知验证包。\\
+\texttt{src/m20\_foxy\_nav\_deploy} &
+Ubuntu 20.04 + ROS2 Foxy 背部 x86 部署模板 &
+准备上传到实物随车主机的导航部署包。\\
+\texttt{src/third\_party/sdk\_deploy} &
+官方 M20 强化学习部署、状态机、DDS/硬件接口 &
+底层运动执行依据，原则上不直接在业务包中复制改乱。\\
+\texttt{src/third\_party/lightning-lm-deep-robotics} &
+官方/参考三维雷达 SLAM 和定位 &
+建图与定位参考来源。\\
+\texttt{src/third\_party/deep\_robotics\_model} &
+M20 的 URDF/MJCF/USD 模型资产 &
+模型和坐标系来源。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{greenbox}{推荐复习顺序}
+\begin{enumerate}
+  \item 先看本文前半部分，建立 M20 模型、运动学、动力学、RL 和 Nav2 的整体地图。
+  \item 再看本模块的背部主机接入、NOS relay、RoboSense UDP 和 \texttt{rslidar\_sdk} 复盘。
+  \item 再看接口审计和主机分工小节，理解哪些话题能用、哪些只是端点可见、哪些不能直接控制。
+  \item 最后看时间同步和安全验收小节，确认真机导航前必须满足的网络、时钟、TF 和急停条件。
+\end{enumerate}
+\end{greenbox}
+
+\subsection{ROS2 工程工具箱：所有部署问题先从话题、TF、参数查起}
+
+实机日志和部署手册中的高频排查动作可以整理为 ROS2 工程工具箱，重点不是背命令，而是形成固定排查顺序。
+对于 M20 项目，最常用的检查流程如下：
+
+\begin{enumerate}
+  \item \textbf{加载环境：}确认 \texttt{/opt/ros/<distro>/setup.bash} 和工作空间 \texttt{install/setup.bash} 都已经 source。
+  \item \textbf{确认包存在：}用 \texttt{ros2 pkg list}、\texttt{ros2 pkg prefix}、\texttt{ros2 pkg executables} 查包和可执行程序。
+  \item \textbf{确认话题：}用 \texttt{ros2 topic list -t} 查消息类型，用 \texttt{ros2 topic echo --once} 看数据是否真的在流。
+  \item \textbf{确认频率：}用 \texttt{ros2 topic hz} 看雷达、里程计、\texttt{/scan}、\texttt{/cmd\_vel} 是否符合预期。
+  \item \textbf{确认 TF：}用 \texttt{tf2\_echo} 检查 \texttt{map} \(\rightarrow\) \texttt{odom} \(\rightarrow\) \texttt{base\_link} \(\rightarrow\) \texttt{lidar\_link} 是否连通。
+  \item \textbf{确认参数：}用 \texttt{ros2 param list/get} 看 Nav2、点云转换和控制器参数是否生效。
+  \item \textbf{确认 rosbag：}用 \texttt{ros2 bag info/play/record} 复现实机数据问题。
+  \item \textbf{确认 RViz：}同时观察 map、scan、TF、costmap、path 和 robot pose。
+\end{enumerate}
+
+\begin{orangebox}{M20 项目中的 ROS2 经验}
+很多“算法不工作”的问题，本质是接口没通：没有 source 环境、DDS 域不一致、话题名不一致、TF 缺失、QoS 不匹配、或者节点 lifecycle 没激活。
+因此排查时不要先怀疑 Nav2 或 RL，先按 topic、TF、param、lifecycle 的顺序确认基础通信。
+\end{orangebox}
+
+\subsection{模型资产与官方包：URDF/MJCF/USD 各自服务不同环节}
+
+本节归纳了前文对 \texttt{src/third\_party/deep\_robotics\_model} 与 M20 URDF/MJCF/USD 的理解。
+三种模型格式的工程作用如下：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.18\linewidth}p{0.30\linewidth}p{0.40\linewidth}}
+\toprule
+\textbf{模型格式} & \textbf{主要用途} & \textbf{在 M20 项目中的意义}\\
+\midrule
+URDF &
+ROS 机器人描述、TF、RViz、Nav2 footprint、传感器挂载 &
+最适合读 link/joint/origin/axis，给导航和部署提供坐标系依据。\\
+MJCF &
+MuJoCo 动力学、接触、执行器、传感器和地面场景 &
+适合验证官方 SDK/RL 控制器的动力学响应。\\
+USD &
+Isaac/Isaac Lab 资产和强化学习仿真 &
+服务 Isaac 侧训练或仿真任务注册。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+对导航来说，模型资产最关键的不是外观 mesh，而是：
+\[
+\text{机身外形}
+\rightarrow
+\text{footprint/robot\_radius}
+\rightarrow
+\text{雷达外参}
+\rightarrow
+\text{TF 是否能让点云落到正确位置}.
+\]
+
+\subsection{官方 \texttt{sdk\_deploy}：它是运动执行层，不是导航层}
+
+对 \texttt{src/third\_party/sdk\_deploy} 的核心结论可以压缩成一句话：
+\textbf{\texttt{sdk\_deploy} 负责让 M20 稳定运动，Nav2 或其他导航算法负责决定往哪里走。}
+
+\[
+\text{导航/避障模块}
+\rightarrow
+\texttt{/cmd\_vel}
+\rightarrow
+\text{M20 速度桥接层}
+\rightarrow
+\text{官方状态机 + RL policy}
+\rightarrow
+\text{关节/轮子控制命令}.
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.30\linewidth}p{0.56\linewidth}}
+\toprule
+\textbf{接口或模块} & \textbf{工程理解}\\
+\midrule
+\texttt{QwStateMachine} & M20 轮足状态机，负责站立、趴下、RL 控制等模式切换。\\
+\texttt{RLControlMode} & 真正根据速度意图和传感反馈运行策略，输出底层动作。\\
+\texttt{policy.onnx} & 官方强化学习部署策略，不应随意替换或绕过。\\
+\texttt{KeyboardInterface} & 官方键盘控制入口，本质是写入高层运动意图。\\
+\texttt{CmdVel adapter} & 后续需要新增或单独实现：把 \texttt{geometry\_msgs/Twist} 转成 M20 SDK 可接受的速度意图。\\
+\texttt{/JOINTS\_CMD} & 不建议由 Nav2 或业务节点直接发布，否则会绕过平衡和安全策略。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{redbox}{实物部署的安全边界}
+Nav2 的 \texttt{/cmd\_vel} 不是电机命令。
+它必须经过限速、加速度限制、急停、遥控器接管、SDK 模式检查和 M20 状态机，才能进入真实底层控制。
+不能让导航算法直接控制关节。
+\end{redbox}
+
+\subsection{仿真链路分工：Gazebo/Nav2 与 MuJoCo/sdk\_deploy 不解决同一个问题}
+
+前文的 Gazebo/Nav2、MuJoCo/sdk\_deploy 和 Isaac/RL training 内容可以整理为一条清晰分工：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.24\linewidth}p{0.32\linewidth}p{0.32\linewidth}}
+\toprule
+\textbf{平台} & \textbf{主要验证内容} & \textbf{不能证明的内容}\\
+\midrule
+Gazebo/Nav2 &
+地图、雷达、SLAM、AMCL、全局规划、局部避障、巡检任务下发 &
+不能证明真实 M20 的轮足动力学、接触力和平衡控制。\\
+MuJoCo/sdk\_deploy &
+官方 RL 控制器、关节/轮子动力学、速度意图到运动响应 &
+不适合硬塞完整 Nav2 作为第一阶段目标。\\
+Isaac/RL training &
+大规模并行训练、奖励函数、domain randomization、策略导出 &
+不等于直接可上真机，需要部署接口和安全验证。\\
+真机背部 x86 &
+真实传感器、真实网络、DDS、地图定位、\texttt{/cmd\_vel} 到 SDK 适配 &
+必须低速、安全、逐层验收。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+因此推荐推进路线是：
+\[
+\text{Gazebo 验证导航逻辑}
+\rightarrow
+\text{MuJoCo 验证速度执行}
+\rightarrow
+\text{bag/PCD 验证真实雷达感知}
+\rightarrow
+\text{背部 x86 低速真机联调}.
+\]
+
+\subsection{官方 SLAM/定位资料：三维雷达地图不等于 Nav2 可直接导航地图}
+
+实机建图定位记录被整理进本模块。
+官方 Lightning-LM 相关包主要解决三维雷达建图和定位，而 Nav2 典型输入是二维栅格地图和二维 \texttt{/scan}。
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.28\linewidth}p{0.28\linewidth}p{0.32\linewidth}}
+\toprule
+\textbf{数据或输出} & \textbf{用途} & \textbf{和 Nav2 的关系}\\
+\midrule
+\texttt{/LIDAR/POINTS} & 实时三维点云 & 可切片成 \texttt{/scan}，也可供未来三维避障直接使用。\\
+\texttt{/IMU} & 姿态/运动辅助 & SLAM/定位常用，Nav2 本身通常不直接消费。\\
+\texttt{global.pcd}、\texttt{0.pcd} & 三维点云地图 & 可用于可视化、定位或投影验证，但不天然等于可靠 free space。\\
+\texttt{.yaml + .pgm} & 二维栅格地图 & Nav2 map\_server 可直接加载，是当前地图导航主线。\\
+\texttt{NavState} & 定位状态输出 & 后续可转成 \texttt{map} \(\rightarrow\) \texttt{odom} 或位姿话题接入导航。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{orangebox}{PCD 投影地图的边界}
+PCD 投影生成的栅格图可以用于算法验证，比如检查 map\_server、planner\_server、A* 或 Navfn 能否跑通。
+但 PCD 只告诉我们“哪里有点”，不可靠地告诉我们“哪里可通行”。
+最终真机导航应优先使用现场 SLAM 或官方建图工具生成的稳定二维栅格地图。
+\end{orangebox}
+
+\subsection{背部 x86 随车主机：部署时只配置通用主机，不改 M20 内部全部主机}
+
+背部主机接入调试的核心工程结论是：
+背部 x86 作为外接计算单元，通过网线接入 M20 网络，只要能和 M20 的通用主机/GOS 侧进行 DDS 通信，并能看到雷达、里程计、状态反馈和控制接口，就可以运行自己的导航和感知代码。
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.28\linewidth}p{0.58\linewidth}}
+\toprule
+\textbf{检查项} & \textbf{目标}\\
+\midrule
+网络 IP 与路由 & 背部 x86 能 ping 通 M20 通用主机，且不被 WiFi/外置网卡路由抢走。\\
+DDS 域 & \texttt{ROS\_DOMAIN\_ID} 与 M20 侧保持一致，\texttt{ROS\_LOCALHOST\_ONLY} 不限制多机通信。\\
+话题发现 & \texttt{ros2 topic list} 能看到 M20 发布的传感器和状态话题。\\
+雷达输入 & 背部主机当前应优先稳定收到本地解码的 \texttt{/rslidar\_points\_front} 与 \texttt{/rslidar\_points\_rear}；官方 \texttt{/LIDAR/POINTS} 默认不作为背部主机主输入。\\
+里程计/TF & 能得到 \texttt{/ODOM} 和 \texttt{/tf}；但当前 \texttt{/ODOM} 为 \texttt{frame=map} 且 \texttt{child\_frame\_id} 为空，不能直接等同于 Nav2 需要的局部 \texttt{odom}。\\
+控制接口 & 后续 \texttt{/cmd\_vel} 能通过 SDK adapter 转成 M20 运动意图。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{官方 ROS2/DDS 接口理解：外接 x86 应接入 GOS 侧通信域}
+
+官方资料对 M20/M20 Pro 的 ROS2/DDS 接口给出的核心信息可以概括为：
+机器人内部使用 DrDDS 进行跨进程通信，DrDDS 是基于 FastDDS 封装的中间件；
+部分常用话题已经对外开放，供开发者在 GOS 主机或外接主机上使用。
+因此，我们的背部 x86 盒子不是去改 AOS/NOS 运动控制主机，而是作为外接计算单元接入 GOS/通用主机所在网络和 DDS 通信域。
+
+\begin{orangebox}{为什么优先接 GOS/通用主机}
+官方提醒开发者应尽量避免在 AOS 或 NOS 主机上开发，原因是这些主机更接近机器人内部控制、计算资源和系统完整性边界。
+背部 x86 的正确定位是：运行感知、定位、导航、任务调度和上层策略，通过 GOS/通用主机开放的 ROS2/DDS 接口读取状态并发送经过安全限制的运动意图。
+\end{orangebox}
+
+按官方资料，M20/M20 Pro 本体运行 Ubuntu 20.04，ROS 版本为 ROS2 Foxy，底层 DDS 为 DrDDS/FastDDS。
+外接主机有两种通信方式：
+
+\begin{enumerate}
+  \item 直接使用 FastDDS 通信。官方说明当前适配 FastDDS 2.14，并强调向下兼容，高版本未完全测试。
+  \item 使用 ROS2 通信。在 ROS2 中配置 FastDDS 作为 RMW 中间件，让 ROS2 topic/service/action 通过同一 DDS 通信域发现彼此。
+\end{enumerate}
+
+对本项目而言，第二种方式更合适：
+背部 x86 是 Ubuntu 20.04 + ROS2 Foxy，和官方本体环境一致；
+Nav2、RoboSense 雷达、\texttt{pointcloud\_to\_laserscan}、SDK 适配层也都天然工作在 ROS2 topic 体系下。
+因此实机部署时建议显式指定：
+
+\begin{verbatim}
+source /opt/ros/foxy/setup.bash
+export ROS_DOMAIN_ID=0
+export ROS_LOCALHOST_ONLY=0
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+\end{verbatim}
+
+其中 \texttt{ROS\_DOMAIN\_ID} 必须和机器狗侧保持一致。
+官方截图中示例为 \texttt{0}，但最终仍应以实机 GOS 侧配置为准；
+如果域 ID 不一致，现象通常是两台机器网络能 ping 通，但 \texttt{ros2 topic list} 互相看不见。
+\texttt{ROS\_LOCALHOST\_ONLY=0} 用来允许跨主机发现，避免 ROS2 只在本机回环接口通信。
+\texttt{RMW\_IMPLEMENTATION=rmw\_fastrtps\_cpp} 则是为了和官方 DrDDS/FastDDS 通信栈保持一致。
+
+官方资料给出的 ROS2 版本兼容关系如下：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{p{0.38\linewidth}p{0.44\linewidth}}
+\toprule
+\textbf{M20/M20 Pro 版本} & \textbf{外部主机 ROS2 版本}\\
+\midrule
+V1.1.7 以前版本 & ROS2 Foxy、Humble\\
+V1.1.7 及以后版本 & ROS2 Foxy、Humble、Jazzy\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+由于当前背部 x86 已经是 Ubuntu 20.04 + ROS2 Foxy，它属于最稳妥的组合。
+如果后续想用 Humble 或 Jazzy 开发上层算法，也应优先通过标准 topic/service 做跨机通信；
+但真机控制链路仍建议先在 Foxy 环境完成验收，减少 RMW、消息生成和 QoS 差异带来的不确定性。
+
+\subsubsection{本地代码中的 \texttt{drdds} 包到底是什么}
+
+在官方 \texttt{sdk\_deploy} 源码中，\texttt{src/third\_party/sdk\_deploy/src/drdds} 是一个 ROS2 interface package。
+它的 \texttt{package.xml} 中声明了 \texttt{rosidl\_default\_generators} 和 \texttt{rosidl\_default\_runtime}，
+\texttt{CMakeLists.txt} 会收集 \texttt{msg/*.msg} 与 \texttt{srv/*.srv} 并生成 ROS2 消息/服务类型。
+所以它不是 Nav2 包，也不是 DDS 后台服务本体，而是“官方 DDS 话题在 ROS2 侧的类型定义层”。
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{p{0.26\linewidth}p{0.32\linewidth}p{0.30\linewidth}}
+\toprule
+\textbf{接口} & \textbf{类型} & \textbf{作用}\\
+\midrule
+\texttt{/JOINTS\_DATA} & \texttt{drdds/msg/JointsData} & 16 个关节的位置、速度、力矩、温度、状态字。\\
+\texttt{/IMU\_DATA} & \texttt{drdds/msg/ImuData} & roll/pitch/yaw、角速度、线加速度。\\
+\texttt{/BATTERY\_DATA} & \texttt{drdds/msg/BatteryData} & 电池电压、电流、电量和温度等状态。\\
+\texttt{/JOINTS\_CMD} & \texttt{drdds/msg/JointsDataCmd} & 16 个关节的期望位置、速度、力矩、KP、KD 和控制字。\\
+\texttt{/SDK\_MODE}、\texttt{/EMERGENCY\_STOP} & \texttt{drdds/srv/StdSrvInt32} & 在 Lite3 相关包中出现的 SDK 模式和急停服务范式；M20 实机仍以官方 SDK 模式说明为准。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\texttt{M20\_sdk\_deploy} 的 \texttt{CMakeLists.txt} 明确依赖 \texttt{drdds}。
+其硬件接口 \texttt{M20Interface} 继承自 \texttt{DdsInterface}，而 \texttt{DdsInterface} 做的事就是：
+订阅 \texttt{/JOINTS\_DATA}、\texttt{/IMU\_DATA}、\texttt{/BATTERY\_DATA}，并发布 \texttt{/JOINTS\_CMD}。
+这和官方 README 中的 MuJoCo/真机部署链路一致：
+
+\[
+\texttt{/IMU\_DATA},\ \texttt{/JOINTS\_DATA},\ \texttt{/BATTERY\_DATA}
+\rightarrow
+\texttt{rl\_deploy}
+\rightarrow
+\texttt{/JOINTS\_CMD}.
+\]
+
+我们后续接 Nav2 时，不应该让 Nav2 直接发布 \texttt{/JOINTS\_CMD}。
+更合理的分层是：
+
+\[
+\text{Nav2 或自研导航}
+\rightarrow
+\texttt{/cmd\_vel}
+\rightarrow
+\texttt{rl\_deploy\_cmdvel / M20 SDK adapter}
+\rightarrow
+\texttt{/JOINTS\_CMD}
+\rightarrow
+\text{M20 底层}.
+\]
+
+本地源码中已经存在 \texttt{rl\_deploy\_cmdvel} 入口：
+\texttt{CmdVelInterface} 订阅 \texttt{/cmd\_vel}，将 \texttt{linear.x}、\texttt{linear.y}、\texttt{angular.z} 转成官方状态机内部的 \texttt{UserCommand}，
+再由官方 RL 策略和 \texttt{M20Interface} 生成关节命令。
+这说明我们之前设计的“Nav2 输出标准速度，SDK adapter 负责安全限幅和官方控制接入”方向是正确的。
+
+\subsubsection{背部主机实测可用接口快照}
+
+截至 2026-07-21 下午，背部主机 \texttt{M20piper} 的工作空间已统一为
+\[
+\boxed{\texttt{~/robodog\_nav\_system}}
+\]
+旧的 \texttt{~/rslidar\_ws} 只作为早期雷达验证工作空间保留记录，不再作为后续导航开发主工作空间。
+环境变量最终应由 \texttt{/opt/ros/foxy/setup.bash} 和 \texttt{~/robodog\_nav\_system/install/setup.bash} 提供；
+临时创建过的 \texttt{~/m20\_ros\_env.sh} 不是官方文件，也不是必要组件，若 \texttt{.bashrc} 已显式设置
+\texttt{ROS\_DOMAIN\_ID=0}、\texttt{ROS\_LOCALHOST\_ONLY=0} 和 \texttt{RMW\_IMPLEMENTATION=rmw\_fastrtps\_cpp}，
+可以不用保留该脚本。
+
+本轮审计的关键原则是：
+\[
+\texttt{topic list 能看到}
+\neq
+\texttt{topic hz/echo 能收到实质数据}
+\neq
+\texttt{可以直接接入导航闭环}.
+\]
+只有能持续收到样本、类型可解析、时间戳和坐标系可信的话题，才可以进入导航、建图或安全监督链路。
+
+\begin{center}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{p{0.27\linewidth}p{0.25\linewidth}p{0.36\linewidth}}
+\toprule
+\textbf{话题} & \textbf{实测状态} & \textbf{当前用途判断}\\
+\midrule
+\texttt{/rslidar\_points\_front} &
+\texttt{PointCloud2}，约 \texttt{10Hz}，\texttt{frame\_id=rslidar\_front}，字段 \texttt{x,y,z,intensity} &
+前雷达本地解码点云，当前背部主机三维感知主输入。\\
+\texttt{/rslidar\_points\_rear} &
+\texttt{PointCloud2}，约 \texttt{10Hz}，\texttt{frame\_id=rslidar\_rear}，字段 \texttt{x,y,z,intensity} &
+后雷达本地解码点云，适合与前雷达共同做近场感知或安全监督。\\
+\texttt{/IMU} &
+\texttt{sensor\_msgs/Imu}，约 \texttt{200Hz}，当前 \texttt{frame\_id} 为空 &
+主 IMU，可用于状态估计、姿态监督、时间同步检查；接算法前需补清 frame 语义。\\
+\texttt{/LIDAR/IMU201}、\texttt{/LIDAR/IMU202} &
+\texttt{sensor\_msgs/Imu}，约 \texttt{200Hz}，\texttt{frame=lidar\_link} &
+前后雷达侧 IMU/诊断输入，不等于点云本身。\\
+\texttt{/ODOM} &
+\texttt{nav\_msgs/Odometry}，约 \texttt{10Hz}，\texttt{frame=map}，\texttt{child\_frame\_id} 为空 &
+可读但坐标语义异常，暂不直接作为 Nav2 \texttt{odom}。\\
+\texttt{/tf} &
+约 \texttt{10Hz}，实测可见 \texttt{map -> base\_link} &
+RViz 与坐标关系检查入口。\\
+\texttt{/BATTERY\_DATA} &
+\texttt{drdds/msg/BatteryData}，约 \texttt{1Hz}，可打印两块电池数据 &
+电池状态监控可用。\\
+\texttt{/JOINTS\_DATA} &
+\texttt{drdds/msg/JointsData}，约 \texttt{190Hz} &
+高频关节状态反馈可用，建议程序订阅或短时抽样。\\
+\texttt{/JOINTS\_DATA\_10HZ} &
+\texttt{drdds/msg/JointsData}，约 \texttt{8.5-10Hz} &
+低频关节状态，更适合日志、健康监控和 UI。\\
+\texttt{/LOCATION\_STATUS/MATCHING\_ERROR} &
+\texttt{std\_msgs/Float64MultiArray}，约 \texttt{10Hz} &
+定位匹配误差，可用于定位健康监督。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+当前在背部主机上不能直接依赖的输入包括：
+\texttt{/LIDAR/POINTS}、\texttt{/LIDAR/POINTS2}、\texttt{/LOC\_BODY\_POINTS}、
+\texttt{/LIO\_ODOM}、\texttt{/LIO\_ODOM\_HIGH\_FREQUENCY}、\texttt{/traversal\_cost} 和
+\texttt{/GRID\_MAP}。这些话题有的在 NOS/AOS 上存在，有的在 DDS 图中可见，但本轮背部主机侧没有稳定收到样本。
+因此当前背部主机的可靠雷达输入应写成：
+\[
+\texttt{NOS UDP relay}
+\rightarrow
+\texttt{rslidar\_sdk}
+\rightarrow
+\texttt{/rslidar\_points\_front},\ \texttt{/rslidar\_points\_rear}.
+\]
+
+公开版 \texttt{drdds} 只解决了部分自定义消息解析问题。它已经能解析
+\texttt{BatteryData}、\texttt{JointsData}、\texttt{JointsDataCmd}、\texttt{ImuData}、
+\texttt{StdMsgInt32} 和 \texttt{StdStatus} 等基础类型；
+但不能解析机器狗内部完整扩展类型，例如
+\texttt{CpuData}、\texttt{Exception}、\texttt{FaultStatus}、\texttt{Gait}、
+\texttt{PlannerStatus}、\texttt{NavSat}、\texttt{GridsID}、\texttt{Steer}、
+\texttt{LedStatusLight}、\texttt{AiryLidarStatus}、\texttt{LocationStatus}、
+\texttt{MotionInfo}、\texttt{MotionState}、\texttt{MotionStatus} 和 \texttt{NavCmd}。
+若后续要在背部主机完整读取官方运动状态、规划状态、故障状态和雷达状态，需要从 AOS/NOS/GOS 中取得完整同名
+\texttt{drdds} 消息定义并重新编译。
+
+\subsubsection{为什么不直接发布 \texttt{/JOINTS\_CMD}}
+
+\texttt{/JOINTS\_CMD} 是 M20 的底层关节命令话题，类型为 \texttt{drdds/msg/JointsDataCmd}。
+它最终包含 16 个 \texttt{JointDataCmd}，每个关节命令里有：
+\[
+\texttt{position},\ \texttt{velocity},\ \texttt{torque},\ \texttt{kp},\ \texttt{kd},\ \texttt{control\_word}.
+\]
+这不是“让机器狗向前走”的高层接口，而是直接写到底层电机控制链的命令结构。
+
+\begin{redbox}{底层控制边界}
+导航、避障、任务规划不应直接发布 \texttt{/JOINTS\_CMD}。
+原因是它绕过了官方状态机、SDK 模式、安全检查、关节零位修正、关节顺序、控制字、PD 参数和轮足策略。
+一旦顺序、零位、增益或控制字不一致，轻则原地抖动，重则直接触发危险动作。
+\end{redbox}
+
+M20 是轮足式机器人，导航层最合理的输出仍是速度意图：
+\[
+\texttt{geometry\_msgs/Twist}
+\quad
+\Longrightarrow
+\quad
+\text{官方状态机/RL 策略}
+\quad
+\Longrightarrow
+\quad
+\texttt{/JOINTS\_CMD}.
+\]
+对于 M20，\texttt{policy.onnx} 的输出顺序包含 16 维动作：
+12 个腿部关节目标和 4 个轮关节速度目标。策略会根据当前 IMU、关节状态、电池状态和速度命令，决定什么时候偏轮式平滑运动，
+什么时候通过腿部姿态和轮足协调完成转弯、站立或复杂接触动作。
+这正是应该复用官方 SDK/RL 控制器的原因。
+
+\subsubsection{\texttt{m20\_sdk\_deploy} 部署到背部主机的阶段划分}
+
+当前准备部署到背部主机的官方控制包是 \texttt{m20\_sdk\_deploy}。
+它依赖 \texttt{drdds}、\texttt{geometry\_msgs} 和随包携带的 \texttt{onnxruntime}、\texttt{policy.onnx}。
+本地改造版中已经加入 \texttt{rl\_deploy\_cmdvel}：该可执行文件内部创建节点
+\texttt{m20\_cmd\_vel\_interface}，默认订阅 \texttt{/cmd\_vel}，把速度命令转成官方 \texttt{UserCommand}。
+注意：\texttt{m20\_cmd\_vel\_interface} 是运行时节点名，不是单独的 \texttt{ros2 run} 可执行文件。
+
+背部主机是 x86，因此编译时使用：
+
+\begin{verbatim}
+cd ~/robodog_nav_system
+source /opt/ros/foxy/setup.bash
+
+colcon build --packages-up-to m20_sdk_deploy \
+  --symlink-install \
+  --cmake-args -DBUILD_PLATFORM=x86
+
+source install/setup.bash
+ros2 pkg executables m20_sdk_deploy
+\end{verbatim}
+
+期望看到：
+
+\begin{verbatim}
+m20_sdk_deploy rl_deploy
+m20_sdk_deploy rl_deploy_cmdvel
+\end{verbatim}
+
+编译前应确认包没有缺资源：
+
+\begin{verbatim}
+find src -path '*M20_sdk_deploy/policy/policy.onnx' -print -ls
+find src -path '*M20_sdk_deploy/third_party/onnxruntime/x86/lib/libonnxruntime.so' -print -ls
+find src -path '*M20_sdk_deploy/third_party/onnxruntime/x86/include/onnxruntime_cxx_api.h' -print -ls
+\end{verbatim}
+
+编译后再查运行时库：
+
+\begin{verbatim}
+ldd install/m20_sdk_deploy/lib/m20_sdk_deploy/rl_deploy_cmdvel | \
+  egrep 'onnx|not found|drdds|rclcpp' || true
+\end{verbatim}
+
+\begin{orangebox}{关于包太大的处理策略}
+\texttt{M20\_sdk\_deploy} 体积主要来自 \texttt{third\_party/onnxruntime}、\texttt{M20\_description}、
+\texttt{third\_party/gamepad} 和完整 \texttt{Eigen}。理论上可以裁剪 ARM 版 onnxruntime、MuJoCo 模型、
+手柄 App、Eigen 文档和测试目录；但当前阶段更建议先保持官方包完整传入背部主机并编译通过。
+等控制链和导航链都确认后，再做可回滚裁剪，避免因为少文件导致编译或运行问题被误判为 SDK 问题。
+\end{orangebox}
+
+\begin{redbox}{不要直接启动真机运动节点}
+\texttt{rl\_deploy\_cmdvel} 启动后会创建官方状态机和 \texttt{M20Interface}，该接口最终发布
+\texttt{/JOINTS\_CMD}。并且 \texttt{CmdVelInterface} 默认 \texttt{auto\_start=true}，
+可能在启动后进入起立和 RL 控制流程。
+因此，背部主机上首次部署只做编译、\texttt{ros2 pkg executables}、\texttt{ldd} 和话题端点检查；
+不要在真机站立或未架空状态下直接运行 \texttt{ros2 run m20\_sdk\_deploy rl\_deploy\_cmdvel}。
+\end{redbox}
+
+运行前必须至少确认：
+
+\begin{verbatim}
+ros2 topic info -v /JOINTS_CMD
+ros2 topic info -v /cmd_vel
+ros2 topic list -t | egrep '^/IMU_DATA|^/IMU |^/JOINTS_DATA|^/BATTERY_DATA|^/JOINTS_CMD|^/cmd_vel'
+\end{verbatim}
+
+如果 \texttt{/JOINTS\_CMD} 已经有其他 publisher，说明底层命令链可能已有官方控制器在发命令；
+此时再启动一个 \texttt{rl\_deploy\_cmdvel} 会形成多发布源冲突。
+另外，公开版 \texttt{M20\_sdk\_deploy} 源码中的 \texttt{M20Interface} 默认订阅
+\texttt{/IMU\_DATA}，而官方 M20 Pro 对外 ROS2 接口说明推荐使用的是
+\texttt{/IMU : sensor\_msgs/msg/Imu}，约 \texttt{200Hz}；并明确说明
+\texttt{/IMU\_YESENSE}、\texttt{/IMU\_DATA}、\texttt{/IMU\_DATA\_10HZ} 等属于内部调试或内部链路，
+不建议二次开发依赖。本轮背部主机实测也印证了这一点：
+\texttt{/IMU} 可见且约 \texttt{200Hz}，\texttt{/IMU\_DATA} 不可见。
+因此，背部主机上即使编译通过公开版 \texttt{rl\_deploy}，也不能直接视为完整真机控制链路可用；
+若一定要在背部主机运行该控制入口，需要先做 \texttt{/IMU -> /IMU\_DATA} 类型桥接，
+或改造 \texttt{DdsInterface} 让真机模式直接订阅标准 \texttt{/IMU}。
+
+同时，\texttt{/JOINTS\_CMD} 在背部主机上虽然显示存在一个 bare DDS publisher 和一个 subscriber，
+但 \texttt{timeout 5 ros2 topic hz /JOINTS\_CMD} 与短时 \texttt{echo} 均无输出，
+说明当前控制命令端点存在但没有持续发布命令。公开版 \texttt{rl\_deploy} 一启动会构造
+\texttt{M20Interface}，并在构造/启动阶段向 \texttt{/JOINTS\_CMD} 发送
+\texttt{ResetJointError} 和零命令，所以它不是无害的“只启动看看节点”程序。
+真机运动测试前必须明确当前官方控制器是否在 AOS 侧运行、是否允许新增发布者，以及急停和架空条件是否满足。
+
+\subsubsection{背部 x86 实机通信预检顺序}
+
+正式让机器狗运动前，背部 x86 应按下面顺序验证，不要一上来运行控制节点：
+
+\begin{enumerate}
+  \item 确认网线接入后，背部 x86 与 M20 GOS/通用主机在同一网段，且能互相 ping 通。
+  \item 在背部 x86 上加载 Foxy 并设置 DDS 环境变量：
+\begin{verbatim}
+source /opt/ros/foxy/setup.bash
+export ROS_DOMAIN_ID=0
+export ROS_LOCALHOST_ONLY=0
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+\end{verbatim}
+  \item 如果使用自己的工作空间，再加载：
+\begin{verbatim}
+cd ~/robodog_nav_system
+source install/setup.bash
+\end{verbatim}
+  \item 先只看发现能力：
+\begin{verbatim}
+ros2 node list
+ros2 topic list
+ros2 service list
+\end{verbatim}
+  \item 再检查关键话题类型：
+\begin{verbatim}
+ros2 topic info /JOINTS_DATA
+ros2 topic info /IMU
+ros2 topic info /BATTERY_DATA
+ros2 topic info /rslidar_points_front
+ros2 topic info /rslidar_points_rear
+\end{verbatim}
+  \item 再短时间 echo 状态，不发布控制：
+\begin{verbatim}
+ros2 topic echo /IMU --once
+ros2 topic echo /JOINTS_DATA --once
+ros2 topic echo /BATTERY_DATA --once
+\end{verbatim}
+  \item 最后才启动雷达转换、Nav2、\texttt{/cmd\_vel} 观察和 SDK adapter。接入真实运动前必须先确认 \texttt{/JOINTS\_CMD} 没有多发布源冲突，且低速、限幅、可急停，并确认人工接管方式有效。
+\end{enumerate}
+
+\begin{redbox}{实机部署判断标准}
+只要背部 x86 能在相同 \texttt{ROS\_DOMAIN\_ID} 与 FastDDS/RMW 配置下看到 M20 的传感器、状态和必要服务，就说明它已经作为外接主机进入了机器狗通信域。
+此时它可以运行我们自己的雷达转换、Nav2、三维避障或任务规划代码；
+但底层运动仍必须通过 SDK adapter 或官方状态机受控进入，不能把导航输出直接写成裸关节命令。
+\end{redbox}
+
+背部 x86 上当前统一使用的随车开发工作空间为：
+\[
+\boxed{\texttt{~/robodog\_nav\_system}}
+\]
+其中导航部署功能可以继续沿用或迁移 \texttt{m20\_foxy\_nav\_deploy} 的结构。
+该类部署包面向 Ubuntu 20.04 + ROS2 Foxy，包含：
+\begin{itemize}
+  \item \texttt{lidar\_to\_scan\_test.launch.py}：只测试 \texttt{/LIDAR/POINTS} \(\rightarrow\) \texttt{/scan}。
+  \item \texttt{m20\_nav\_bringup.launch.py}：点云转换 + Nav2 bringup + RViz。
+  \item \texttt{m20\_nav2\_foxy\_params.yaml}：Foxy 版 AMCL、Navfn、DWB、costmap 参数模板。
+  \item 模块化接口契约：说明 Nav2 只是默认方案，后续可替换为三维避障或学习型策略。
+\end{itemize}
+
+\subsection{模块化接口契约：Nav2 是默认方案，不是唯一方案}
+
+部署包中最重要的不是某个算法，而是接口边界。
+默认 Nav2 链路是：
+\[
+\texttt{/LIDAR/POINTS}\ \text{或}\ \texttt{/rslidar\_points\_front/rear}
+\rightarrow
+\texttt{/scan}
+\rightarrow
+\text{Nav2 AMCL/costmap/planner/controller}
+\rightarrow
+\texttt{/cmd\_vel}
+\rightarrow
+\text{M20 SDK adapter}.
+\]
+
+如果后续改成三维点云直接避障，可以替换中间模块：
+\[
+\texttt{/LIDAR/POINTS}\ \text{或}\ \texttt{/rslidar\_points\_front/rear}
+\rightarrow
+\text{3D obstacle avoidance / voxel map / elevation map / 自研 planner}
+\rightarrow
+\texttt{/cmd\_vel}
+\rightarrow
+\text{M20 SDK adapter}.
+\]
+
+\begin{greenbox}{建议长期保持不变的接口}
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{p{0.24\linewidth}p{0.28\linewidth}p{0.34\linewidth}}
+\toprule
+\textbf{接口} & \textbf{类型} & \textbf{用途}\\
+\midrule
+\texttt{/LIDAR/POINTS} 或 \texttt{/rslidar\_points\_front/rear} & \texttt{sensor\_msgs/PointCloud2} & 三维雷达感知输入；当前背部主机优先使用后者。\\
+\texttt{/ODOM} 或规范化后的 \texttt{/odom} & \texttt{nav\_msgs/Odometry} & 底盘运动反馈；接 Nav2 前需确认 frame 和 child frame。\\
+\texttt{/tf} & TF tree & 坐标变换，至少需要 \texttt{odom} \(\rightarrow\) \texttt{base\_link} \(\rightarrow\) \texttt{lidar\_link}。\\
+\texttt{/cmd\_vel} & \texttt{geometry\_msgs/Twist} & 规划/避障模块给底层的统一速度意图。\\
+M20 SDK adapter & 自定义节点 & 限速、急停、人工接管、Twist 到 SDK 命令转换。\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{greenbox}
+
+这样做的好处是：上层可以从 Nav2 换成 3D 避障或学习型策略，下层的安全保护和 SDK 接入仍然可以复用。
+
+\subsection{实物部署与网络排查：先让系统可观测，再让机器狗运动}
+
+两轮背部主机实机排查记录被整理为部署排查模块。
+实物调试顺序必须保守：
+
+\begin{enumerate}
+  \item 先 SSH 和网络可达，不运行控制。
+  \item 再加载 Foxy 环境，确认工作空间能编译。
+  \item 再确认 M20 SDK 模式、root 环境和官方例程能运行。
+  \item 再确认 \texttt{/rslidar\_points\_front/rear}、\texttt{/IMU}、\texttt{/ODOM}、TF；若使用官方内部主机则另行确认 \texttt{/LIDAR/POINTS}。
+  \item 再启动 Nav2，只观察 \texttt{/map}、\texttt{/scan}、costmap、path、\texttt{/cmd\_vel}。
+  \item 最后才接入 M20 SDK adapter，并且必须限速、架空或空旷低速测试。
+\end{enumerate}
+
+\begin{redbox}{网络排查经验}
+外置网卡、WiFi、以太网同时存在时，最容易出现“电脑连得上网，但连不上 M20”的情况。
+排查时要确认：M20 WiFi 连接在哪个网卡、默认路由走哪里、静态 IP 是否冲突、\texttt{ROS\_LOCALHOST\_ONLY} 是否被设置、部署配置里写死的 IP 是否需要同步修改。
+\end{redbox}
+
+\subsection{背部主机接收 M20 双雷达点云实机复盘：UDP 组播转发链路}
+
+本次实机调试的目标，是让加装在 M20 背部的 Ubuntu 20.04 主机直接接收机器狗前后 RoboSense 雷达原始 UDP 数据，
+并在背部主机上用 \texttt{rslidar\_sdk} 解码为 ROS2 \texttt{PointCloud2}：
+\[
+\text{前/后雷达}
+\rightarrow
+\text{NOS 组播转发}
+\rightarrow
+\text{背部主机}
+\rightarrow
+\texttt{rslidar\_sdk}
+\rightarrow
+\texttt{/rslidar\_points\_front},\ \texttt{/rslidar\_points\_rear}.
+\]
+
+本节直接记录问题定位过程和 UDP 转发原理，方便后续做导航部署复盘。
+
+\subsubsection{硬件网络拓扑理解}
+
+结合官方结构图和实机网络检测，本次链路可以理解为三层：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.24\linewidth}p{0.24\linewidth}p{0.40\linewidth}}
+\toprule
+\textbf{网络/主机} & \textbf{地址} & \textbf{作用}\\
+\midrule
+雷达网 & \texttt{10.21.33.0/24} & 前雷达 \texttt{10.21.33.201}、后雷达 \texttt{10.21.33.202} 所在网络。\\
+NOS & \texttt{10.21.33.106} / \texttt{10.21.31.106} & 同时连接雷达网和业务网，负责把雷达 UDP 组播从 \texttt{eth0} 转发到 \texttt{eth1}。\\
+业务网/背部主机 & \texttt{10.21.31.0/24}，本次背部主机为 \texttt{10.21.31.192} & 背部主机通过外部网口接入，只能直接看到 \texttt{31} 网段，不能直接接入 \texttt{33} 雷达网。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+因此，背部主机不是直接从 \texttt{10.21.33.201/202} 雷达 IP 收包，而是依赖 NOS 上的
+\texttt{multicast-relay.service} 将雷达组播转发到 \texttt{10.21.31.0/24} 业务网。
+从现场的 \texttt{/usr/bin/multicast.py} 看，这个服务的关键配置是：
+
+\begin{verbatim}
+RECV_IFACE = "10.21.33.106"
+SEND_IFACE = "10.21.31.106"
+\end{verbatim}
+
+也就是说，它先在 NOS 的雷达网口加入 \texttt{224.10.10.201/202} 组播组接收 UDP 包，
+再从 NOS 的业务网口把同一组播地址和端口重新发出去。背部主机最终看到的包通常表现为：
+\[
+\texttt{10.21.31.106:*}
+\rightarrow
+\texttt{224.10.10.201/202:6691/6692}.
+\]
+这也是为什么背部主机上不需要直接配置 \texttt{10.21.33.0/24} 雷达网 IP；
+它只需要在 \texttt{10.21.31.0/24} 业务网正确加入组播并用 SDK 解码。
+
+\subsubsection{UDP 组播、MSOP 与 DIFOP}
+
+RoboSense 雷达并不是通过 ROS2 话题直接把原始点云发给背部主机，而是先通过 UDP 组播发送原始雷达包。
+本次实机确认的四个关键组播端口如下：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.22\linewidth}p{0.20\linewidth}p{0.46\linewidth}}
+\toprule
+\textbf{组播地址/端口} & \textbf{类型} & \textbf{含义}\\
+\midrule
+\texttt{224.10.10.201:6691} & MSOP & 前雷达高频测距数据，是生成点云的主数据流。\\
+\texttt{224.10.10.202:6692} & MSOP & 后雷达高频测距数据，是生成点云的主数据流。\\
+\texttt{224.10.10.201:7781} & DIFOP & 前雷达低频设备信息、状态、配置、标定/角度、回波模式等。\\
+\texttt{224.10.10.202:7782} & DIFOP & 后雷达低频设备信息、状态、配置、标定/角度、回波模式等。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{MSOP} 可以理解为“真正的点云测距包”，频率很高；\textbf{DIFOP} 可以理解为“设备状态和配置包”，频率很低。
+因此混合抓包时，经常只看到刷屏的 \texttt{6691/6692}，看不到 \texttt{7781/7782}；
+也可能在转发不完整时只看到 \texttt{7781/7782}，此时 SDK 会报 \texttt{ERRCODE\_MSOPTIMEOUT}。
+
+\subsubsection{背部主机侧基础配置}
+
+背部主机有线网口本次为 \texttt{enp2s0}，IP 为 \texttt{10.21.31.192/24}。
+由于背部主机同时存在 WiFi 和有线网口，最开始组播路由曾错误走到 WiFi。
+修正方式为：
+
+\begin{verbatim}
+sudo ip link set dev enp2s0 multicast on
+sudo ip route replace 224.0.0.0/4 dev enp2s0
+ip route get 224.10.10.201
+ip route get 224.10.10.202
+\end{verbatim}
+
+正确结果应显示组播地址走 \texttt{enp2s0}，源地址为 \texttt{10.21.31.192}：
+
+\begin{verbatim}
+multicast 224.10.10.201 dev enp2s0 src 10.21.31.192
+multicast 224.10.10.202 dev enp2s0 src 10.21.31.192
+\end{verbatim}
+
+\subsubsection{rslidar SDK 配置要点}
+
+官方默认 \texttt{config.yaml} 中的 \texttt{RSM1 + 6699/7788} 并不适用于本次 M20。
+本次按官方补充资料和实机抓包，最终使用：
+
+\begin{itemize}
+  \item 雷达类型：\texttt{RSAIRY}。
+  \item 前雷达：\texttt{group\_address=224.10.10.201}，\texttt{msop\_port=6691}，\texttt{difop\_port=7781}。
+  \item 后雷达：\texttt{group\_address=224.10.10.202}，\texttt{msop\_port=6692}，\texttt{difop\_port=7782}。
+  \item 背部主机接收地址：\texttt{host\_address=10.21.31.192}。
+  \item 输出话题：\texttt{/rslidar\_points\_front} 和 \texttt{/rslidar\_points\_rear}。
+  \item 输出坐标系：\texttt{rslidar\_front} 和 \texttt{rslidar\_rear}。
+\end{itemize}
+
+\texttt{host\_address} 表示用背部主机哪张网卡接收；\texttt{group\_address} 表示加入哪个 UDP 组播组。
+二者不能混淆。SDK 源码中 \texttt{group\_address} 默认是 \texttt{0.0.0.0}，
+只有显式写成 \texttt{224.10.10.201/202} 才会加入对应组播组。
+
+\subsubsection{问题现象：服务 active，但 MSOP 没有转发}
+
+最开始背部主机可以 ping 通 NOS，也能收到部分包，但只能看到：
+
+\begin{verbatim}
+10.21.31.106.* > 224.10.10.202.7782
+10.21.31.106.* > 224.10.10.201.7781
+\end{verbatim}
+
+此时 \texttt{rslidar\_sdk} 可以启动，ROS2 中也能看到话题壳子：
+\[
+\texttt{/rslidar\_points\_front},\quad \texttt{/rslidar\_points\_rear},
+\]
+但 \texttt{ros2 topic hz} 没有频率，SDK 报：
+\[
+\texttt{ERRCODE\_MSOPTIMEOUT}.
+\]
+
+这说明 ROS2 发布者已经创建，但 SDK 等不到 MSOP 点云主数据。
+进一步在 NOS 上抓包确认：
+
+\begin{itemize}
+  \item NOS \texttt{eth0} 雷达网能看到 \texttt{10.21.33.201/202 -> 224.10.10.201/202:6691/6692}。
+  \item NOS \texttt{eth1} 业务网最初只看到 \texttt{7781/7782}，没有 \texttt{6691/6692}。
+\end{itemize}
+
+也就是说，点云主数据已经到达 NOS，但没有被完整转发到业务网。
+
+\subsubsection{根因判断：Tasks 3 是半正常状态}
+
+官方手册 5.1 要求启动：
+
+\begin{verbatim}
+sudo systemctl enable multicast-relay.service
+sudo systemctl start multicast-relay.service
+sudo systemctl status multicast-relay.service
+\end{verbatim}
+
+但本次排查发现，不能只看 \texttt{Active: active (running)}。
+问题发生时，服务虽然 active，但状态为：
+
+\begin{verbatim}
+Tasks: 3
+python3 只持有 7781/7782
+python3 没有持有 6691/6692
+\end{verbatim}
+
+而 \texttt{/usr/bin/multicast.py} 实际配置了四个转发组：
+
+\begin{verbatim}
+("224.10.10.202", 6692)
+("224.10.10.202", 7782)
+("224.10.10.201", 6691)
+("224.10.10.201", 7781)
+\end{verbatim}
+
+按四个转发线程加主线程理解，正常状态应接近 \texttt{Tasks: 5}。
+因此 \texttt{Tasks: 3} 表示服务处于半正常状态：DIFOP 线程还在，MSOP 高频转发线程没有存活。
+
+\subsubsection{为什么重启后突然可以了}
+
+真正让链路恢复的动作是：
+
+\begin{verbatim}
+sudo systemctl restart multicast-relay.service
+\end{verbatim}
+
+重启后，NOS 状态变为：
+
+\begin{verbatim}
+Active: active (running)
+Tasks: 5
+python3 持有 224.10.10.201:6691
+python3 持有 224.10.10.202:6692
+python3 持有 224.10.10.201:7781
+python3 持有 224.10.10.202:7782
+\end{verbatim}
+
+随后 NOS \texttt{eth1} 可以抓到高频 MSOP：
+
+\begin{verbatim}
+10.21.31.106.* > 224.10.10.202.6692
+10.21.31.106.* > 224.10.10.201.6691
+22096 packets captured / 5s
+\end{verbatim}
+
+背部主机 \texttt{enp2s0} 也可以抓到：
+
+\begin{verbatim}
+10.21.31.106.* > 224.10.10.201.6691
+10.21.31.106.* > 224.10.10.202.6692
+22145 packets captured / 5s
+\end{verbatim}
+
+所以“突然可以了”不是偶然，而是因为 \texttt{restart} 重新创建了丢失的 MSOP 转发线程。
+经验上，\texttt{start} 对已经 active 的服务通常不会重新初始化线程；遇到半正常状态时，应使用 \texttt{restart}。
+
+\subsubsection{最终验证结果}
+
+单独抓 DIFOP 后确认低频 \texttt{7781/7782} 也存在：
+
+\begin{verbatim}
+10.21.31.106.* > 224.10.10.202.7782
+10.21.31.106.* > 224.10.10.201.7781
+\end{verbatim}
+
+重启背部主机上的 SDK：
+
+\begin{verbatim}
+cd ~/rslidar_ws
+source /opt/ros/foxy/setup.bash
+source install/setup.bash
+ros2 run rslidar_sdk rslidar_sdk_node --ros-args \
+  -p config_path:=/home/m20/rslidar_ws/src/rslidar_sdk/config/config.yaml
+\end{verbatim}
+
+前雷达点云话题稳定为 10 Hz：
+
+\begin{verbatim}
+ros2 topic hz /rslidar_points_front
+average rate: 10.003
+average rate: 10.002
+average rate: 10.001
+\end{verbatim}
+
+用 Foxy 兼容的 Python one-shot subscriber 检查点云头部和字段：
+
+\begin{verbatim}
+topic: /rslidar_points_front
+frame_id: rslidar_front
+height: 17174, width: 1
+fields:
+  x: offset=0, datatype=7, count=1
+  y: offset=4, datatype=7, count=1
+  z: offset=8, datatype=7, count=1
+  intensity: offset=12, datatype=7, count=1
+\end{verbatim}
+
+这说明背部主机已经成功接收并解码前雷达 XYZI 点云。
+
+\subsubsection{RViz 显示点云的坑}
+
+官方 \texttt{ros2 launch rslidar\_sdk start.py} 会自动打开 RViz，但它加载的是单雷达默认配置：
+
+\begin{verbatim}
+Fixed Frame: rslidar
+PointCloud2 Topic: /rslidar_points
+\end{verbatim}
+
+而本次双雷达配置实际输出为：
+
+\begin{verbatim}
+/rslidar_points_front  frame_id: rslidar_front
+/rslidar_points_rear   frame_id: rslidar_rear
+\end{verbatim}
+
+所以 RViz 报 \texttt{Frame [rslidar] does not exist} 并不代表点云没有发布，而是 RViz 默认配置与当前话题/frame 不一致。
+调试时应手动打开 RViz：
+
+\begin{verbatim}
+rviz2
+\end{verbatim}
+
+然后设置：
+
+\begin{verbatim}
+Fixed Frame = rslidar_front
+PointCloud2 Topic = /rslidar_points_front
+\end{verbatim}
+
+后雷达则使用 \texttt{rslidar\_rear} 和 \texttt{/rslidar\_points\_rear}。
+
+\subsubsection{NOS 导航主机上的雷达相关话题与来源}
+
+最新在 NOS root 下执行 \texttt{ros2 topic list} 后，可以看到导航主机上存在大量雷达、地图、规划和状态话题。
+这些话题不能只按名字理解，必须按数据来源分层：
+
+\[
+\text{双雷达硬件 UDP}
+\rightarrow
+\text{官方 rslidar/bare DDS}
+\rightarrow
+\text{原始点云话题}
+\rightarrow
+\text{累计/分割/可通行区域}
+\rightarrow
+\text{导航规划与安全状态}.
+\]
+
+与雷达直接相关的话题可先按下表归类：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{p{0.26\linewidth}p{0.22\linewidth}p{0.40\linewidth}}
+\toprule
+\textbf{话题/数据} & \textbf{来源判断} & \textbf{用途和注意点}\\
+\midrule
+\texttt{224.10.10.201:6691/7781} &
+前雷达 UDP 组播 &
+\texttt{6691} 是前雷达 MSOP 点云主数据，\texttt{7781} 是前雷达 DIFOP 设备/配置/状态数据。\\
+\texttt{224.10.10.202:6692/7782} &
+后雷达 UDP 组播 &
+\texttt{6692} 是后雷达 MSOP 点云主数据，\texttt{7782} 是后雷达 DIFOP。\\
+\texttt{/LIDAR/POINTS} &
+官方 \texttt{rslidar}/bare DDS &
+NOS root 下显示 \texttt{Publisher count: 2}，发布者为 \texttt{\_CREATED\_BY\_BARE\_DDS\_APP\_}。这是官方原始点云主话题，但不应简单认为已经拼成单帧融合点云。\\
+\texttt{/LIDAR/POINTS2} &
+官方雷达链路 &
+已在 NOS 话题列表中出现，但本轮还没有确认类型、频率和字段。暂时只能记录为疑似备用/第二路/处理后点云话题，后续必须单独测 \texttt{type/hz/echo}。\\
+\texttt{/LIDAR/IMU201}、\texttt{/LIDAR/IMU202} &
+雷达内置 IMU 或雷达侧状态链路 &
+分别对应 201/202 两颗雷达相关 IMU/惯性数据，适合做雷达运动补偿或状态检查，但不是点云。\\
+\texttt{/LIDAR/STATUS} &
+雷达状态链路 &
+用于判断雷达在线、故障、配置或健康状态。能看到该话题不代表已经能收到高带宽点云。\\
+\texttt{/ALIGNED\_POINTS}、\texttt{/LOC\_BODY\_POINTS} &
+官方定位/局部感知链路 &
+疑似经过坐标对齐、机体系转换或定位链路处理后的点云。\texttt{/LOC\_BODY\_POINTS} 曾被 \texttt{accumulate\_cloud} 订阅。\\
+\texttt{/SEG\_CLOUD}、\texttt{/cloud\_obs}、\texttt{/cloud\_nav} &
+官方点云预处理链路 &
+通常表示分割后的点云、障碍云或导航使用点云，适合后续逐个确认 frame、字段、高度范围和频率。\\
+\texttt{/accumulate\_cloud/cloud\_base}、\texttt{/accumulate\_cloud/cloud\_gravity} &
+\texttt{accumulate\_cloud} 节点 &
+官方累计点云输出。前者偏 \texttt{base\_link} 相关坐标，后者偏 \texttt{base\_gravity} 重力对齐坐标。\\
+\texttt{/passable\_area}、\texttt{/impassable\_area} &
+\texttt{passable\_area} 节点 &
+可通行/不可通行区域点云，已经不是原始双雷达数据，更接近导航可直接使用的局部感知结果。\\
+\texttt{/traversal\_cost} &
+\texttt{passable\_area} 或局部通行代价链路 &
+实测为局部 \texttt{OccupancyGrid}，约 \texttt{8m x 8m}、\texttt{0.05m} 分辨率，适合低速避障或安全监督层候选。\\
+\texttt{/FULL\_CLOUD\_MAP}、\texttt{/vis\_global\_points} &
+地图/可视化链路 &
+更像全局累计点云地图或可视化结果，不适合作为高频避障主输入。\\
+\texttt{/GRID\_MAP}、\texttt{/grid\_map}、\texttt{/grid\_map\_3d}、\texttt{/height\_map} &
+地图构建/地形感知链路 &
+栅格地图、三维栅格或高程图相关输出，来源可能是定位/地形/可通行区域模块。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+其中最关键的是 \texttt{/LIDAR/POINTS} 的解释。NOS root 下 \texttt{ros2 topic info -v /LIDAR/POINTS} 显示两个 publisher，
+且连续 \texttt{echo --no-arr} 得到的消息均为：
+
+\begin{verbatim}
+frame_id: lidar_link
+fields length: 6
+point_step: 26
+is_dense: false
+\end{verbatim}
+
+但不同帧的点数变化很大：
+
+\begin{verbatim}
+width: 45808
+width: 45657
+...
+width: 17626
+width: 68315
+\end{verbatim}
+
+特别是 \texttt{17626} 和 \texttt{68315} 两帧时间戳非常接近，说明当前更合理的判断是：
+
+\[
+\begin{aligned}
+\text{前雷达 UDP} &\rightarrow \text{官方 rslidar/bare DDS}\\
+\text{后雷达 UDP} &\rightarrow \text{官方 rslidar/bare DDS}
+\end{aligned}
+\quad
+\Longrightarrow
+\quad
+\texttt{/LIDAR/POINTS}.
+\]
+
+ROS2/DDS 允许多个 publisher 使用同一个 topic 名，只要消息类型一致即可。
+因此两个 publisher 共用 \texttt{/LIDAR/POINTS} 不奇怪；订阅者会收到两个发布端交错到达的 \texttt{PointCloud2} 消息。
+但这不等价于 ROS2 自动把前后雷达拼接成一帧，也不能证明官方已经完成了全景融合。
+
+后续若要把这些话题接入导航，应按优先级验证：
+
+\begin{enumerate}
+  \item 原始高频点云：确认 \texttt{/LIDAR/POINTS} 或背部主机自解码的 \texttt{/rslidar\_points\_front}、\texttt{/rslidar\_points\_rear} 的频率、frame、字段和时间戳。
+  \item 官方处理后避障输入：确认 \texttt{/impassable\_area}、\texttt{/traversal\_cost} 是否和现场障碍物一致，延迟是否可接受。
+  \item 状态与安全：同时记录 \texttt{/IMU}、\texttt{/ODOM}、\texttt{/tf}、\texttt{/FAULT\_STATUS}、\texttt{/MOTION\_STATUS}，否则点云能显示也不等于能闭环导航。
+\end{enumerate}
+
+\subsubsection{本轮 type/info/hz 复测结论}
+
+最新一轮在 NOS root 下对雷达/点云重点话题执行：
+
+\begin{verbatim}
+ros2 topic type <topic>
+ros2 topic info -v <topic>
+timeout 5 ros2 topic hz <topic>
+\end{verbatim}
+
+得到一个很重要的工程结论：
+\textbf{ROS2/DDS 图里有 publisher endpoint，不等于该话题当前正在持续发布样本。}
+所以后续判断一个话题能不能用于导航，必须同时看 \texttt{type}、\texttt{info -v} 和 \texttt{hz}。
+
+\begin{center}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{p{0.28\linewidth}p{0.28\linewidth}p{0.34\linewidth}}
+\toprule
+\textbf{话题} & \textbf{实测结果} & \textbf{结论}\\
+\midrule
+\texttt{/LIDAR/POINTS} &
+\texttt{PointCloud2}，\texttt{Publisher count: 2}，\texttt{Subscription count: 4}，约 \texttt{10.004Hz} &
+当前唯一已确认在 NOS 上稳定输出的官方高频点云主话题。\\
+\texttt{/LIDAR/POINTS2} &
+\texttt{PointCloud2}，\texttt{Publisher count: 1}，\texttt{Subscription count: 1}，5 秒内未得到稳定 \texttt{hz} 输出 &
+存在 DDS 端点，但本轮不能证明有持续样本流；暂不作为导航输入。\\
+\texttt{/LIDAR/IMU201} &
+\texttt{Imu}，\texttt{Publisher count: 2}，约 \texttt{377Hz} &
+201 号雷达相关 IMU 流稳定。\\
+\texttt{/LIDAR/IMU202} &
+\texttt{Imu}，\texttt{Publisher count: 2}，约 \texttt{385Hz} &
+202 号雷达相关 IMU 流稳定。\\
+\texttt{/LIDAR/STATUS} &
+\texttt{drdds/msg/AiryLidarStatus}，\texttt{Publisher count: 2}，\texttt{Subscription count: 3} &
+两颗 Airy/RoboSense 雷达状态话题存在；状态频率需单独拉长窗口确认。\\
+\texttt{/ALIGNED\_POINTS} &
+\texttt{PointCloud2}，\texttt{Publisher count: 1}，5 秒内无样本 &
+端点存在，但当前未持续发布，不能直接作为算法输入。\\
+\texttt{/LOC\_BODY\_POINTS} &
+\texttt{PointCloud2}，\texttt{Publisher count: 1}，\texttt{accumulate\_cloud} 订阅，5 秒内无样本 &
+是官方累计点云链路的输入候选，但当前没有实时样本流。\\
+\texttt{/SEG\_CLOUD} &
+\texttt{PointCloud2}，\texttt{Publisher count: 1}，5 秒内无样本 &
+分割点云端点存在，但当前未输出。\\
+\texttt{/cloud\_obs}、\texttt{/cloud\_nav} &
+\texttt{PointCloud2}，均有 bare DDS publisher，其中 \texttt{/cloud\_nav} 有订阅端 &
+端点存在，但本轮 5 秒窗口未看到稳定频率，需要继续测 echo/hz 和状态开关。\\
+\texttt{/accumulate\_cloud/cloud\_base} &
+\texttt{PointCloud2}，发布者 \texttt{accumulate\_cloud}，5 秒内无样本 &
+累计点云节点存在，但当前没有输出。\\
+\texttt{/accumulate\_cloud/cloud\_gravity} &
+\texttt{PointCloud2}，发布者 \texttt{accumulate\_cloud}，\texttt{passable\_area} 订阅，5 秒内无样本 &
+官方链路结构存在，但当前未形成实时处理后点云。\\
+\texttt{/passable\_area}、\texttt{/impassable\_area} &
+\texttt{PointCloud2}，发布者 \texttt{passable\_area}，5 秒内无样本 &
+可通行/不可通行点云端点存在；未使能或无上游输入时不能直接用。\\
+\texttt{/traversal\_cost} &
+\texttt{OccupancyGrid}，发布者 \texttt{passable\_area}，5 秒内无样本 &
+局部通行代价图端点存在；本轮未持续输出，不能直接接 Nav2。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这轮结果修正了前一轮的理解：\texttt{/passable\_area}、\texttt{/impassable\_area}、\texttt{/traversal\_cost}
+虽然是很有价值的低速避障候选，但它们依赖官方链路使能和上游输入。
+在没有持续 \texttt{hz} 输出时，不能把它们当作稳定导航输入。
+当前真正常态可依赖的高频雷达输入仍是 \texttt{/LIDAR/POINTS}，以及背部主机自行解码得到的
+\texttt{/rslidar\_points\_front}/\texttt{/rslidar\_points\_rear}。
+
+\subsubsection{多主机时间同步问题：点云时间戳不是小事}
+
+本轮又检查了机器狗内部三台主机和背部主机的系统时间。先按人工 SSH 顺序记录到：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{p{0.22\linewidth}p{0.26\linewidth}p{0.42\linewidth}}
+\toprule
+\textbf{主机} & \textbf{观测时间} & \textbf{说明}\\
+\midrule
+AOS 103 & \texttt{2026-07-21 09:54:02/09:54:40 CST} & 机器狗内部主机之一，检查时间早于后两台，不能直接和最后的背部主机时间逐秒比较。\\
+GOS 104 & \texttt{2026-07-21 09:59:35 CST} & 机器狗内部主机，和 NOS 时间接近。\\
+NOS 106 & \texttt{2026-07-21 09:59:52 CST} & 导航主机，当前雷达/导航话题主要在这里验证。\\
+背部主机 & \texttt{2026-07-21 09:51:45 CST} & 外接 Ubuntu 主机。由于该命令在退出 NOS 后执行，仍可判断机器狗内部时间整体明显快于背部主机。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+随后在背部主机上批量执行 \texttt{ssh user@host date}，得到第二轮 epoch 采样：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{p{0.22\linewidth}p{0.31\linewidth}p{0.37\linewidth}}
+\toprule
+\textbf{主机} & \textbf{epoch 与本地时间} & \textbf{当前判断}\\
+\midrule
+AOS 103 & \texttt{1784599153.915724165 / 09:59:13} & 比背部主机快，但由于它是本轮第一个 SSH 采样，和最后的本地采样不能直接作精确差值。\\
+GOS 104 & \texttt{1784599401.839558608 / 10:03:21} & 与 NOS 非常接近，明显快于背部主机。\\
+NOS 106 & \texttt{1784599402.874870796 / 10:03:22} & 与 GOS 非常接近，当前雷达点云和导航话题主要以该时间为基准。\\
+背部主机 & \texttt{1784598891.242702851 / 09:54:51} & 连接 WiFi，当前更接近标准时间。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+随后用本地前后时间夹住每次 SSH 采样，估算远端时钟相对背部主机的偏差范围：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{p{0.20\linewidth}p{0.32\linewidth}p{0.38\linewidth}}
+\toprule
+\textbf{主机} & \textbf{估算偏差} & \textbf{结论}\\
+\midrule
+AOS 103 & 约 \texttt{+288.8s}，范围约 \texttt{+286.6s} 到 \texttt{+291.0s} & 比背部主机快约 \texttt{4min49s}，但明显不同于 GOS/NOS。\\
+GOS 104 & 约 \texttt{+512.1s}，范围约 \texttt{+511.6s} 到 \texttt{+512.6s} & 比背部主机快约 \texttt{8min32s}。\\
+NOS 106 & 约 \texttt{+512.8s}，范围约 \texttt{+511.6s} 到 \texttt{+513.9s} & 与 GOS 偏差范围重叠，二者基本处在同一时间附近。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+更严谨的结论应修正为：
+\textbf{AOS/GOS/NOS 都没有和背部主机/标准时间严格同步；GOS 与 NOS 彼此接近，AOS 与 GOS/NOS 存在约 \texttt{3min43s} 的时间差。}
+也就是说，机器狗内部三台主机不是严格共用同一个系统时间。
+这也解释了为什么 \texttt{/LIDAR/POINTS} 的 \texttt{header.stamp} 看起来像正常 Unix 时间，
+但与背部主机当前时间存在明显偏差。
+
+这个偏差对后续开发有实际影响：
+
+\begin{itemize}
+  \item 如果所有数据和算法都在同一台机器狗内部主机上运行，整体快几分钟通常不影响相对同步。
+  \item 如果数据跨 AOS/GOS/NOS 流动，而三台内部主机并未严格同步，内部链路也可能出现 TF 或多传感器时间对不齐。
+  \item 如果背部主机订阅机器狗数据并在本机运行 Nav2、点云转换、TF、message filter 或 rosbag，机器狗消息会被背部主机认为“来自未来”。
+  \item 典型风险包括 TF extrapolation error、message filter 丢点云、costmap 判断传感器数据过期/未来、rosbag 时间线错位，以及多传感器同步失败。
+\end{itemize}
+
+因此，后续只要背部主机参与导航闭环，时间同步应作为前置条件，而不是后期再修的细节。建议优先目标为：
+\[
+|\text{机器狗时间}-\text{背部主机时间}| < 0.5\ \mathrm{s},
+\]
+若做 LIO、SLAM 或高动态三维避障，最好进一步控制到几十毫秒量级。
+
+下一步建议先做非侵入式检查，并用本地前后时间夹住每次 SSH 采样，估算偏差范围：
+
+\begin{verbatim}
+for h in 10.21.31.103 10.21.31.104 10.21.31.106; do
+  echo "===== $h ====="
+  echo "local_before $(date '+%s.%N %F %T')"
+  ssh user@$h "echo remote \$(date '+%s.%N %F %T')"
+  echo "local_after  $(date '+%s.%N %F %T')"
+done
+
+# 四台机器分别检查时间同步服务
+timedatectl status
+systemctl status chrony chronyd systemd-timesyncd --no-pager
+\end{verbatim}
+
+如果现场没有外网，更稳妥的工程方案是让背部主机作为局域网时间源，AOS/GOS/NOS 通过 NTP/chrony 同步到背部主机；
+或者在确认官方系统允许的前提下，统一让四台机器同步到同一个外部/局域网时间源。临时手动 \texttt{date -s} 只能用于短时间调试，
+不适合长期部署。
+
+随后继续检查四台机器的时间服务，发现它们并不是同一种同步方式：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{p{0.18\linewidth}p{0.32\linewidth}p{0.40\linewidth}}
+\toprule
+\textbf{主机} & \textbf{时间服务/进程} & \textbf{关键含义}\\
+\midrule
+背部主机 &
+最初为 \texttt{systemd-timesyncd} 客户端；本轮为给 NOS 授时，已安装 \texttt{chrony} 并对 \texttt{10.21.31.0/24} 开放 NTP &
+背部主机是当前外部开发基准；短期可作为局域网时间源，长期还要确认其自身上游 NTP/PTP 是否稳定。\\
+AOS 103 &
+\texttt{chrony} active，日志显示选中过外部 NTP 源；同时有 \texttt{ptp4l -i eth0 -s}、\texttt{phc2sys -s eth0 -c CLOCK\_REALTIME}，还有 \texttt{gps\_node} &
+AOS 同时存在 NTP、PTP 和 GPS 相关链路，可能有多个时间来源。若配置不清，可能和 GOS/NOS 不在同一时钟域。\\
+GOS 104 &
+\texttt{chrony} active；\texttt{systemd-timesyncd} masked；有 \texttt{ptp4l -i eth0 -s}、\texttt{phc2sys -s eth0 -c CLOCK\_REALTIME} &
+GOS 看起来像 PTP slave，通过网卡 PHC 同步系统时钟，因此与 NOS 很接近。\\
+NOS 106 &
+\texttt{chrony} active，但 \texttt{timedatectl} 显示 \texttt{System clock synchronized: no}；有 \texttt{ptp4l} 在 \texttt{eth0/eth1}，以及 \texttt{phc2sys -s CLOCK\_REALTIME -c eth0/eth1} &
+NOS 可能把自身系统时间写到两张网卡 PHC，并通过 PTP 服务不同网段；但它自身当前没有确认锁定到标准 NTP。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这里最关键的是 \texttt{phc2sys} 的方向：
+
+\begin{itemize}
+  \item AOS/GOS 中的 \texttt{phc2sys -s eth0 -c CLOCK\_REALTIME} 表示用网卡硬件时钟 PHC 去校系统时间。
+  \item NOS 中的 \texttt{phc2sys -s CLOCK\_REALTIME -c eth0/eth1} 表示用 NOS 系统时间去校网卡硬件时钟。
+\end{itemize}
+
+继续执行 \texttt{chronyc tracking/sources} 和 \texttt{pmc GET TIME\_STATUS\_NP} 后，结论进一步明确：
+
+\begin{itemize}
+  \item AOS 的 \texttt{chronyc sources -v} 有 8 个外部 NTP 源，当前选中 \texttt{alphyn.canonical.com}，
+  但 \texttt{tracking} 仍显示 \texttt{System time: 347.655s fast of NTP time}，说明 AOS 系统时间还没有完全回到标准时间，
+  或者正在被 \texttt{chrony} 与 PTP/PHC 链路共同影响。
+  \item GOS 的 \texttt{chronyc sources -v} 为 \texttt{Number of sources = 0}，\texttt{Leap status: Not synchronised}；
+  NOS 也是 \texttt{Number of sources = 0}，\texttt{Leap status: Not synchronised}。
+  因此 GOS/NOS 上的 \texttt{chrony active} 只表示服务在运行，不表示已经锁定到 NTP。
+  \item AOS 的 \texttt{pmc} 显示 \texttt{gmPresent: true}，\texttt{gmIdentity: 56f1d2.fffe.6604fd}；
+  GOS 显示 \texttt{gmPresent: true}，\texttt{gmIdentity: 5af1d2.fffe.6604fd}。
+  这两个 grandmaster identity 与 NOS 两张网卡的 MAC 派生形式高度一致。
+  \item NOS 的 \texttt{pmc} 显示 \texttt{gmPresent: false}，\texttt{gmIdentity: 5af1d2.fffe.6604fd}，
+  这通常表示被查询的 PTP 实例本身就是 grandmaster。
+\end{itemize}
+
+因此当前最合理的解释是：NOS 以自身系统时间为源，将时间写入 \texttt{eth0/eth1} 两张网卡 PHC，
+并在 33 网段和 31 网段分别通过 PTP 服务 AOS/GOS 等主机；GOS 基本跟着 NOS；
+AOS 同时存在外部 NTP、PTP slave 和 GPS 节点，时间源竞争更复杂。
+这就会造成“看起来都有 NTP 服务 active，但四台机器时间仍然不一致”的现象。
+
+这里不要用 \texttt{chronyc sources = 0} 判断 GOS 已脱离 NOS。GOS 的系统时间同步链路不是 NTP，
+而是 \texttt{ptp4l + phc2sys}。本轮 GOS 的 \texttt{pmc} 已显示 \texttt{gmPresent: true}、
+\texttt{gmIdentity: 5af1d2.fffe.6604fd}、\texttt{master\_offset: 285ns}，
+这说明从 PTP 层看 GOS 正在跟随 NOS 的 31 网段 grandmaster。
+若 \texttt{date} 仍表现不一致，应优先确认 \texttt{phc2sys.service} 是否 active、PTP offset 是否仍处于纳秒/微秒级，
+以及 NOS 时间是否已经真正被改成功。
+
+继续检查时间源时使用：
+
+\begin{verbatim}
+chronyc tracking
+chronyc sources -v
+chronyc sourcestats -v
+systemctl list-units --type=service --all | grep -Ei 'ptp|phc|chrony|gps'
+systemctl cat 'ptp*' 'phc*' chrony 2>/dev/null
+sudo pmc -u -b 0 'GET TIME_STATUS_NP'
+\end{verbatim}
+
+本轮随后按官方手册的短期思路，只校准 NOS，不分别修改 AOS/GOS。
+第一次尝试通过 \texttt{ssh user@10.21.31.106 "sudo date -s @\$TS"} 远程校准 NOS 失败，
+原因是 \texttt{sudo} 需要交互式 TTY 读取密码。
+改用 \texttt{ssh -tt} 后执行成功：
+
+\begin{verbatim}
+TS=$(date +%s)
+ssh -tt user@10.21.31.106 "sudo date -s @$TS && (sudo hwclock -w || true)"
+\end{verbatim}
+
+实机成功日志为：
+
+\begin{verbatim}
+Tue 21 Jul 2026 10:42:01 AM CST
+Connection to 10.21.31.106 closed.
+\end{verbatim}
+
+因此当前可确认：背部主机已经成功将当时的 epoch 时间写入 NOS 系统时间。
+但日志中尚未补充校准后 AOS/GOS/NOS/背部主机的夹测结果，所以还需用下面命令确认 PTP 是否已将新时间传播到 AOS/GOS：
+
+\begin{verbatim}
+sleep 30
+for h in 10.21.31.103 10.21.31.104 10.21.31.106; do
+  echo "===== $h ====="
+  echo "local_before $(date '+%s.%N %F %T')"
+  ssh user@$h "echo remote \$(date '+%s.%N %F %T')"
+  echo "local_after  $(date '+%s.%N %F %T')"
+done
+echo "===== localhost ====="
+date '+%s.%N %F %T %Z %z'
+\end{verbatim}
+
+短期方案：每次复现导航前，如果机器狗内部时间与背部主机偏差较大，就按上述 \texttt{ssh -tt} 方法校一次 NOS；
+由于 NOS 是官方内部 PTP Master，AOS/GOS/雷达应通过 PTP 跟随。
+长期方案：后续再让背部主机或外部时钟源作为 PTP Grandmaster/NTP 源，NOS 以 Boundary Clock 方式上游跟随外部时间、
+下游继续给 AOS/GOS/雷达授时。长期方案涉及修改 NOS 的 \texttt{ptp4l/phc2sys} 服务配置，暂不在当前短期复现阶段实施。
+
+随后补充 30 秒后复测，得到：
+
+\begin{verbatim}
+AOS 103     1784602377.626425193 2026-07-21 10:52:57 CST
+GOS 104     1784602379.912838102 2026-07-21 10:52:59 CST
+NOS 106     1784601872.637542042 2026-07-21 10:44:32 CST
+localhost   1784601878.878972391 2026-07-21 10:44:38 CST
+\end{verbatim}
+
+这说明 NOS 已从原先约 \texttt{+8min32s} 偏差拉回到距离背部主机约 \texttt{6.24s}，
+写 NOS 时间是成功的；剩余 \texttt{6.24s} 主要来自 \texttt{TS=\$(date +\%s)} 之后输入 SSH 密码和
+\texttt{sudo} 密码的人工延迟。AOS/GOS 仍保持旧时间，说明在未重启整机或未重启 PTP/PHC 服务的情况下，
+它们没有立即跟随 NOS 的阶跃时间修改；这与官方手册“完成更改后重启山猫”的要求一致。
+
+随后使用 SSH 复用连接只做夹测，未重新执行 \texttt{sudo date -s}，结果稳定显示 NOS 慢于背部主机约
+\texttt{6.234s}：
+
+\begin{verbatim}
+check 1: local_mid=1784602208.222328630, nos=1784602201.987828208,
+         offset=-6.234500422s
+check 2: local_mid=1784602208.242818148, nos=1784602202.009158992,
+         offset=-6.233659156s
+check 3: local_mid=1784602208.263825759, nos=1784602202.030057227,
+         offset=-6.233768532s
+\end{verbatim}
+
+因此当前准确表述应为：NOS 已被手动校准到背部主机附近，但仍比背部主机慢约 \texttt{6.234s}。
+这个偏差来自手动取时间和输入密码，不是 PTP 链路误差。
+
+若短期复现阶段只要求 NOS 与背部主机更准，可用 SSH 复用连接和 \texttt{sudo -S} 减少人工延迟：
+
+\begin{verbatim}
+ssh -MNf \
+  -o ControlMaster=yes \
+  -o ControlPath=/tmp/m20_nos_ctl \
+  -o ControlPersist=10m \
+  user@10.21.31.106
+
+read -rsp 'NOS sudo password: ' NOS_SUDO_PASS; echo
+TS=$(date '+%s.%N')
+printf '%s\n' "$NOS_SUDO_PASS" | ssh -S /tmp/m20_nos_ctl user@10.21.31.106 \
+  "sudo -S sh -c 'date -s @$TS; hwclock -w 2>/dev/null || true; date +%s.%N'"
+unset NOS_SUDO_PASS
+
+for i in 1 2 3; do
+  echo "===== check $i ====="
+  echo "local_before $(date '+%s.%N %F %T')"
+  ssh -S /tmp/m20_nos_ctl user@10.21.31.106 "echo nos \$(date '+%s.%N %F %T')"
+  echo "local_after  $(date '+%s.%N %F %T')"
+done
+
+ssh -O exit -S /tmp/m20_nos_ctl user@10.21.31.106
+\end{verbatim}
+
+严格意义上的“完全同步”仍需要持续 NTP/PTP；手动 \texttt{date -s} 只能保证设置瞬间接近，不能保证长期不漂移。
+
+也可以让 NOS 直接通过时间同步协议跟随背部主机，这并不天然等于长期方案。一次性执行
+\texttt{chronyd -q} 或 \texttt{ntpdate} 后退出，属于短期调试；配置成 systemd 常驻服务、开机自启并持续修正漂移，
+才属于长期部署。由于背部主机当前的 \texttt{systemd-timesyncd} 只能做客户端，不能给 NOS 授时，
+若要让 NOS 直接同步背部主机，需要先在背部主机上提供 NTP 服务，例如使用 \texttt{chrony}：
+
+\begin{verbatim}
+# 背部主机
+sudo apt update
+sudo apt install -y chrony
+sudo cp /etc/chrony/chrony.conf /etc/chrony/chrony.conf.bak.$(date +%s)
+printf '\n# M20 LAN time server\nallow 10.21.31.0/24\nlocal stratum 10\n' | \
+  sudo tee -a /etc/chrony/chrony.conf
+sudo systemctl restart chrony
+chronyc tracking
+sudo ss -ulpn | grep ':123'
+\end{verbatim}
+
+随后在 NOS 上做一次性同步：
+
+\begin{verbatim}
+ssh user@10.21.31.106
+sudo systemctl stop chrony
+sudo chronyd -q 'server 10.21.31.192 iburst'
+sudo hwclock -w || true
+sudo systemctl start chrony
+date '+%s.%N %F %T %Z %z'
+\end{verbatim}
+
+本轮实机执行到这一步后，背部主机已经能作为 NTP 服务端监听 \texttt{UDP/123}：
+
+\begin{verbatim}
+Reference ID    : 7F7F0101 ()
+Stratum         : 10
+Leap status     : Normal
+
+UNCONN 0 0 0.0.0.0:123 0.0.0.0:* users:(("chronyd",pid=43271,fd=7))
+\end{verbatim}
+
+这里的 \texttt{Reference ID: 7F7F0101} 和 \texttt{Stratum: 10} 表示背部主机当前在用
+\texttt{local stratum 10} 把自己的本地时钟作为局域网授时源。短期调试是可以接受的，因为目标是让 NOS 与背部主机对齐；
+但它不等于“背部主机已经锁定外网 NTP”。长期运行前还应在背部主机补查：
+
+\begin{verbatim}
+chronyc sources -v
+chronyc tracking
+\end{verbatim}
+
+NOS 上的一次性同步已经成功，关键日志为：
+
+\begin{verbatim}
+2026-07-21T02:56:56Z System clock wrong by 6.246399 seconds (step)
+2026-07-21T02:57:02Z chronyd exiting
+\end{verbatim}
+
+这表示 \texttt{chronyd -q} 已经从 \texttt{10.21.31.192} 获取时间，并把 NOS 系统时钟阶跃修正了
+\texttt{6.246399s}。这个数值与前面手动 \texttt{date -s} 后遗留的约 \texttt{6.234s} 偏差吻合，
+因此可以判断：NOS 已经完成了一次协议级校时，比继续手输 \texttt{date -s} 更准。
+
+重启山猫之前，先在背部主机做一次 NOS 与背部主机的夹测，确认残差：
+
+\begin{verbatim}
+for i in 1 2 3 4 5; do
+  lb=$(date +%s.%N)
+  rt=$(ssh -S "$CTL" user@10.21.31.106 "date +%s.%N")
+  la=$(date +%s.%N)
+  awk -v i="$i" -v lb="$lb" -v rt="$rt" -v la="$la" \
+    'BEGIN { mid=(lb+la)/2; printf("check %d: offset=%+.6fs rtt=%.6fs nos=%.9f local_mid=%.9f\n", i, rt-mid, la-lb, rt, mid) }'
+done
+\end{verbatim}
+
+判据：若 \texttt{nos} 的 epoch 落在 \texttt{local\_before} 与 \texttt{local\_after} 之间，
+或相对本地中点偏差小于约 \texttt{0.5s}，就可以认为短期导航复现需要的 NOS/背部主机时间已经对齐。
+随后再按官方手册重启整机，让 AOS/GOS/雷达通过内部 PTP/PHC 链路重新跟随 NOS。
+
+本轮实机夹测已经通过，结果为：
+
+\begin{verbatim}
+check 1: offset=-0.001683s rtt=0.018566s
+check 2: offset=-0.001774s rtt=0.017724s
+check 3: offset=-0.000966s rtt=0.018623s
+check 4: offset=-0.001506s rtt=0.016970s
+check 5: offset=-0.001506s rtt=0.016908s
+\end{verbatim}
+
+这说明 NOS 当前约比背部主机慢 \texttt{1-2ms}，SSH 往返耗时约 \texttt{17-19ms}。
+该结果已经远好于短期导航复现的 \texttt{0.5s} 目标，可以进入重启整机后的 AOS/GOS/NOS/背部主机四机复测。
+
+整机重启后，三台内部主机已能重新 SSH，说明 AOS/GOS/NOS 网络和系统均已恢复。顺序输密码粗测结果为：
+
+\begin{verbatim}
+AOS 103     1784608005.572051498 2026-07-21 12:26:45 CST
+GOS 104     1784608006.929101980 2026-07-21 12:26:46 CST
+NOS 106     1784608008.337164692 2026-07-21 12:26:48 CST
+localhost   1784608006.482401524 2026-07-21 12:26:46 CST
+\end{verbatim}
+
+这次不再出现此前 \texttt{4-8min} 级偏差，说明重启后没有明显回退到旧时间域；但该命令是串行 SSH 并包含人工输密码，
+不能用来判断毫秒级误差。重启后的严格判断仍需对 AOS/GOS/NOS 分别做 \texttt{local\_before / remote / local\_after}
+夹测，或建立 SSH 复用后计算 offset。
+
+继续做三台主机的夹测时，直接看到的 \texttt{offset} 分别为 \texttt{+2s} 到 \texttt{+6s}，但这不是三台主机各自乱漂。
+原因是每次 SSH 都重新输入密码，\texttt{date} 实际在本地 \texttt{local\_after} 附近才执行，因此应近似扣除
+\texttt{rtt/2} 再看残差。修正后结果非常一致：
+
+\begin{verbatim}
+AOS 103: corrected offset ~= +1.8553s
+GOS 104: corrected offset ~= +1.8554s
+NOS 106: corrected offset ~= +1.8554s
+\end{verbatim}
+
+因此更准确的结论是：重启后 AOS/GOS/NOS 三台内部主机仍然彼此同步，内部 PTP 时间域没有散；
+但整个内部时间域相对背部主机约快 \texttt{1.855s}，没有保持到重启前的 \texttt{1-2ms} 状态。
+若继续做导航复现，建议再对 NOS 执行一次 \texttt{sudo chronyd -q 'server 10.21.31.192 iburst'}，
+随后不要立刻重启，等待 \texttt{10-30s} 后复测 AOS/GOS/NOS 与背部主机的 offset。
+
+随后按该建议对 NOS 再做一次 \texttt{chronyd -q}，日志为：
+
+\begin{verbatim}
+2026-07-21T05:06:05Z System clock wrong by -1.851979 seconds (step)
+\end{verbatim}
+
+这里的负号表示 NOS 原本比背部主机快，\texttt{chronyd} 将其向后校正了约 \texttt{1.852s}。
+复测时 SSH 复用已生效，\texttt{rtt} 回到 \texttt{15-18ms}，NOS 相对背部主机只剩约 \texttt{+4ms}：
+
+\begin{verbatim}
+check 1: offset=+0.004844s rtt=0.018203s
+check 2: offset=+0.004210s rtt=0.016268s
+check 3: offset=+0.004122s rtt=0.014942s
+check 4: offset=+0.004560s rtt=0.016041s
+check 5: offset=+0.004238s rtt=0.016472s
+\end{verbatim}
+
+到这一步可确认：重启后的 NOS 已重新与背部主机对齐到毫秒级。短期导航复现可以继续，
+但若要融合 AOS/GOS 侧话题，仍建议再等 \texttt{10-30s} 后对 AOS/GOS 也做一次 SSH 复用夹测，
+确认内部 PTP 已跟随新的 NOS 时间。
+
+随后对 AOS/GOS 做 SSH 复用夹测，结果为：
+
+\begin{verbatim}
+AOS 103:
+check 1: offset=+0.004058s rtt=0.019806s
+check 2: offset=+0.003769s rtt=0.017838s
+check 3: offset=+0.003551s rtt=0.016582s
+check 4: offset=+0.004274s rtt=0.019536s
+check 5: offset=+0.003662s rtt=0.016188s
+
+GOS 104:
+check 1: offset=+0.003492s rtt=0.015126s
+check 2: offset=+0.003203s rtt=0.013791s
+check 3: offset=+0.003046s rtt=0.012812s
+check 4: offset=+0.002961s rtt=0.012863s
+check 5: offset=+0.002864s rtt=0.012266s
+\end{verbatim}
+
+这说明 AOS/GOS 已经通过内部 PTP/PHC 链路跟随新的 NOS 时间，三台内部主机相对背部主机均已达到毫秒级。
+此时不需要再次重启；再次重启反而可能因为长期上游时间源尚未固化而回到启动后的秒级偏差。
+只有修改了 PTP/chrony/systemd 配置、验证冷启动持久性，或内部主机没有跟随 NOS 时，才需要再按整机重启流程验证。
+
+Lightning 建图重新运行后，日志中仍出现过一次：
+
+\begin{verbatim}
+E imu_processing.hpp:223] get abnormal dt: 0.508645
+E laser_mapping.cc:377] lidar loop back, clear buffer
+E laser_mapping.cc:379] lidar loop back, dt: -2.59876e-05
+W laser_mapping.cc:185] sync package failed
+\end{verbatim}
+
+结合源码判断，这已经不是此前多主机时钟相差分钟级导致的严重错位。\texttt{get abnormal dt} 的触发条件是
+IMU 积分步长 \texttt{dt > 0.1s}，本次 \texttt{0.508645s} 表示启动期或缓存中存在约半秒 IMU 间隔；
+\texttt{lidar loop back} 的 \texttt{dt=-2.6e-05s} 只有约 \texttt{26us}，更像点云时间戳近似重复/微小乱序。
+算法随后继续处理多帧点云并正常保存地图，说明不是致命崩溃。
+
+但这也不是理想状态。若这些错误在建图运行全过程持续刷屏，会影响 LIO 去畸变和 IMU 预积分，导致轨迹抖动、
+局部地图重影或定位漂移。当前建议：时间同步完成后重启 Lightning/tmux 会话，丢弃启动最初几秒数据，
+连续运行 \texttt{1-2min} 观察 \texttt{get abnormal dt}、\texttt{lidar loop back}、\texttt{sync package failed}
+是否仍频繁出现。若只是启动初期偶发，可继续建图；若持续出现，应继续检查 \texttt{/LIDAR/POINTS} 与
+\texttt{/IMU} 的 \texttt{header.stamp} 单调性、频率和二者时间差。
+
+若三类日志持续反复出现，则应按输入流问题处理，而不是继续归因于系统时钟。当前最可疑的两个方向：
+
+\begin{enumerate}
+  \item \texttt{/LIDAR/POINTS} 是否为双雷达/多发布源共用话题，导致点云帧时间戳微小回退。
+  Lightning 的 \texttt{LaserMapping::ProcessPointCloud2()} 对单一 LiDAR 流做了严格单调假设，
+  只要 \texttt{msg->header.stamp} 小于上一帧就会触发 \texttt{lidar loop back}。
+  \item \texttt{/IMU} 是否存在消息断流、低频或回调队列积压。Lightning 在线模式使用 \texttt{rclcpp::QoS(10)}，
+  LiDAR 回调内直接执行较重的 \texttt{ProcessLidar}，若 IMU 高频消息在同一 executor 中排队/丢包，
+  就可能让 IMU 预积分步长超过 \texttt{0.1s}，触发 \texttt{get abnormal dt}。
+\end{enumerate}
+
+下一步应先在运行 Lightning 的同一台主机、同一套环境下检查：
+
+\begin{verbatim}
+ros2 topic info -v /LIDAR/POINTS
+ros2 topic info -v /IMU
+timeout 15 ros2 topic hz /LIDAR/POINTS
+timeout 15 ros2 topic hz /IMU
+\end{verbatim}
+
+重点看 \texttt{/LIDAR/POINTS} 是否有多个 publisher，以及 \texttt{/IMU} 频率是否稳定。
+若 \texttt{/LIDAR/POINTS} 有多个发布源或时间戳不单调，后续需要改成单调的融合点云话题，
+或临时只取单个雷达源验证；若 \texttt{/IMU} 间隔确实反复超过 \texttt{0.1s}，
+则要考虑增大 QoS 队列、使用 sensor-data QoS/多线程 executor，或换用更稳定的 IMU 话题。
+
+本轮 60 秒时间戳探针已经坐实问题集中在 \texttt{/LIDAR/POINTS}，而不是 \texttt{/IMU}：
+
+\begin{verbatim}
+/IMU:
+  n=12002, back=0, gap=0, maxdt=0.005296s
+
+/LIDAR/POINTS:
+  n=600, back=46, gap=62, maxdt=0.200046s
+\end{verbatim}
+
+同时 \texttt{ros2 topic hz} 显示 \texttt{/LIDAR/POINTS} 到达频率约 \texttt{10Hz}，\texttt{/IMU} 约 \texttt{200Hz}。
+这并不矛盾：\texttt{ros2 topic hz} 看的是消息到达间隔，而 Lightning 看的是 \texttt{header.stamp}。
+当前 \texttt{/LIDAR/POINTS} 的消息到达节奏稳定，但 \texttt{header.stamp} 存在微小回退（约 \texttt{20-50us}）
+和约 \texttt{0.2s} 的时间戳跳变。结合 \texttt{Publisher count: 2}，当前最可信结论是：
+官方 \texttt{/LIDAR/POINTS} 不是一条满足严格单调假设的单 LiDAR 流，不适合直接喂给 Lightning 的 LIO 前端。
+
+这与官方示例视频不一定矛盾。官方 README 中的主要复现实例首先使用 M20 数据包，
+\texttt{ros2 bag play} 回放时对外只有 bag player 一个发布端；而当前真机在线环境里
+\texttt{/LIDAR/POINTS} 由两个 bare DDS publisher 同时发布。DDS/ROS2 只保证单个 publisher 内部的发送顺序，
+不保证两个 publisher 的消息按 \texttt{header.stamp} 全局排序。即便前后雷达已经被 PTP 同步到同一时间域，
+两个雷达帧时间仍可能只有几十微秒差异，网络调度和 DDS 投递顺序稍有交错，就会出现“较新的帧先到、
+较旧的帧后到”。Lightning 的源码在 \texttt{LaserMapping::ProcessPointCloud2()} 中直接用
+\texttt{timestamp < last\_timestamp\_lidar\_} 判定回环，因此这种微小乱序会被当成
+\texttt{lidar loop back}。
+
+另外，当前 echo 中也能看到 \texttt{/LIDAR/POINTS} 的点数并不恒定，例如连续帧出现过
+\texttt{width=45808}、\texttt{45657}、\texttt{17626}、\texttt{68315}。这更像多个底层来源或不同阶段处理结果
+共用一个话题，而不是一个已经稳定排序、单消息输出的融合点云。官方视频可能使用的是离线包、单发布端数据、
+不同固件/配置，或者只是没有展示启动期/运行期日志，因此不能直接据此认定当前输入流一定正常。
+
+下一步不要再优先调系统时钟或 IMU，而应优先验证单源/单调点云输入：
+
+\begin{verbatim}
+# 候选 1：单 publisher 的官方点云
+ros2 topic info -v /LIDAR/POINTS2
+timeout 15 ros2 topic hz /LIDAR/POINTS2
+
+# 候选 2：官方处理后的单 publisher 点云，若当前场景有发布
+ros2 topic info -v /ALIGNED_POINTS
+ros2 topic info -v /LOC_BODY_POINTS
+ros2 topic info -v /NAV_POINTS
+\end{verbatim}
+
+若候选话题频率和 \texttt{header.stamp} 单调性合格，再把 Lightning 配置中的
+\texttt{common.lidar\_topic} 从 \texttt{/LIDAR/POINTS} 改到该话题测试。若没有合格候选，
+则需要新建一个中间节点：短期可以把 \texttt{/LIDAR/POINTS} 重发布为单调话题、
+丢弃 \texttt{stamp <= last\_stamp} 的帧来验证 Lightning 是否停止 \texttt{lidar loop back}；
+长期应使用单雷达原始流或真正融合后的单调点云流，而不是让两个 bare DDS publisher 交错进入同一个 LIO 前端。
+
+注意：\texttt{chronyd -q} 校的是 NOS 系统时钟。若准备立刻重启整机，建议夹测通过后在 NOS 上补执行
+\texttt{sudo hwclock -w || true}，与官方手册保持一致，尽量避免重启后从旧 RTC/硬件时钟恢复。
+
+这属于“直接同步外部时钟”的短期方式，精度通常比手动 \texttt{date -s} 更好。长期方案仍应参考官方 Pro 手册，
+让背部主机/外部时钟源作为上游时间源，NOS 以 Boundary Clock 方式上游跟随外部时间、
+下游继续给 AOS/GOS/雷达授时。
+
+\subsubsection{NOS 导航主机全量话题速查}
+
+下表记录本轮在 NOS root 下看到的全部话题。解释分为两类：已经由日志、节点关系或频率验证过的，按实测记录；
+仅凭话题名和官方链路推断的，保守标注为“疑似”或“待确认”。后续正式接导航前，应再补充每个重点话题的
+\texttt{ros2 topic type}、\texttt{info -v}、\texttt{hz} 和一帧元数据。
+
+{\small
+\renewcommand{\arraystretch}{1.12}
+\begin{longtable}{p{0.17\linewidth}p{0.31\linewidth}p{0.43\linewidth}}
+\toprule
+\textbf{类别} & \textbf{话题} & \textbf{当前解释/用途}\\
+\midrule
+\endfirsthead
+\toprule
+\textbf{类别} & \textbf{话题} & \textbf{当前解释/用途}\\
+\midrule
+\endhead
+点云/雷达 & \texttt{/ALIGNED\_POINTS} & 对齐后的点云，疑似经过时间同步、位姿补偿或坐标统一，适合后续查其 frame 与发布节点。\\
+电池/充电 & \texttt{/BATTERY\_CHARGE\_ENABLE} & 电池充电使能控制或状态。不要由导航节点直接发布。\\
+电池/充电 & \texttt{/BATTERY\_DATA} & 电池电压、电量、电流、温度等状态数据，是实机安全监控重点。\\
+电池/充电 & \texttt{/CHARGE\_CMD} & 充电相关命令话题。\\
+电池/充电 & \texttt{/CHARGE\_STATUS} & 充电状态反馈。\\
+系统资源 & \texttt{/CPU\_103} & AOS 103 主机资源状态，帮助判断是否适合部署计算任务。\\
+系统资源 & \texttt{/CPU\_104} & GOS 104 主机资源状态，后续选择导航主算法部署位置时要关注。\\
+系统资源 & \texttt{/CPU\_106} & NOS 106 主机资源状态；NOS 已运行大量导航/感知进程，不宜再压重计算。\\
+图像/地形 & \texttt{/DEPTH\_IMAGE} & 深度图，可能由点云或深度传感器生成。用于地形/感知可视化。\\
+安全/异常 & \texttt{/EXCEPTION\_NOTIFICATION} & 异常通知，可能汇总系统异常事件。需要结合类型确认字段。\\
+安全/异常 & \texttt{/FAULT\_STATUS} & 故障状态，实机导航安全监控必看。\\
+GNSS/RTK & \texttt{/FIBOCOM/net\_rtk/gngga} & Fibocom RTK 输出的 NMEA GNGGA 定位报文。\\
+GNSS/RTK & \texttt{/FIBOCOM/net\_rtk/heading} & Fibocom RTK 航向信息。\\
+地图/点云 & \texttt{/FULL\_CLOUD\_MAP} & 全局或累计点云地图，偏建图/可视化，不适合高频局部避障主输入。\\
+运动状态 & \texttt{/GAIT} & 步态模式或步态状态。M20 是轮足式，后续可用于区分轮式/足式运动模式。\\
+规划状态 & \texttt{/GLOBAL\_PLANNER\_STATUS} & 全局规划器状态。\\
+GNSS/RTK & \texttt{/GPS} & GPS 定位数据。\\
+GNSS/RTK & \texttt{/GPS\_CFGSYS} & GPS 系统配置相关话题。\\
+GNSS/RTK & \texttt{/GPS\_SYS\_MODE} & GPS 系统工作模式。\\
+地图/栅格 & \texttt{/GRIDS\_ID} & 栅格块或地图块 ID，疑似用于局部地图编号。\\
+地图/栅格 & \texttt{/GRID\_MAP} & 官方大写命名的栅格地图话题，需确认和 \texttt{/grid\_map} 的区别。\\
+点云/调试 & \texttt{/HANDLER\_POINTS\_DEBUG} & 点云处理调试输出。\\
+人工控制 & \texttt{/HANDLE\_STEER} & 手柄或人工控制转向输入/状态。\\
+图像/地形 & \texttt{/HEIGHT\_IMAGE} & 高度图图像。\\
+图像/地形 & \texttt{/HEIGHT\_MAP\_STATUS} & 高程图模块状态。\\
+安全/状态 & \texttt{/HES\_STATUS} & 官方硬件/安全状态类话题，具体含义待确认，不能仅凭名字下结论。\\
+定位/姿态 & \texttt{/IMU} & 主 IMU 数据，定位、姿态估计和点云处理的重要输入。\\
+定位/姿态 & \texttt{/IMU\_YESENSE} & YESENSE IMU 数据，可能是独立 IMU 或原始 IMU 源。\\
+底层控制 & \texttt{/JOINTS\_CMD} & 关节命令话题，风险高；导航层不应直接发布。\\
+底层控制 & \texttt{/JOINTS\_DATA} & 关节状态，包含位置、速度、力矩等底层反馈。\\
+底层控制 & \texttt{/JOINTS\_DATA\_10HZ} & 降频后的关节状态，适合监控和记录。\\
+系统状态 & \texttt{/LED/STATUS} & 指示灯状态。\\
+雷达 & \texttt{/LIDAR/IMU201} & 201 号前雷达相关 IMU 或惯性数据。\\
+雷达 & \texttt{/LIDAR/IMU202} & 202 号后雷达相关 IMU 或惯性数据。\\
+雷达/点云 & \texttt{/LIDAR/POINTS} & 官方原始点云主话题。实测 \texttt{Publisher count: 2}，更像前后雷达底层 DDS 发布端共用同一 topic。\\
+雷达/点云 & \texttt{/LIDAR/POINTS2} & \texttt{PointCloud2}，实测 \texttt{Publisher count: 1}、\texttt{Subscription count: 1}，但 5 秒窗口未得到稳定 \texttt{hz} 输出；暂不作为可用输入。\\
+雷达 & \texttt{/LIDAR/STATUS} & \texttt{drdds/msg/AiryLidarStatus}，实测两个 publisher、三个 subscriber；用于雷达在线、故障或配置状态。\\
+定位/里程计 & \texttt{/LIO\_ODOM} & 雷达惯性里程计输出。\\
+定位/里程计 & \texttt{/LIO\_ODOM\_HIGH\_FREQUENCY} & 高频 LIO 里程计，若稳定可作为三维导航定位输入候选。\\
+定位状态 & \texttt{/LOCATION\_STATUS} & 定位系统总体状态。\\
+定位状态 & \texttt{/LOCATION\_STATUS/MATCHING\_ERROR} & 定位匹配误差，用于判断地图匹配质量。\\
+点云/定位 & \texttt{/LOC\_BODY\_POINTS} & 机体系局部点云，实测被 \texttt{accumulate\_cloud} 订阅，但 5 秒窗口未得到样本；是官方局部感知链路输入候选。\\
+运动状态 & \texttt{/MOTION\_INFO} & 运动控制信息。\\
+运动状态 & \texttt{/MOTION\_STATE} & 当前运动状态。\\
+运动状态 & \texttt{/MOTION\_STATUS} & 运动控制状态码，实机安全监控重点。\\
+导航 & \texttt{/NAV\_CMD} & 导航命令。\\
+导航 & \texttt{/NAV\_POINTS} & 导航点或任务点。\\
+导航 & \texttt{/NAV\_STATUS} & 导航状态。\\
+定位/里程计 & \texttt{/ODOM} & 机器人里程计，导航闭环基础输入。\\
+安全/状态 & \texttt{/OOA\_STATUS} & 官方状态类话题，含义待确认；可能与避障/自主运行状态相关。\\
+局部感知 & \texttt{/PASSABLE\_AREA\_ENABLE} & 可通行区域链路使能。处理后点云是否输出与该使能和上游输入有关，必须结合状态码和 \texttt{hz} 判断。\\
+规划状态 & \texttt{/PLANNER\_STATUS} & 规划器状态。\\
+人工/转向 & \texttt{/REAL\_STEER} & 实际转向反馈。\\
+点云/分割 & \texttt{/SEG\_CLOUD} & 分割后的点云，可能包含地面/障碍/语义分割结果。\\
+人工/转向 & \texttt{/STEER} & 转向命令或转向状态。\\
+地形识别 & \texttt{/TERRAIN\_CLASSIFIER\_STATUS} & 地形分类器状态。\\
+路径跟踪 & \texttt{/TRACK\_PATH} & 跟踪路径。\\
+UWB & \texttt{/UWB\_ENABLE} & UWB 定位使能。\\
+UWB & \texttt{/UWB\_ODOM\_LOST} & UWB 里程计丢失状态。\\
+UWB & \texttt{/UWB\_ONLINE} & UWB 在线状态。\\
+规划调试 & \texttt{/WEIGHT\_ITEMS} & 规划器权重项或代价函数调试信息。\\
+局部点云 & \texttt{/accumulate\_cloud/cloud\_base} & 累计点云，发布者为 \texttt{accumulate\_cloud}；本轮 5 秒窗口未得到样本。\\
+局部点云 & \texttt{/accumulate\_cloud/cloud\_gravity} & 累计点云，发布者为 \texttt{accumulate\_cloud} 且被 \texttt{passable\_area} 订阅；本轮 5 秒窗口未得到样本。\\
+局部点云 & \texttt{/accumulate\_cloud/status\_code} & 累计点云节点状态码。\\
+可视化 & \texttt{/body\_visual} & 机器人本体可视化。\\
+点云/图像 & \texttt{/cloud\_depth} & 深度相关点云或由点云生成的深度表示。\\
+局部点云 & \texttt{/cloud\_local} & 局部点云。\\
+局部点云 & \texttt{/cloud\_local\_g} & 重力对齐或全局参考下的局部点云。\\
+导航点云 & \texttt{/cloud\_nav} & 导航使用的点云端点，实测有 publisher 和 subscriber，但本轮未得到稳定频率。\\
+当前点云 & \texttt{/cloud\_now\_g} & 当前帧重力对齐点云。\\
+障碍点云 & \texttt{/cloud\_obs} & 障碍物点云端点，实测有 publisher，但本轮未得到稳定频率。\\
+运动状态 & \texttt{/dr/MotionInfo} & Deep Robotics 命名空间下的运动信息。\\
+GNSS/融合 & \texttt{/fibo\_fusion\_pose} & Fibocom/GNSS/RTK 融合位姿。\\
+GNSS/融合 & \texttt{/fibo\_fusion\_state} & Fibocom/GNSS/RTK 融合状态。\\
+规划 & \texttt{/free\_paths} & 候选可行路径集合。\\
+规划路径 & \texttt{/global\_path} & 全局路径。\\
+规划可视化 & \texttt{/global\_path\_markers} & 全局路径 RViz marker。\\
+目标点 & \texttt{/goal\_baselink} & 转换到机器人坐标系下的目标点。\\
+地图/栅格 & \texttt{/grid\_map} & 小写命名的栅格地图输出，需与 \texttt{/GRID\_MAP} 区分。\\
+地图/栅格 & \texttt{/grid\_map\_3d} & 三维栅格地图或 3D grid map。\\
+地形/高度 & \texttt{/height\_map} & 高程地图。\\
+局部感知 & \texttt{/impassable\_area} & 不可通行区域点云，发布者为 \texttt{passable\_area}；本轮 5 秒窗口未得到样本，稳定输出前不能直接接导航。\\
+定位输入 & \texttt{/initialpose} & 初始位姿输入，常用于 RViz/Nav2。\\
+目标点 & \texttt{/local\_goal} & 局部目标点。\\
+目标点 & \texttt{/local\_goal\_baselink} & 机器人坐标系下的局部目标点。\\
+地图 & \texttt{/local\_map} & 局部地图。\\
+规划路径 & \texttt{/local\_path} & 局部路径。\\
+局部感知 & \texttt{/local\_scans} & 局部扫描或局部点云切片。\\
+ROS2 基础 & \texttt{/parameter\_events} & ROS2 参数事件。\\
+局部感知 & \texttt{/passable\_area} & 可通行区域点云，发布者为 \texttt{passable\_area}；本轮 5 秒窗口未得到样本。\\
+局部感知 & \texttt{/passable\_status\_code} & 可通行区域节点状态码。\\
+规划路径 & \texttt{/path} & 通用路径输出。\\
+规划路径 & \texttt{/path\_Astar} & A* 路径输出。\\
+规划模式 & \texttt{/planner\_mode} & 规划器模式切换。\\
+标签定位 & \texttt{/pose\_in\_apriltag\_corrected} & AprilTag 修正后的位姿。\\
+ROS2 基础 & \texttt{/rosout} & ROS2 日志输出。\\
+标签定位 & \texttt{/tag\_status} & 标签定位状态。\\
+目标点 & \texttt{/target\_goal} & 目标点。\\
+坐标变换 & \texttt{/tf} & TF 坐标变换树，点云、地图、路径和导航闭环都依赖它。\\
+路径跟踪 & \texttt{/track\_path\_baselink} & 机器人坐标系下的跟踪路径。\\
+局部代价图 & \texttt{/traversal\_cost} & \texttt{OccupancyGrid}，发布者为 \texttt{passable\_area}；之前确认过局部代价图形态，但本轮 5 秒窗口未得到样本，稳定输出前不能直接接 Nav2。\\
+点云可视化 & \texttt{/vis\_global\_points} & 全局点云可视化。\\
+点云可视化 & \texttt{/vis\_global\_points\_pruned} & 裁剪/稀疏后的全局点云可视化。\\
+\bottomrule
+\end{longtable}
+}
+
+\begin{redbox}{本次雷达接入核心经验}
+\begin{enumerate}
+  \item UDP 组播链路要先用 \texttt{tcpdump} 验证，再谈 ROS2 话题。
+  \item \texttt{6691/6692} 是点云主数据，缺它会直接导致 \texttt{ERRCODE\_MSOPTIMEOUT}。
+  \item \texttt{7781/7782} 是低频状态/配置数据，频率低，混合抓包时容易被 MSOP 刷屏淹没。
+  \item \texttt{multicast-relay.service} 显示 active 只说明进程活着，不说明四个转发线程都正常。
+  \item NOS 上 \texttt{Tasks: 5} 且 \texttt{python3} 持有四个端口，才是当前实机的健康状态。
+  \item 背部主机同时有 WiFi 和有线口时，必须确认 \texttt{224.0.0.0/4} 组播路由走有线口。
+  \item RViz 报 frame 不存在时，先查点云消息的 \texttt{header.frame\_id}，不要误判为雷达链路失败。
+\end{enumerate}
+\end{redbox}
+
+\subsection{Lightning-LM 与导航算法部署决策：先分清算法跑在哪台主机}
+
+Lightning-LM 真机部署记录的关键价值不是单纯说明怎么编译，
+而是把一个实机部署判断讲清楚：
+\[
+\text{能离线建图}
+\neq
+\text{能实时导航}
+\neq
+\text{适合把算法部署在这台主机上}.
+\]
+实时导航必须同时满足高频点云、IMU/里程计、TF、时间同步、安全限速和主机资源余量。
+
+\begin{greenbox}{当前最重要的部署判断}
+\begin{enumerate}
+  \item \textbf{AOS 103/NOS 106} 是当前明确验证过可接触官方原始 \texttt{/LIDAR/POINTS} 的内部主机；其中 NOS root 下该话题约 \texttt{10Hz} 且 \texttt{Publisher count: 2}。
+  \item \textbf{GOS 104} 资源最空，最适合作为后续导航主算法主机，但当前默认看不到原始 \texttt{/LIDAR/POINTS}。
+  \item \textbf{NOS 106} 同时连接雷达网和业务网，负责官方 relay 和可通行区域链路，但负载最高，不建议叠加自研重算法。
+  \item \textbf{背部主机} 适合 RViz、bag、日志、调参、UI、离线验证和低速监督；若要承担实时三维避障，必须先稳定拿到高频点云。
+\end{enumerate}
+\end{greenbox}
+
+\subsubsection{官方 Lightning-LM 在线建图实机调试记录}
+
+本轮官方 \texttt{lightning-lm-deep-robotics} 的在线建图部署主要在 AOS
+\texttt{10.21.31.103} 上进行，工作空间为 \texttt{/home/user/lighting-ws}。
+启动前必须先加载官方 ROS2/DDS 环境，再加载工作空间：
+
+\begin{verbatim}
+su
+cd /home/user/lighting-ws
+source /opt/robot/scripts/setup_ros2.sh
+source install/setup.bash
+\end{verbatim}
+
+实机调试中遇到的第一类问题是：完整默认配置即使关闭 \texttt{use\_imu\_orient}，
+静止时仍可能处理不过 \texttt{10Hz} 雷达输入。典型日志为：
+
+\begin{verbatim}
+func <Proc Lidar> timer: 160.716 ms
+func <Proc Lidar> timer: 223.07 ms
+func <Proc Lidar> timer: 338.579 ms
+func <Proc Lidar> timer: 401.446 ms
+E imu_processing.hpp:223] get abnormal dt: 0.152255
+E imu_processing.hpp:223] get abnormal dt: 0.295567
+\end{verbatim}
+
+这说明虽然 \texttt{/LIDAR/POINTS} 的到达频率约 \texttt{10Hz}，单帧预算只有约
+\texttt{100ms}，完整回环与栅格建图链路会导致 LiDAR/IMU 同步队列积压。
+因此在运动建图前不能直接使用完整原版参数，应先用轻量实时配置验证位姿是否稳定。
+
+第二类问题是 IMU 绝对姿态约束。完整原版配置运动后曾反复出现：
+
+\begin{verbatim}
+W laser_mapping.cc:583] IMU orientation residual is too large
+\end{verbatim}
+
+同时 \texttt{/lightning/odom} 出现与直线运动不符的大姿态/横向跳变。
+结合源码可知，该警告来自估计姿态与 IMU 测得四元数残差过大。当前 M20 Pro 的
+\texttt{/IMU} 是官方对外坐标变换后的 IMU 话题，但其绝对航向/坐标约定不一定与
+Lightning 在线 LIO 的 \texttt{map/lidar\_link} 假设一致。短期建图验证中先关闭
+\texttt{use\_imu\_orient}，保留 IMU 的角速度和加速度积分，不再强行使用绝对姿态约束。
+
+本轮最终采用的轻量实时配置为 \texttt{m20\_lio\_rt\_fast.yaml}。如果该文件出现
+\texttt{bad conversion}，不要在坏文件上继续猜，应从默认配置重新生成：
+
+\begin{verbatim}
+cp src/lightning-lm-deep-robotics/config/default_deep_roboticsslam.yaml \
+   src/lightning-lm-deep-robotics/config/m20_lio_rt_fast.yaml
+
+sed -i 's/use_imu_orient: true/use_imu_orient: false/' \
+  src/lightning-lm-deep-robotics/config/m20_lio_rt_fast.yaml
+sed -i 's/with_loop_closing: true/with_loop_closing: false/' \
+  src/lightning-lm-deep-robotics/config/m20_lio_rt_fast.yaml
+sed -i 's/with_g2p5: true/with_g2p5: false/' \
+  src/lightning-lm-deep-robotics/config/m20_lio_rt_fast.yaml
+sed -i 's/point_filter_num: 6/point_filter_num: 12/' \
+  src/lightning-lm-deep-robotics/config/m20_lio_rt_fast.yaml
+sed -i 's/max_iteration: 4/max_iteration: 3/' \
+  src/lightning-lm-deep-robotics/config/m20_lio_rt_fast.yaml
+sed -i 's/filter_size_scan: 0.5/filter_size_scan: 0.8/' \
+  src/lightning-lm-deep-robotics/config/m20_lio_rt_fast.yaml
+sed -i 's/filter_size_map: 0.5/filter_size_map: 0.8/' \
+  src/lightning-lm-deep-robotics/config/m20_lio_rt_fast.yaml
+\end{verbatim}
+
+检查结果应类似：
+
+\begin{verbatim}
+lidar_topic: "/LIDAR/POINTS"
+imu_topic: "/IMU"
+point_filter_num: 12
+max_iteration: 3
+filter_size_scan: 0.8
+filter_size_map: 0.8
+with_loop_closing: false
+with_g2p5: false
+use_imu_orient: false
+roi:
+  height_max: 0.5
+  height_min: -2.0
+\end{verbatim}
+
+启动时将 SLAM 主进程绑定到 AOS 大核，并设置实时优先级。AOS/NOS/GOS 均为 RK3588，
+大核为 \texttt{CPU 4-7}：
+
+\begin{verbatim}
+pkill -f run_slam_online
+tmux kill-session -t lg 2>/dev/null || true
+
+taskset -c 4-7 chrt -r 40 /opt/ros/foxy/bin/ros2 run lightning run_slam_online \
+  --config src/lightning-lm-deep-robotics/config/m20_lio_rt_fast.yaml
+\end{verbatim}
+
+RViz 与观测终端分开运行：
+
+\begin{verbatim}
+rviz2 -d src/lightning-lm-deep-robotics/config/showbodypc.rviz
+ros2 run tf2_ros tf2_echo map lidar_link
+ros2 topic echo /lightning/odom
+\end{verbatim}
+
+注意：RViz 中 \texttt{map} 是固定坐标系，本来就应在原点不动；真正随机器人运动的是
+\texttt{lidar\_link}，可通过 \texttt{tf2\_echo map lidar\_link} 或
+\texttt{/lightning/odom} 判断。RViz 初始出现
+\texttt{Invalid frame ID "map"} 通常只是 TF 尚未收到第一帧；随后能打印
+\texttt{map -> lidar\_link} 即正常。\texttt{QStandardPaths: wrong ownership on runtime directory}
+则是 root 运行 RViz 时的 Qt 运行目录提示，不影响 SLAM 主算法。
+
+30 秒静止统计中，轻量配置的关键结果为：
+
+\begin{verbatim}
+get abnormal dt: 约 1 次
+检测到雷达断流: 0
+IMU orientation residual: 0
+lidar loop back: 62
+Proc Lidar: 最近多在 0.5ms - 56ms
+\end{verbatim}
+
+这表明实时性已基本压住，雷达没有断流，IMU 姿态残差也不再持续出现。
+\texttt{lidar loop back} 仍较多，结合前文时间戳探针，主要原因仍是
+\texttt{/LIDAR/POINTS} 的双发布源/时间戳微小乱序，而不是 CPU 算力彻底不足。
+短期可以在低速测试中接受；长期仍应改为单调的单源点云或增加中间重发布/排序/丢帧节点。
+
+第一次低速运动测试中，机器狗沿 \texttt{x} 负方向实际走约 \texttt{1m}，
+Lightning 输出为：
+
+\begin{verbatim}
+tf2_echo:
+Translation: [-0.829, -0.069, 0.055]
+Rotation: [-0.001, -0.001, 0.037, 0.999]
+
+/lightning/odom:
+x = -0.8377
+y = -0.1049
+z = 0.0563
+qz = 0.0420
+qw = 0.9991
+\end{verbatim}
+
+该结果说明方向正确、尺度大致可用、横向误差约 \texttt{10cm}、yaw 约 \texttt{4-5deg}，
+没有出现原版配置中的大翻滚或大横跳。运动过程中出现过一次
+\texttt{get abnormal dt: 0.11498}，只比 \texttt{0.1s} 阈值多约 \texttt{15ms}；
+若只是偶发，可继续低速测试。若后续运动中频繁出现 \texttt{0.2s} 以上的
+\texttt{abnormal dt}、伴随雷达断流或 odom 姿态大跳，则应停止运动并继续降低点云负载，
+例如将 \texttt{point\_filter\_num} 提到 \texttt{14/16} 或将
+\texttt{filter\_size\_scan/map} 提到 \texttt{1.0}。
+
+\begin{orangebox}{当前 Lightning-LM 在线部署阶段结论}
+短期可用方案是：AOS root 下运行 Lightning，使用 \texttt{/LIDAR/POINTS + /IMU}，
+关闭 \texttt{use\_imu\_orient}、关闭回环和 G2P5 栅格建图，绑定大核 \texttt{4-7} 并设置
+\texttt{SCHED\_RR 40}。该方案已经通过静止和约 \texttt{1m} 低速直线运动的初步验证，
+可用于低速建图调试和生成初版 PCD/轨迹。若目标是高质量地图，后续应在实时性稳定后逐步恢复点云密度、
+回环和栅格建图；若目标是导航定位，则应优先解决 \texttt{/LIDAR/POINTS} 双发布源时间戳乱序问题。
+\end{orangebox}
+
+另外，远程工具显示 \texttt{/root-ro: 97\%} 并不是本轮建图效果差的主要原因。
+该分区是官方只读系统底层镜像，实际可写根文件系统走 \texttt{overlay} 与
+\texttt{/userdata}。本轮截图中 \texttt{/}、\texttt{/userdata} 仍有约 \texttt{16GB} 可用，
+\texttt{/var/opt/robot/data} 还有约 \texttt{55GB} 可用。因此后续不要把 bag、PCD、
+大地图长期写入 \texttt{/root}、\texttt{/opt}、\texttt{/usr} 等系统路径，优先使用：
+
+\begin{verbatim}
+/home/user/lighting-ws/data
+/userdata
+/var/opt/robot/data
+\end{verbatim}
+
+\subsubsection{三类点云输入不要混淆}
+
+当前 M20 上至少存在三类“看起来都是点云”的输入路径：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{p{0.26\linewidth}p{0.30\linewidth}p{0.32\linewidth}}
+\toprule
+\textbf{点云路径} & \textbf{当前实测状态} & \textbf{适合用途}\\
+\midrule
+官方 \texttt{/LIDAR/POINTS} &
+AOS/NOS root 下可见；\texttt{Publisher count: 2}，约 \texttt{9-10Hz}；GOS/背部主机默认不可见。 &
+Lightning-LM、LIO、原始三维建图定位、高频避障的数据源。\\
+背部主机自解码 \texttt{/rslidar\_points\_front/rear} &
+依赖 NOS UDP 组播转发和背部主机 \texttt{rslidar\_sdk}；本轮前后雷达均已验证约 \texttt{10Hz}。 &
+不改 AOS 的情况下，在外接主机本地生成 \texttt{PointCloud2}，用于 Nav2/MPPI/建图前处理。\\
+官方处理后 \texttt{/impassable\_area}、\texttt{/traversal\_cost} &
+历史轮次曾看到约 \texttt{1.43Hz} 输出；最新背部审计中端点可见但 5 秒窗口未收到稳定样本。 &
+低速安全监督、可视化、Nav2 局部避障候选输入；必须重新确认使能、频率、frame 和延迟后才能接入。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+因此，\texttt{ros2 topic list} 能看到某个点云话题，只能证明 DDS 图里存在端点；
+能否接入导航还必须同时检查 \texttt{type}、\texttt{info -v}、\texttt{hz}、\texttt{header.frame\_id}、字段、延迟和 RViz 空间一致性。
+
+\begin{orangebox}{雷达型号配置的最终记录}
+早期排查中曾根据包长和包头讨论过 \texttt{RSHELIOS} 等 decoder；
+但背部主机按官方补充资料和最终实机跑通结果，应优先记录为
+\texttt{RSAIRY + 224.10.10.201/202 + 6691/6692 + 7781/7782}。
+如果后续出现 \texttt{ERRCODE\_WRONGMSOPBLKID}，再回查厂家型号、官方 \texttt{rslidar} 配置或使用已适配的自定义 decoder。
+\end{orangebox}
+
+\subsubsection{可选实时点云路线}
+
+若后续目标是让 GOS 或背部主机运行 Lightning-LM、Nav2/MPPI 或三维局部规划，可以按风险从低到高分成三条路线：
+
+\begin{enumerate}
+  \item \textbf{本地解码官方 UDP 组播：}NOS 继续运行 \texttt{multicast.py}，GOS 或背部主机本地运行 \texttt{rslidar\_sdk}，发布自己的 \texttt{/rslidar\_points\_front/rear}。这条路线不需要订阅官方 \texttt{/LIDAR/POINTS}，也不需要 AOS 全量桥接。
+  \item \textbf{AOS 轻量桥接到 GOS：}AOS 订阅原始 \texttt{/LIDAR/POINTS}，只发布 ROI 裁剪、体素降采样、限频后的障碍云，例如 \texttt{/m20/perception/obstacle\_cloud}。目标是让 GOS 拿到约 \texttt{8-10Hz} 的轻量点云。
+  \item \textbf{AOS 限核运行建图/定位：}如果桥接不稳定，先把依赖原始点云的算法放在 AOS root 下限核运行，只把定位、障碍物或地图结果发给 GOS/背部主机。
+\end{enumerate}
+
+不建议把完整 Lightning-LM、Nav2、SCAN/m20\_scan\_planner 等重计算主闭环放到 NOS；
+NOS 当前已经运行官方 \texttt{rslidar}、\texttt{accumulate\_cloud}、\texttt{passable\_area}、localPlanner、localization 等链路，
+继续加重会增加系统抖动和安全风险。
+
+\subsubsection{主机分工建议}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{p{0.18\linewidth}p{0.32\linewidth}p{0.38\linewidth}}
+\toprule
+\textbf{主机} & \textbf{当前优势} & \textbf{建议承担的任务}\\
+\midrule
+AOS 103 &
+直接接入雷达网、业务网和控制网；root 下可稳定看到原始 \texttt{/LIDAR/POINTS}。 &
+原始点云入口、bag 录制、轻量桥接、受限建图验证；新增任务必须限核、限优先级、可随时关闭。\\
+GOS 104 &
+资源最空，官方二次开发定位更合适；可见 \texttt{/IMU}、\texttt{/ODOM} 和状态话题。 &
+拿到高频点云或障碍云后，作为导航主算法、任务状态机和安全仲裁的优先部署主机。\\
+NOS 106 &
+双网卡连接 31/33 网段，官方 relay 与可通行区域链路运行在这里。 &
+保持官方网络、定位、passable/localPlanner 链路；只做健康检查和必要的官方服务维护。\\
+背部主机 &
+算力空、开发方便、能远程维护，已接入 \texttt{10.21.31.192}。 &
+RViz、bag、日志、调参、UI、离线/半实物验证；在高频点云稳定后可承担轻量感知或低速监督。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{接入导航前的验收条件}
+
+无论选择哪条路线，接入 Nav2、MPPI 或三维局部规划前至少要过下面的门槛：
+
+\begin{enumerate}
+  \item 高频点云：\texttt{/LIDAR/POINTS} 或 \texttt{/rslidar\_points\_front/rear} 稳定有 \texttt{hz}，且 frame、字段和时间戳可信。
+  \item 状态输入：\texttt{/IMU}、\texttt{/ODOM}、\texttt{/tf} 可持续输出，TF 至少能解释 robot frame 与 lidar/gravity/local frame 的关系。
+  \item 时间同步：AOS/GOS/NOS/背部主机时间偏差先压到 \texttt{0.5s} 内；做 LIO 或高速避障时再追求几十毫秒级。
+  \item 资源余量：运行算法的主机 CPU、内存、温度、磁盘空间都有余量，录 bag 不会把系统拖死。
+  \item 安全链路：\texttt{/cmd\_vel} 之后必须经过限速、加速度限制、急停、遥控器接管和 M20 SDK 状态机。
+\end{enumerate}
+
+\begin{redbox}{不能直接上车闭环的情况}
+只看到话题名、只有低频 \texttt{1.43Hz} 处理后代价图、TF frame 不清楚、机器狗与背部主机时间差数分钟、
+或者 \texttt{/cmd\_vel} 还没有经过 SDK adapter 和安全仲裁时，都不应直接让 M20 执行自主导航。
+\end{redbox}
+
+\subsection{最终实施路线：从学习资料到实物验收}
+
+整理全部资料后，推荐的最终实习产出路线如下：
+
+\begin{enumerate}
+  \item \textbf{资料汇总：}以本文为主交付物，把官方方案、实机日志、接口审计和部署判断沉淀为可执行路线。
+  \item \textbf{模型理解：}确认 M20 四条腿、轮关节、雷达坐标系和 footprint。
+  \item \textbf{底层控制理解：}确认官方 \texttt{sdk\_deploy} 状态机、RL policy 和速度意图接口。
+  \item \textbf{仿真验证：}Gazebo/Nav2 验证导航，MuJoCo/sdk\_deploy 验证速度执行。
+  \item \textbf{真实点云验证：}内部主机验证官方 \texttt{/LIDAR/POINTS}；背部主机优先验证 \texttt{rslidar\_sdk} 自解码的 \texttt{/rslidar\_points\_front/rear}。
+  \item \textbf{主机分工：}AOS 做原始点云入口或轻量桥接，GOS 作为导航主算法候选，背部主机做开发/监控，NOS 保持官方链路。
+  \item \textbf{时间同步：}导航前完成 AOS/GOS/NOS/背部主机时钟复测，避免 TF 和 costmap 把点云当成未来或过期数据。
+  \item \textbf{部署包准备：}维护 \texttt{m20\_foxy\_nav\_deploy} 与点云桥接/转换包，地图文件后续补入 \texttt{maps/}。
+  \item \textbf{执行层接入：}实现 \texttt{/cmd\_vel} \(\rightarrow\) \texttt{m20\_cmd\_vel\_adapter} \(\rightarrow\) M20 SDK。
+  \item \textbf{安全验收：}先只观察 \texttt{/cmd\_vel}，再架空测试，最后空旷低速短距离目标。
+\end{enumerate}
+
+\begin{answerbox}
+\textbf{模块五总结：}
+当前实机资料中的价值可以归纳成一条真机路线：
+先理解模型和 SDK 边界，再用 ROS2 工具验证话题、TF、bag 和 RViz；
+随后把 RoboSense 雷达分成官方 \texttt{/LIDAR/POINTS}、背部主机自解码点云、官方处理后通行区域三类输入；
+最后根据 AOS/GOS/NOS/背部主机的资源和话题可见性选择部署位置，并通过安全限制后的 \texttt{/cmd\_vel} 接入 M20 SDK。
+\end{answerbox}
+
+\section{最后速记：M20 建模与控制一页总结}
+
+\begin{orangebox}{面试或复习时可以这样讲}
+M20 Pro 是轮足式四足机器人。建模时可以从 URDF 抽取每条腿的 link/joint 关系和几何参数，
+先推单腿正运动学 \(\bs p_i^B=f_i(\bs q_i)\)，再推 Jacobian
+\(\dot{\bs p}_i^B=\bs J_{p,i}\dot{\bs q}_i\)。
+因为 M20 机身不是固定底座，所以完整动力学要使用浮动基模型，并加入轮地接触力：
+\[
+\bs M(\bs q)\dot{\bs v}+\bs h(\bs q,\bs v)
+=
+\bs S\T\bs\tau+\bs J_c(\bs q)\T\bs\lambda.
+\]
+导航仿真可以把它降阶成四轮差速底盘；MuJoCo/Isaac/RL 则更关注真实接触、执行器和动力学响应。
+\end{orangebox}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{0.22\linewidth}p{0.30\linewidth}p{0.36\linewidth}}
+\toprule
+\textbf{主题} & \textbf{一句话} & \textbf{最该记住的点}\\
+\midrule
+关节数量 & M20 本体是 16 个关节 & 每条腿 4 个：\texttt{hipx/hipy/knee/wheel}。很多代码里的 12 维只是不含轮子自转。\\
+运动学 & 只研究几何运动 & 重点是 \(\bs p=f(\bs q)\) 和 \(\dot{\bs p}=\bs J\dot{\bs q}\)，不直接研究力。\\
+动力学 & 研究力和运动的关系 & 重点是电机力矩 \(\bs\tau\)、接触力 \(\bs\lambda\)、质量矩阵 \(\bs M\)。\\
+URDF & ROS 结构模型 & 最适合看 link/joint、axis、origin、TF 和运动学。\\
+MJCF & MuJoCo 动力学模型 & 有 freejoint、actuator、sensor、floor、contact，更适合动力学仿真。\\
+USD & Isaac 资产模型 & 适合 Isaac Lab/Sim 中的并行训练、场景和传感器仿真。\\
+Gazebo/Nav2 & 导航避障简化仿真 & 常用 \texttt{/cmd\_vel} 和四轮差速近似，不代表完整轮足动力学。\\
+RL Training & 强化学习运动控制 & 策略输出动作，动作经缩放变成目标关节位置/轮速，再由执行器产生力矩。\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{greenbox}{最推荐的学习顺序}
+\begin{enumerate}
+  \item 先看 URDF：确认 M20 有哪些 link、joint、axis、origin。
+  \item 再推单腿正运动学：理解轮心位置为什么不含轮子自转角。
+  \item 再看 Jacobian：理解关节速度如何变成轮心速度。
+  \item 再看浮动基动力学：理解机器狗为什么必须考虑机身 6 自由度和接触力。
+  \item 再区分 Gazebo/Nav2、MuJoCo 和 Isaac：它们解决的问题不同。
+  \item 最后看 RL Training：把 observation、action、reward、PD 执行器和部署顺序串起来。
+\end{enumerate}
+\end{greenbox}
+
+\begin{answerbox}
+\textbf{一句话总记忆：}
+M20 的学习路线不是从“训练算法”开始，而是从“机器人结构”开始：
+\[
+\text{URDF 几何}
+\rightarrow
+\text{运动学}
+\rightarrow
+\text{Jacobian}
+\rightarrow
+\text{浮动基动力学}
+\rightarrow
+\text{接触/执行器}
+\rightarrow
+\text{RL 策略}
+\rightarrow
+\text{仿真或部署验证}.
+\]
+\end{answerbox}
+
+\end{document}

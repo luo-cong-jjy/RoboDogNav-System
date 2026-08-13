@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>m20_official_description</name>
+  <version>0.2.0</version>
+  <description>
+    ROS 2 wrapper around the official Deep Robotics M20 URDF and mesh assets.
+  </description>
+  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>joint_state_publisher</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>xacro</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

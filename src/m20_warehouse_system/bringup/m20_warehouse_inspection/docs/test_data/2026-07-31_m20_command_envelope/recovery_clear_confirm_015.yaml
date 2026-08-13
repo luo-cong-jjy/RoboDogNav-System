@@ -1,0 +1,16 @@
+scan_planner_node:
+  ros__parameters:
+    grid_map.double_cylinder_radius: 0.25
+    optimization.dist0: 0.20
+
+m20_grid_route_planner:
+  ros__parameters:
+    inflation_radius: 0.45
+
+m20_collision_guard:
+  ros__parameters:
+    footprint_radius: 0.25
+    footprint_offset: 0.18
+    safety_margin: 0.05
+    lookahead_sec: 0.70
+    recovery_clear_confirm_sec: 0.15

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "profile": "m20_mujoco",
+  "sample_period_sec": 0.05,
+  "map_point_count": 8409,
+  "topics": {
+    "pose_topic": "/m20/sim/body_pose",
+    "map_topic": "/m20/map/active_global_cloud",
+    "raw_topic": "/m20/navigation/cmd_vel_raw",
+    "candidate_topic": "/m20/navigation/cmd_vel_candidate",
+    "safe_topic": "/m20/control/cmd_vel_safe",
+    "applied_topic": "/m20/locomotion/cmd_vel_sdk",
+    "mode_topic": "/m20/navigation/candidate_mode",
+    "collision_topic": "/m20/control/collision_stop"
+  },
+  "footprint": {
+    "offset_m": 0.18,
+    "scan_hard_radius_m": 0.25,
+    "guard_radius_m": 0.3
+  },
+  "tests": [
+    {
+      "profile": "m20_mujoco",
+      "name": "straight_inward_2p5m",
+      "success": false,
+      "duration_sec": 180.0022176609782,
+      "start": [
+        -37.05920136218645,
+        -0.007941060209444465,
+        -0.015071761335978455
+      ],
+      "requested_target": [
+        -34.55920096663021,
+        -0.007940965809324893
+      ],
+      "target": [
+        -34.55920096663021,
+        -0.007940965809324893
+      ],
+      "target_adjustment_m": 0.0,
+      "final": [
+        -35.625119826039416,
+        0.3418233852979974,
+        0.7590654833600143
+      ],
+      "final_error_m": 1.12183693830688,
+      "direct_length_m": 2.5000003955562438,
+      "travel_length_m": 1.627157106842896,
+      "path_length_ratio": 0.6508627397560302,
+      "max_cross_track_m": 0.36236049777123763,
+      "mean_abs_body_to_segment_yaw_deg": 3.74909637994737,
+      "p95_abs_body_to_segment_yaw_deg": 17.697856964550464,
+      "raw_lateral_command_fraction": 0.2808988764044944,
+      "applied_lateral_command_fraction": 0.0,
+      "raw_to_applied_linear_error_rms": 0.31032910311889267,
+      "applied_to_realized_linear_error_rms": 0.4228439939660697,
+      "minimum_surface_distance_m": 1.4738468201003954,
+      "minimum_scan_hard_margin_m": 1.2238468201003954,
+      "minimum_guard_margin_m": 1.1738468201003953,
+      "scan_hard_margin_negative_samples": 0,
+      "guard_margin_negative_samples": 0,
+      "collision_stop_samples": 0,
+      "trajectory_messages": 3,
+      "mode_transitions": 0,
+      "mode_fraction": {
+        "UNKNOWN": 1.0
+      },
+      "sample_count": 3416,
+      "moving_sample_count": 89
+    }
+  ]
+}

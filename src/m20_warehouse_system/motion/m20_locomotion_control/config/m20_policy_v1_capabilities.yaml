@@ -1,0 +1,81 @@
+# Versioned platform capability profile for the official M20 MuJoCo policy.
+# Values come from the 2026-07-31 cold-start turn matrix and closed-loop
+# single-obstacle validation. Planning clearance remains in m20_scan_navigation.
+schema_version: 1
+profile_id: m20_policy_v1
+
+body:
+  length_m: 0.82
+  width_m: 0.51
+  height_m: 0.57
+
+command:
+  max_forward_mps: 0.45
+  max_side_mps: 0.20
+  max_yaw_radps: 0.65
+  supports_autonomous_lateral: false
+  # Negative vx is a validated SDK command and avoids unnecessary 180-degree
+  # body sweeps when the local B-spline initially lies behind the chassis.
+  supports_reverse_tracking: true
+
+turn:
+  # The deployed policy does not provide repeatable zero-radius yaw. High
+  # curvature requests are projected into the validated rolling interval.
+  supports_zero_radius_yaw: false
+  stable_min_forward_mps: 0.35
+  stable_max_forward_mps: 0.45
+
+tracking:
+  deadband_linear_mps: 0.01
+  deadband_yaw_radps: 0.02
+  lateral_threshold_mps: 0.05
+  turn_yaw_threshold_radps: 0.25
+  in_place_linear_threshold_mps: 0.08
+  turn_curvature_threshold: 1.20
+  curvature_speed_floor_mps: 0.05
+  lateral_max_forward_mps: 0.10
+  course_yaw_gain: 1.20
+  turn_course_enter_rad: 0.25
+  turn_course_exit_rad: 0.08
+  turn_yaw_exit_radps: 0.20
+  turn_min_hold_sec: 0.50
+  cruise_yaw_deadband_radps: 0.02
+  cruise_yaw_filter_time_constant_sec: 0.12
+  output_linear_accel_mps2: 1.0
+  output_yaw_accel_radps2: 1.2
+  reverse_tracking_enter_angle_rad: 2.10
+  reverse_tracking_exit_angle_rad: 1.75
+  reverse_tracking_min_hold_sec: 0.80
+  # Reverse tracking is reserved for a nearly straight path behind the body.
+  # Curved reverse motion can be stable from a cold start but accumulated
+  # wheel-leg state made it unsafe in a six-goal sequence.
+  reverse_tracking_entry_alignment_rad: 0.20
+  reverse_tracking_exit_alignment_rad: 0.35
+
+reverse_compensation:
+  speed_offset_mps: 0.19
+  speed_gain: 1.32
+  yaw_offset_radps: 0.15
+  yaw_gain: 1.00
+
+measured_drift:
+  positive_yaw_lateral_mps: 0.15
+  negative_yaw_lateral_mps: 0.10
+  opposite_lateral_uncertainty_mps: 0.05
+
+recovery:
+  forward_speed_mps: 0.35
+  lookahead_sec: 0.90
+  minimum_yaw_radps: 0.20
+  clear_confirm_sec: 0.30
+  # A brief planner-clear sample may only end the active escape command.  The
+  # whole obstacle episode is rearmed after this longer continuous clear time.
+  rearm_clear_sec: 1.50
+  # Recovery is a bounded escape action, never an alternate navigator.
+  max_active_sec: 6.0
+  max_displacement_m: 0.75
+  progress_timeout_sec: 1.50
+  minimum_progress_m: 0.03
+
+feedback:
+  measurement_source: external_odometry_base_link_twist

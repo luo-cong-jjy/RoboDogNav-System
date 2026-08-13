@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "suite": "smoke",
+  "requested_cases": [
+    "idle",
+    "forward_010",
+    "yaw_020",
+    "arc_020_015"
+  ],
+  "completed_cases": 4,
+  "thresholds": {
+    "stable_tilt_rad": 0.25,
+    "stable_height_m": 0.48,
+    "abort_tilt_rad": 0.5,
+    "abort_height_m": 0.4
+  },
+  "all_stable": false,
+  "results": [
+    {
+      "name": "idle",
+      "command": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "wz": 0.0
+      },
+      "status": "PASS",
+      "stable": true,
+      "fault": "",
+      "safety_abort": "",
+      "sample_count": 106,
+      "peak_abs_tilt_rad": 0.00857624701310625,
+      "minimum_base_height_m": 0.5560800058065765,
+      "mean_hold_body_vx_mps": -0.0014010073086875938,
+      "mean_hold_body_vy_mps": 0.0004445657314988137,
+      "mean_hold_body_wz_radps": -0.011557962987369724,
+      "planar_displacement_m": 0.0069587141596166345,
+      "yaw_change_rad": -0.04553319127729599,
+      "maximum_abs_torque": 40.75921128075949,
+      "obstacle_contact_event_count": 0
+    },
+    {
+      "name": "forward_010",
+      "command": {
+        "vx": 0.1,
+        "vy": 0.0,
+        "wz": 0.0
+      },
+      "status": "PASS",
+      "stable": true,
+      "fault": "",
+      "safety_abort": "",
+      "sample_count": 107,
+      "peak_abs_tilt_rad": 0.01119291528498443,
+      "minimum_base_height_m": 0.5638741682030515,
+      "mean_hold_body_vx_mps": 0.05389202611362808,
+      "mean_hold_body_vy_mps": 0.00013046738366607457,
+      "mean_hold_body_wz_radps": -0.008171258410006606,
+      "planar_displacement_m": 0.1529438676595669,
+      "yaw_change_rad": -0.015577182937896825,
+      "maximum_abs_torque": 13.682800630707005,
+      "obstacle_contact_event_count": 0
+    },
+    {
+      "name": "yaw_020",
+      "command": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "wz": 0.2
+      },
+      "status": "WARN",
+      "stable": false,
+      "fault": "",
+      "safety_abort": "",
+      "sample_count": 107,
+      "peak_abs_tilt_rad": 0.2896467511781998,
+      "minimum_base_height_m": 0.43946777366841505,
+      "mean_hold_body_vx_mps": 0.11523631733837322,
+      "mean_hold_body_vy_mps": 0.012406911521830743,
+      "mean_hold_body_wz_radps": 0.17046216160171218,
+      "planar_displacement_m": 0.45717581397006646,
+      "yaw_change_rad": -0.051164260069657644,
+      "maximum_abs_torque": 51.971486770745834,
+      "obstacle_contact_event_count": 0
+    },
+    {
+      "name": "arc_020_015",
+      "command": {
+        "vx": 0.2,
+        "vy": 0.0,
+        "wz": 0.15
+      },
+      "status": "PASS",
+      "stable": true,
+      "fault": "",
+      "safety_abort": "",
+      "sample_count": 106,
+      "peak_abs_tilt_rad": 0.02117557672617026,
+      "minimum_base_height_m": 0.5602981864073893,
+      "mean_hold_body_vx_mps": 0.15072075859954248,
+      "mean_hold_body_vy_mps": 0.005981756417280477,
+      "mean_hold_body_wz_radps": 0.07603705578374341,
+      "planar_displacement_m": 0.4151089289309259,
+      "yaw_change_rad": 0.03412920354221338,
+      "maximum_abs_torque": 25.617684388233638,
+      "obstacle_contact_event_count": 0
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+m20_safety_supervisor:
+  ros__parameters:
+    navigation_topic: /m20/navigation/cmd_vel_candidate
+    manual_topic: /m20/control/cmd_vel_manual
+    safe_topic: /m20/control/cmd_vel_safe
+    e_stop_topic: /m20/control/e_stop
+    floor_hold_topic: /m20/control/floor_switch_hold
+    mission_hold_topic: /m20/control/mission_hold
+    collision_stop_topic: /m20/control/collision_stop
+    collision_recovery_available_topic: /m20/control/collision_recovery_available
+    collision_recovery_command_topic: /m20/control/collision_recovery_cmd
+    collision_recovery_timeout_sec: 0.15
+    collision_recovery_ramp_sec: 1.0
+    execution_hold_topic: /m20/control/execution_hold
+    map_ready_topic: /m20/map/ready
+    odom_topic: /m20/sim/body_pose
+    publish_rate_hz: 50.0
+    command_timeout_sec: 0.5
+    odom_timeout_sec: 0.5
+    # Command limits are injected from the selected platform capability.
+    max_linear_accel: 1.0
+    max_angular_accel: 1.2
+    manual_priority: true

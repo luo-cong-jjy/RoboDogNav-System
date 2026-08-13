@@ -1,0 +1,41 @@
+m20_navigation_gateway:
+  ros__parameters:
+    action_name: /m20/navigation/navigate
+    default_timeout_sec: 120.0
+    feedback_period_sec: 0.20
+    position_tolerance: 0.20
+    # Absorb the DDS delivery race between the switch Action result and the
+    # reliable hold=False sample received by this gateway.
+    floor_hold_release_timeout_sec: 2.0
+    # SCAN reset shares its upstream single-threaded executor with mapping.
+    # Keep a bounded margin for one in-flight map/visualization callback.
+    navigation_reset_timeout_sec: 10.0
+    # m20_safe requires the independent point-cloud guard and fails closed
+    # until it publishes CLEAR. scan_native overrides this to false because
+    # that profile intentionally contains only SCAN's own collision model.
+    collision_guard_required: true
+    # Recovery is allowed to move only within its own hard time/distance
+    # budget. If that budget is spent, or no collision-checked rolling escape
+    # exists, stop the old trajectory, wait for the guard to rearm, and ask
+    # unchanged native SCAN to plan again. The hard per-goal count prevents
+    # replanning from becoming an unbounded fallback.
+    collision_replan_enabled: true
+    collision_replan_max_attempts: 2
+    collision_replan_rearm_timeout_sec: 5.0
+    collision_stop_topic: /m20/control/collision_stop
+    collision_diagnostic_topic: /m20/control/collision_guard_diagnostic
+    # This is the only goal output. No stored 2D map or external A* route is
+    # present in the runtime chain.
+    direct_goal_topic: /move_base_simple/goal
+    # In the integrated launch, RViz publishes the public vendor topic while
+    # this gateway can relay it to a private SCAN ingress. The launch remap
+    # prevents the gateway from subscribing to its own output.
+    manual_goal_monitor_enabled: false
+    manual_goal_topic: /move_base_simple/goal
+    manual_state_topic: /m20/navigation/manual_state
+    manual_timeout_sec: 300.0
+    # SCAN consumes only target position and its controller follows the
+    # B-spline tangent. Keep this contract explicit: a clicked quaternion is
+    # not treated as a strict terminal-yaw command.
+    terminal_orientation_mode: position_only
+    scan_reset_service: /m20/navigation/reset

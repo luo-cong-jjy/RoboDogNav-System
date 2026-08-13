@@ -1,0 +1,15 @@
+# 官方 m20_sdk_deploy/rl_deploy_cmdvel 的项目侧参数。
+#
+# 注意：这里配置的是 sdk_deploy 内部的 m20_cmd_vel_interface 节点。
+# 巡检包不直接链接 sdk_deploy 代码，只通过 /cmd_vel 这个 ROS 接口传入速度意图。
+m20_cmd_vel_interface:
+  ros__parameters:
+    cmd_vel_topic: /cmd_vel
+    auto_start: true
+    standup_delay_sec: 3.3
+    cmd_timeout_sec: 0.5
+    max_forward: 0.7
+    max_side: 0.5
+    max_yaw: 0.7
+    control_rate_hz: 50.0
+    debug_print: true

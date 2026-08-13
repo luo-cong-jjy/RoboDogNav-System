@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "action_success": true,
+  "action_message": "mission complete",
+  "duration_sec": 28.913887543982128,
+  "final_error_m": 0.1264608234699175,
+  "minimum_circle_center_obstacle_distance_m": 0.48664527658837076,
+  "minimum_scan_hard_clearance_m": 0.23664527658837076,
+  "minimum_guard_clearance_m": 0.18664527658837077,
+  "doorway_sample": {
+    "x": -12.496660710203253,
+    "y": 1.6959747227765136,
+    "yaw": -0.2055334573906103,
+    "distance_from_doorway_x_m": 0.0033392897967470248,
+    "guard_clearance_m": 0.3592386274946074
+  },
+  "collision_stop_sample_count": 0,
+  "predicted_stop_event_count": 0,
+  "rotation_recovery_event_count": 0,
+  "current_stop_event_count": 0,
+  "guard_events": [],
+  "obstacle_contact_event_count": 0,
+  "obstacle_contact_peak_force_n": 0.0,
+  "longest_commanded_stationary_sec": 0.41237547298078425,
+  "trajectory_messages": 20,
+  "feedback": [
+    {
+      "state": "STARTING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "mission accepted"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "child action running"
+    },
+    {
+      "state": "NAVIGATING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "native SCAN trajectory tracking"
+    },
+    {
+      "state": "DWELLING",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "inspecting F1_DIRECT_EXIT"
+    },
+    {
+      "state": "STEP_COMPLETE",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "F1_DIRECT_EXIT complete"
+    },
+    {
+      "state": "COMPLETED",
+      "step_index": 0,
+      "step_name": "F1_DIRECT_EXIT",
+      "message": "mission complete"
+    }
+  ]
+}

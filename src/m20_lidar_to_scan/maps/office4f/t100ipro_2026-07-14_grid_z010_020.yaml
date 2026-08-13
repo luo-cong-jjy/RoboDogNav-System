@@ -1,0 +1,7 @@
+image: t100ipro_2026-07-14_grid_z010_020.pgm
+mode: trinary
+resolution: 0.200000
+origin: [-78.172997, -50.464001, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25

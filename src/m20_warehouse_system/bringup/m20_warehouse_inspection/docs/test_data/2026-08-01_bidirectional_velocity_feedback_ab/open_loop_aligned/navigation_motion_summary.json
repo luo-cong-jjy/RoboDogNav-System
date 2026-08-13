@@ -1,0 +1,156 @@
+{
+  "schema_version": 6,
+  "sample_period_sec": 0.05,
+  "leg_motion_threshold_rad_s": 0.05,
+  "wheel_motion_threshold_rad_s": 0.2,
+  "tests": [
+    {
+      "name": "straight_forward_2p5m",
+      "success": true,
+      "duration_sec": 11.356026960000008,
+      "start": [
+        -36.998357227981415,
+        0.003491714882091746,
+        -0.04448285201328478
+      ],
+      "target": [
+        -34.5,
+        0.0
+      ],
+      "final": [
+        -34.635904036215265,
+        -0.0137415161368526,
+        -0.0573218010622032
+      ],
+      "final_error_m": 0.13659698505215834,
+      "direct_length_m": 2.4983596679981446,
+      "travel_length_m": 2.450898230591158,
+      "path_length_ratio": 0.981002960456444,
+      "max_cross_track_m": 0.02070630260419705,
+      "moving_sample_count": 181,
+      "mean_abs_yaw_error_deg": 0.47155709738407275,
+      "p95_abs_yaw_error_deg": 1.071536104189312,
+      "raw_wz_rms": 0.015815778736495076,
+      "raw_wz_p95": 0.01992341485850317,
+      "raw_wz_above_0p02_fraction": 0.049723756906077346,
+      "controller_heading_error_mean_deg": 0.0,
+      "controller_heading_error_p95_deg": 0.0,
+      "controller_heading_error_max_deg": 0.0,
+      "heading_alignment_sample_fraction": 0.0,
+      "heading_alignment_events": 0,
+      "leg_velocity_rms": 0.3066575292941213,
+      "wheel_velocity_rms": 3.4347751939408058,
+      "wheel_leg_simultaneous_fraction": 0.56353591160221,
+      "collision_stop_samples": 0,
+      "longest_collision_stop_sec": 0.0,
+      "predicted_stop_event_count": 0,
+      "current_stop_event_count": 0,
+      "recovery_event_count": 0,
+      "recovery_budget_exhausted_event_count": 0,
+      "guard_events": [],
+      "max_contact_count": 5,
+      "max_obstacle_contact_count": 0,
+      "obstacle_contact_event_count": 0,
+      "obstacle_contact_peak_force_n": 0.0,
+      "backend_fault_samples": 0,
+      "backend_fault_reasons": [],
+      "trajectory_messages": 2,
+      "mode_transitions": 0,
+      "mode_fraction": {
+        "WHEEL_CRUISE": 1.0
+      },
+      "tracking_direction_fraction": {
+        "FORWARD": 1.0
+      },
+      "velocity_feedback_valid_samples": 181,
+      "velocity_feedback_enabled_sample_fraction": 0.0,
+      "velocity_feedback_active_sample_fraction": 0.0,
+      "velocity_feedback_reason_counts": {
+        "COMMAND_ZEROED": 1,
+        "DISABLED": 178,
+        "STOPPED": 2
+      },
+      "velocity_tracking_linear_error_rms_m_s": 0.11733491347220538,
+      "velocity_tracking_yaw_error_rms_rad_s": 0.04557049121461939,
+      "velocity_feedback_linear_correction_rms_m_s": 0.0,
+      "velocity_feedback_yaw_correction_rms_rad_s": 0.0,
+      "velocity_feedback_linear_correction_peak_m_s": 0.0,
+      "velocity_feedback_yaw_correction_peak_rad_s": 0.0
+    },
+    {
+      "name": "reverse_heading_return_2p5m",
+      "success": false,
+      "duration_sec": 90.00223642500009,
+      "start": [
+        -34.63610292291253,
+        -0.013512544005160422,
+        -0.06669462469390139
+      ],
+      "target": [
+        -37.0,
+        0.0
+      ],
+      "final": [
+        -36.48250439872,
+        0.6156089032314465,
+        -0.8528511254924575
+      ],
+      "final_error_m": 0.8042238612985627,
+      "direct_length_m": 2.363935697075575,
+      "travel_length_m": 30.78597495363373,
+      "path_length_ratio": 13.023186287054703,
+      "max_cross_track_m": 1.3217626319208542,
+      "moving_sample_count": 1765,
+      "mean_abs_yaw_error_deg": 96.95104994556614,
+      "p95_abs_yaw_error_deg": 179.573712917756,
+      "raw_wz_rms": 0.22819394724897832,
+      "raw_wz_p95": 0.890565552605914,
+      "raw_wz_above_0p02_fraction": 0.08158640226628895,
+      "controller_heading_error_mean_deg": 0.0,
+      "controller_heading_error_p95_deg": 0.0,
+      "controller_heading_error_max_deg": 0.0,
+      "heading_alignment_sample_fraction": 0.0,
+      "heading_alignment_events": 0,
+      "leg_velocity_rms": 1.8782026113895531,
+      "wheel_velocity_rms": 8.49182916789988,
+      "wheel_leg_simultaneous_fraction": 0.9898016997167138,
+      "collision_stop_samples": 0,
+      "longest_collision_stop_sec": 0.0,
+      "predicted_stop_event_count": 0,
+      "current_stop_event_count": 0,
+      "recovery_event_count": 0,
+      "recovery_budget_exhausted_event_count": 0,
+      "guard_events": [],
+      "max_contact_count": 7,
+      "max_obstacle_contact_count": 0,
+      "obstacle_contact_event_count": 0,
+      "obstacle_contact_peak_force_n": 0.0,
+      "backend_fault_samples": 0,
+      "backend_fault_reasons": [],
+      "trajectory_messages": 4,
+      "mode_transitions": 27,
+      "mode_fraction": {
+        "COORDINATED_TURN": 0.7903682719546742,
+        "WHEEL_CRUISE": 0.2096317280453258
+      },
+      "tracking_direction_fraction": {
+        "FORWARD": 0.909915014164306,
+        "REVERSE": 0.09008498583569405
+      },
+      "velocity_feedback_valid_samples": 1765,
+      "velocity_feedback_enabled_sample_fraction": 0.0,
+      "velocity_feedback_active_sample_fraction": 0.0,
+      "velocity_feedback_reason_counts": {
+        "COMMAND_ZEROED": 3,
+        "DISABLED": 1761,
+        "STOPPED": 1
+      },
+      "velocity_tracking_linear_error_rms_m_s": 0.11244012206536794,
+      "velocity_tracking_yaw_error_rms_rad_s": 0.1563145675763095,
+      "velocity_feedback_linear_correction_rms_m_s": 0.0,
+      "velocity_feedback_yaw_correction_rms_rad_s": 0.0,
+      "velocity_feedback_linear_correction_peak_m_s": 0.0,
+      "velocity_feedback_yaw_correction_peak_rad_s": 0.0
+    }
+  ]
+}

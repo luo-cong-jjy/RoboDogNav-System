@@ -1,0 +1,2189 @@
+diff --git a/src/planner/bspline_opt/src/bspline_optimizer.cpp b/src/planner/bspline_opt/src/bspline_optimizer.cpp
+index c2c9b89..7cfe140 100644
+--- a/src/planner/bspline_opt/src/bspline_optimizer.cpp
++++ b/src/planner/bspline_opt/src/bspline_optimizer.cpp
+@@ -38,10 +38,12 @@ namespace scan_planner
+     return std::atan2(diff(1), diff(0));
+   }
+ 
+-  double BsplineOptimizer::estimateControlPointYaw(const Eigen::MatrixXd &q, int id) const
+-  {
+-    if (q.cols() <= 1)
+-      return 0.0;
++  double BsplineOptimizer::estimateControlPointYaw(const Eigen::MatrixXd &q, int id) const
++  {
++    // 控制点没有显式航向，用前后控制点的连线方向近似局部轨迹 yaw，
++    // 供 GridMap 的双圆柱碰撞模型使用。
++    if (q.cols() <= 1)
++      return 0.0;
+ 
+     int prev_id = std::max(0, id - 1);
+     int next_id = std::min(static_cast<int>(q.cols()) - 1, id + 1);
+@@ -68,8 +70,10 @@ namespace scan_planner
+       cps_.points = init_points;
+     }
+ 
+-    /*** Segment the initial trajectory according to obstacles ***/
+-    constexpr int ENOUGH_INTERVAL = 2;
++    /*** Segment the initial trajectory according to obstacles ***/
++    // 扫描初始 B 样条控制多边形的前 2/3，记录从自由空间进入障碍、再离开障碍的控制点区间。
++    // 远端 1/3 会在滚动规划中重新处理，优先保证机器人近期要执行的部分安全。
++    constexpr int ENOUGH_INTERVAL = 2;
+     double step_size = grid_map_->getResolution() / ((init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols() - 1)) / 2;
+     int in_id = -1, out_id = -1;
+     vector<std::pair<int, int>> segment_ids;
+@@ -87,9 +91,10 @@ namespace scan_planner
+         // cout << setprecision(5);
+         // cout << (a * init_points.col(i-1) + (1-a) * init_points.col(i)).transpose() << " occ1=" << occ << endl;
+ 
+-        if (occ && !last_occ)
+-        {
+-          if (same_occ_state_times > ENOUGH_INTERVAL || i == order_)
++        if (occ && !last_occ)
++        {
++          // 自由 -> 占据：记录碰撞段入口。连续若干次同状态才确认，可过滤栅格边界抖动。
++          if (same_occ_state_times > ENOUGH_INTERVAL || i == order_)
+           {
+             in_id = i - 1;
+             flag_got_start = true;
+@@ -97,9 +102,10 @@ namespace scan_planner
+           same_occ_state_times = 0;
+           flag_got_end_maybe = false; // terminate in advance
+         }
+-        else if (!occ && last_occ)
+-        {
+-          out_id = i;
++        else if (!occ && last_occ)
++        {
++          // 占据 -> 自由：记录碰撞段出口，稍后等待状态稳定后写入 segment_ids。
++          out_id = i;
+           flag_got_end_maybe = true;
+           same_occ_state_times = 0;
+         }
+@@ -129,8 +135,10 @@ namespace scan_planner
+       }
+     }
+ 
+-    /*** a star search ***/
+-    vector<vector<Eigen::Vector3d>> a_star_paths;
++    /*** a star search ***/
++    // 每个碰撞段只搜索入口到出口之间的局部绕障路径；这条 A* 路径不直接执行，
++    // 而是作为控制点“应该被推向哪一侧”的几何引导。
++    vector<vector<Eigen::Vector3d>> a_star_paths;
+     for (size_t i = 0; i < segment_ids.size(); ++i)
+     {
+       //cout << "in=" << in.transpose() << " out=" << out.transpose() << endl;
+@@ -153,8 +161,10 @@ namespace scan_planner
+       }
+     }
+ 
+-    /*** calculate bounds ***/
+-    int id_low_bound, id_up_bound;
++    /*** calculate bounds ***/
++    // 若多个碰撞段靠得很近，bounds 会限制每段可影响的控制点范围，
++    // 防止相邻障碍生成的 rebound 方向互相覆盖。
++    int id_low_bound, id_up_bound;
+     vector<std::pair<int, int>> bounds(segment_ids.size());
+     for (size_t i = 0; i < segment_ids.size(); i++)
+     {
+@@ -191,8 +201,10 @@ namespace scan_planner
+     //   cout << bounds[j].first << "  " << bounds[j].second << endl;
+     // }
+ 
+-    /*** Adjust segment length ***/
+-    vector<std::pair<int, int>> final_segment_ids(segment_ids.size());
++    /*** Adjust segment length ***/
++    // 原版保留了扩展短碰撞段长度的机制。当前 MINIMUM_PERCENT 为 0，
++    // 表示只使用实际检测到的碰撞区间。
++    vector<std::pair<int, int>> final_segment_ids(segment_ids.size());
+     constexpr double MINIMUM_PERCENT = 0.0; // Each segment is guaranteed to have sufficient points to generate sufficient thrust
+     int minimum_points = round(init_points.cols() * MINIMUM_PERCENT), num_points;
+     for (size_t i = 0; i < segment_ids.size(); i++)
+@@ -217,8 +229,10 @@ namespace scan_planner
+       //cout << "final:" << "i = " << i << " first = " << final_segment_ids[i].first << " second = " << final_segment_ids[i].second << endl;
+     }
+ 
+-    /*** Assign data to each segment ***/
+-    for (size_t i = 0; i < segment_ids.size(); i++)
++    /*** Assign data to each segment ***/
++    // 将 A* 路径转换成每个控制点的 base_point 和 direction：
++    // direction 指向绕障路径一侧，distance cost 会沿这个方向把控制点推离障碍。
++    for (size_t i = 0; i < segment_ids.size(); i++)
+     {
+       if (i >= a_star_paths.size() || a_star_paths[i].size() < 2)
+       {
+@@ -231,11 +245,12 @@ namespace scan_planner
+       for (int j = final_segment_ids[i].first; j <= final_segment_ids[i].second; ++j)
+         cps_.flag_temp[j] = false;
+ 
+-      // step 2
+-      int got_intersection_id = -1;
+-      for (int j = segment_ids[i].first + 1; j < segment_ids[i].second; ++j)
+-      {
+-        Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point;
++      // step 2
++      int got_intersection_id = -1;
++      for (int j = segment_ids[i].first + 1; j < segment_ids[i].second; ++j)
++      {
++        // 用控制点局部切线和 A* 路径求交，得到一条从控制点指向绕障路径的代表方向。
++        Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point;
+         int Astar_id = a_star_paths[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
+         double val = (a_star_paths[i][Astar_id] - cps_.points.col(j)).dot(ctrl_pts_law), last_val = val;
+         while (Astar_id >= 0 && Astar_id < (int)a_star_paths[i].size())
+@@ -277,16 +292,18 @@ namespace scan_planner
+           double length = (intersection_point - cps_.points.col(j)).norm();
+           if (length > 1e-5)
+           {
+-            for (double a = length; a >= 0.0; a -= grid_map_->getResolution())
+-            {
+-              Eigen::Vector3d sample_pt = (a / length) * intersection_point + (1 - a / length) * cps_.points.col(j);
+-              double sample_yaw = estimateControlPointYaw(cps_.points, j);
+-              occ = grid_map_->getInflateOccupancy(sample_pt, sample_yaw);
+-
+-              if (occ || a < grid_map_->getResolution())
+-              {
+-                if (occ)
+-                  a += grid_map_->getResolution();
++              for (double a = length; a >= 0.0; a -= grid_map_->getResolution())
++              {
++                Eigen::Vector3d sample_pt = (a / length) * intersection_point + (1 - a / length) * cps_.points.col(j);
++                double sample_yaw = estimateControlPointYaw(cps_.points, j);
++                occ = grid_map_->getInflateOccupancy(sample_pt, sample_yaw);
++
++                if (occ || a < grid_map_->getResolution())
++                {
++                  // base_point 取在障碍边界附近；优化时 dist=(q-base)·direction，
++                  // dist 小于 clearance 就产生推离障碍的梯度。
++                  if (occ)
++                    a += grid_map_->getResolution();
+                 cps_.base_point[j].push_back((a / length) * intersection_point + (1 - a / length) * cps_.points.col(j));
+                 cps_.direction[j].push_back((intersection_point - cps_.points.col(j)).normalized());
+                 break;
+@@ -297,9 +314,10 @@ namespace scan_planner
+       }
+ 
+       /* Corner case: the segment length is too short. Here the control points may outside the A* path, leading to opposite gradient direction. So I have to take special care of it */
+-      if (segment_ids[i].second - segment_ids[i].first == 1)
+-      {
+-        Eigen::Vector3d ctrl_pts_law(cps_.points.col(segment_ids[i].second) - cps_.points.col(segment_ids[i].first)), intersection_point;
++      if (segment_ids[i].second - segment_ids[i].first == 1)
++      {
++        // 碰撞段只有两个控制点时，普通求交容易给出反向梯度，改用段中点构造方向。
++        Eigen::Vector3d ctrl_pts_law(cps_.points.col(segment_ids[i].second) - cps_.points.col(segment_ids[i].first)), intersection_point;
+         Eigen::Vector3d middle_point = (cps_.points.col(segment_ids[i].second) + cps_.points.col(segment_ids[i].first)) / 2;
+         int Astar_id = a_star_paths[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
+         double val = (a_star_paths[i][Astar_id] - middle_point).dot(ctrl_pts_law), last_val = val;
+@@ -342,10 +360,11 @@ namespace scan_planner
+         }
+       }
+ 
+-      //step 3
+-      if (got_intersection_id >= 0)
+-      {
+-        for (int j = got_intersection_id + 1; j <= final_segment_ids[i].second; ++j)
++      //step 3
++      if (got_intersection_id >= 0)
++      {
++        // 从已求得方向的控制点向两侧传播，使同一碰撞段内的控制点共享一致的绕障侧。
++        for (int j = got_intersection_id + 1; j <= final_segment_ids[i].second; ++j)
+           if (!cps_.flag_temp[j])
+           {
+             cps_.base_point[j].push_back(cps_.base_point[j - 1].back());
+@@ -399,56 +418,61 @@ namespace scan_planner
+     return cost;
+   }
+ 
+-  void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd &q, double &cost,
+-                                                 Eigen::MatrixXd &gradient, int iter_num, double smoothness_cost)
+-  {
++  void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd &q, double &cost,
++                                                 Eigen::MatrixXd &gradient, int iter_num, double smoothness_cost)
++  {
+     cost = 0.0;
+     int end_idx = q.cols() - order_;
+     double demarcation = cps_.clearance;
+     double a = 3 * demarcation, b = -3 * pow(demarcation, 2), c = pow(demarcation, 3);
+ 
+     force_stop_type_ = DONT_STOP;
+-    if (iter_num > 3 && smoothness_cost / (cps_.size - 2 * order_) < 0.1) // 0.1 is an experimental value that indicates the trajectory is smooth enough.
+-    {
+-      check_collision_and_rebound();
+-    }
++    if (iter_num > 3 && smoothness_cost / (cps_.size - 2 * order_) < 0.1) // 0.1 is an experimental value that indicates the trajectory is smooth enough.
++    {
++      // 轨迹已经足够平滑后，再检查是否出现新的碰撞段；若有则触发 earlyExit 并重新生成 rebound 方向。
++      check_collision_and_rebound();
++    }
+ 
+     /*** calculate distance cost and gradient ***/
+     for (auto i = order_; i < end_idx; ++i)
+     {
+       for (size_t j = 0; j < cps_.direction[i].size(); ++j)
+       {
+-        double dist = (cps_.points.col(i) - cps_.base_point[i][j]).dot(cps_.direction[i][j]);
+-        double dist_err = cps_.clearance - dist;
+-        Eigen::Vector3d dist_grad = cps_.direction[i][j];
+-
+-        if (dist_err < 0)
+-        {
+-          /* do nothing */
+-        }
+-        else if (dist_err < demarcation)
+-        {
+-          cost += pow(dist_err, 3);
++        double dist = (cps_.points.col(i) - cps_.base_point[i][j]).dot(cps_.direction[i][j]);
++        double dist_err = cps_.clearance - dist;
++        Eigen::Vector3d dist_grad = cps_.direction[i][j];
++
++        if (dist_err < 0)
++        {
++          /* do nothing */
++        }
++        else if (dist_err < demarcation)
++        {
++          // clearance 附近使用三次惩罚，梯度连续且不会过度拉扯已经接近安全边界的控制点。
++          cost += pow(dist_err, 3);
+           gradient.col(i) += -3.0 * dist_err * dist_err * dist_grad;
+         }
+-        else
+-        {
+-          cost += a * dist_err * dist_err + b * dist_err + c;
++        else
++        {
++          // 深度侵入障碍时改用二次项，提供更强的推出梯度。
++          cost += a * dist_err * dist_err + b * dist_err + c;
+           gradient.col(i) += -(2.0 * a * dist_err + b) * dist_grad;
+         }
+       }
+     }
+   }
+ 
+-  void BsplineOptimizer::calcFitnessCost(const Eigen::MatrixXd &q, double &cost, Eigen::MatrixXd &gradient)
+-  {
+-
+-    cost = 0.0;
+-
+-    int end_idx = q.cols() - order_;
+-
+-    // def: f = |x*v|^2/a^2 + |x×v|^2/b^2
+-    double a2 = 25, b2 = 1;
++  void BsplineOptimizer::calcFitnessCost(const Eigen::MatrixXd &q, double &cost, Eigen::MatrixXd &gradient)
++  {
++
++    cost = 0.0;
++
++    int end_idx = q.cols() - order_;
++
++    // def: f = |x*v|^2/a^2 + |x×v|^2/b^2
++    // refine 阶段使用各向异性 fitness：沿参考切向允许更大偏差，法向偏差惩罚更强，
++    // 这样时间重分配后曲线不会明显偏离 rebound 已经找到的无碰撞通道。
++    double a2 = 25, b2 = 1;
+     for (auto i = order_ - 1; i < end_idx + 1; ++i)
+     {
+       Eigen::Vector3d x = (q.col(i - 1) + 4 * q.col(i) + q.col(i + 1)) / 6.0 - ref_pts_[i - 1];
+@@ -470,9 +494,9 @@ namespace scan_planner
+     }
+   }
+ 
+-  void BsplineOptimizer::calcSmoothnessCost(const Eigen::MatrixXd &q, double &cost,
+-                                            Eigen::MatrixXd &gradient, bool falg_use_jerk /* = true*/)
+-  {
++  void BsplineOptimizer::calcSmoothnessCost(const Eigen::MatrixXd &q, double &cost,
++                                            Eigen::MatrixXd &gradient, bool falg_use_jerk /* = true*/)
++  {
+ 
+     cost = 0.0;
+ 
+@@ -482,8 +506,9 @@ namespace scan_planner
+ 
+       for (int i = 0; i < q.cols() - 3; i++)
+       {
+-        /* evaluate jerk */
+-        jerk = q.col(i + 3) - 3 * q.col(i + 2) + 3 * q.col(i + 1) - q.col(i);
++        /* evaluate jerk */
++        // 三次 B 样条的 jerk 平滑性可由控制点三阶差分近似表达。
++        jerk = q.col(i + 3) - 3 * q.col(i + 2) + 3 * q.col(i + 1) - q.col(i);
+         cost += jerk.squaredNorm();
+         temp_j = 2.0 * jerk;
+         /* jerk gradient */
+@@ -715,13 +740,15 @@ namespace scan_planner
+ #endif
+   }
+ 
+-  bool BsplineOptimizer::check_collision_and_rebound(void)
+-  {
+-
+-    int end_idx = cps_.size - order_;
+-
+-    /*** Check and segment the initial trajectory according to obstacles ***/
+-    int in_id, out_id;
++  bool BsplineOptimizer::check_collision_and_rebound(void)
++  {
++
++    int end_idx = cps_.size - order_;
++
++    /*** Check and segment the initial trajectory according to obstacles ***/
++    // 优化过程中控制点可能被新的障碍约束拉入碰撞。该函数重新扫描当前 cps_，
++    // 若发现新的有效碰撞段，就重新跑 A* 并通过 STOP_FOR_REBOUND 中断本轮 L-BFGS。
++    int in_id, out_id;
+     vector<std::pair<int, int>> segment_ids;
+     bool flag_new_obs_valid = false;
+     int i_end = end_idx - (end_idx - order_) / 3;
+@@ -744,12 +771,13 @@ namespace scan_planner
+         }
+       }
+ 
+-      if (occ)
+-      {
+-        flag_new_obs_valid = true;
+-
+-        int j;
+-        for (j = i - 1; j >= 0; --j)
++      if (occ)
++      {
++        flag_new_obs_valid = true;
++
++        int j;
++        // 向前/向后寻找碰撞段两侧最近的自由控制点，作为 A* 的入口和出口。
++        for (j = i - 1; j >= 0; --j)
+         {
+           occ = grid_map_->getInflateOccupancy(cps_.points.col(j), estimateControlPointYaw(cps_.points, j));
+           if (!occ)
+@@ -961,9 +989,10 @@ namespace scan_planner
+     return flag_success;
+   }
+ 
+-  bool BsplineOptimizer::rebound_optimize()
+-  {
+-    iter_num_ = 0;
++  bool BsplineOptimizer::rebound_optimize()
++  {
++    // 第一阶段优化：在固定时间分配下移动中间控制点，解决碰撞和基本动力学约束。
++    iter_num_ = 0;
+     int start_id = order_;
+     int end_id = this->cps_.size - order_;
+     variable_num_ = 3 * (end_id - start_id);
+@@ -979,8 +1008,9 @@ namespace scan_planner
+     constexpr int MAX_RESART_NUMS_SET = 3;
+     do
+     {
+-      /* ---------- prepare ---------- */
+-      min_cost_ = std::numeric_limits<double>::max();
++      /* ---------- prepare ---------- */
++      // 只优化 [order_, size-order_) 的中间控制点，首尾控制点由起终点状态约束固定。
++      min_cost_ = std::numeric_limits<double>::max();
+       iter_num_ = 0;
+       flag_force_return = false;
+       flag_occ = false;
+@@ -1002,8 +1032,8 @@ namespace scan_planner
+       double time_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+       double total_time_ms = std::chrono::duration<double, std::milli>(t2 - t0).count();
+ 
+-      /* ---------- success temporary, check collision again ---------- */
+-      if (result == lbfgs::LBFGS_CONVERGENCE ||
++      /* ---------- success temporary, check collision again ---------- */
++      if (result == lbfgs::LBFGS_CONVERGENCE ||
+           result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
+           result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
+           result == lbfgs::LBFGS_STOP)
+@@ -1011,13 +1041,14 @@ namespace scan_planner
+         //ROS_WARN("Solver error in planning!, return = %s", lbfgs::lbfgs_strerror(result));
+         flag_force_return = false;
+ 
+-        UniformBspline traj = UniformBspline(cps_.points, 3, bspline_interval_);
++        UniformBspline traj = UniformBspline(cps_.points, 3, bspline_interval_);
+         double tm, tmp;
+         traj.getTimeSpan(tm, tmp);
+         double t_step = (tmp - tm) / ((traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution());
+-        for (double t = tm; t < tmp * 2 / 3; t += t_step) // Only check the closest 2/3 partition of the whole trajectory.
+-        {
+-          Eigen::Vector3d pos = traj.evaluateDeBoorT(t);
++        for (double t = tm; t < tmp * 2 / 3; t += t_step) // Only check the closest 2/3 partition of the whole trajectory.
++        {
++          // 求解器成功只代表代价收敛，这里再按地图分辨率采样确认近期轨迹无碰撞。
++          Eigen::Vector3d pos = traj.evaluateDeBoorT(t);
+           Eigen::Vector3d pos_next = traj.evaluateDeBoorT(std::min(t + t_step, tmp));
+           flag_occ = grid_map_->getInflateOccupancy(pos, estimateSegmentYaw(pos, pos_next));
+           if (flag_occ)
+@@ -1044,9 +1075,10 @@ namespace scan_planner
+           printf("\033[32miter(+1)=%d,time(ms)=%5.3f,total_t(ms)=%5.3f,cost=%5.3f\n\033[0m", iter_num_, time_ms, total_time_ms, final_cost);
+           success = true;
+         }
+-        else // restart
+-        {
+-          restart_nums++;
++        else // restart
++        {
++          // 仍有碰撞则基于当前控制点重新生成 rebound 方向，并增大碰撞权重后再优化。
++          restart_nums++;
+           initControlPoints(cps_.points, false);
+           new_lambda2_ *= 2;
+ 
+@@ -1072,9 +1104,10 @@ namespace scan_planner
+     return success;
+   }
+ 
+-  bool BsplineOptimizer::refine_optimize()
+-  {
+-    iter_num_ = 0;
++  bool BsplineOptimizer::refine_optimize()
++  {
++    // 第二阶段优化：时间重分配后，以 ref_pts_ 为参考细化曲线，主要处理动力学可行性。
++    iter_num_ = 0;
+     int start_id = order_;
+     int end_id = this->cps_.points.cols() - order_;
+     variable_num_ = 3 * (end_id - start_id);
+@@ -1145,13 +1178,14 @@ namespace scan_planner
+     return flag_safe;
+   }
+ 
+-  void BsplineOptimizer::combineCostRebound(const double *x, double *grad, double &f_combine, const int n)
+-  {
+-
+-    memcpy(cps_.points.data() + 3 * order_, x, n * sizeof(x[0]));
+-
+-    /* ---------- evaluate cost and gradient ---------- */
+-    double f_smoothness, f_distance, f_feasibility;
++  void BsplineOptimizer::combineCostRebound(const double *x, double *grad, double &f_combine, const int n)
++  {
++
++    memcpy(cps_.points.data() + 3 * order_, x, n * sizeof(x[0]));
++
++    /* ---------- evaluate cost and gradient ---------- */
++    // L-BFGS 使用一维数组，内部代价按 3xN 控制点矩阵计算后再拷回 grad。
++    double f_smoothness, f_distance, f_feasibility;
+ 
+     Eigen::MatrixXd g_smoothness = Eigen::MatrixXd::Zero(3, cps_.size);
+     Eigen::MatrixXd g_distance = Eigen::MatrixXd::Zero(3, cps_.size);
+@@ -1164,14 +1198,15 @@ namespace scan_planner
+     f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility;
+     //printf("origin %f %f %f %f\n", f_smoothness, f_distance, f_feasibility, f_combine);
+ 
+-    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + new_lambda2_ * g_distance +
+-                              lambda3_ * g_feasibility;
+-    grad_3D.row(2).setZero();
++    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + new_lambda2_ * g_distance +
++                              lambda3_ * g_feasibility;
++    // 当前 SCAN-Planner 版本只在 XY 上做 rebound/优化，Z 由初始参考和时间重分配保持。
++    grad_3D.row(2).setZero();
+     memcpy(grad, grad_3D.data() + 3 * order_, n * sizeof(grad[0]));
+   }
+ 
+-  void BsplineOptimizer::combineCostRefine(const double *x, double *grad, double &f_combine, const int n)
+-  {
++  void BsplineOptimizer::combineCostRefine(const double *x, double *grad, double &f_combine, const int n)
++  {
+ 
+     memcpy(cps_.points.data() + 3 * order_, x, n * sizeof(x[0]));
+ 
+@@ -1192,9 +1227,10 @@ namespace scan_planner
+     f_combine = lambda1_ * f_smoothness + lambda4_ * f_fitness + lambda3_ * f_feasibility;
+     // printf("origin %f %f %f %f\n", f_smoothness, f_fitness, f_feasibility, f_combine);
+ 
+-    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + lambda4_ * g_fitness +
+-                              lambda3_ * g_feasibility;
+-    grad_3D.row(2).setZero();
++    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + lambda4_ * g_fitness +
++                              lambda3_ * g_feasibility;
++    // 与 rebound 阶段一致，refine 也不主动优化 Z 控制点。
++    grad_3D.row(2).setZero();
+     memcpy(grad, grad_3D.data() + 3 * order_, n * sizeof(grad[0]));
+   }
+ 
+diff --git a/src/planner/bspline_opt/src/uniform_bspline.cpp b/src/planner/bspline_opt/src/uniform_bspline.cpp
+index 205dfb8..cacb67f 100644
+--- a/src/planner/bspline_opt/src/uniform_bspline.cpp
++++ b/src/planner/bspline_opt/src/uniform_bspline.cpp
+@@ -11,10 +11,12 @@ namespace scan_planner
+ 
+   UniformBspline::~UniformBspline() {}
+ 
+-  void UniformBspline::setUniformBspline(const Eigen::MatrixXd &points, const int &order,
+-                                         const double &interval)
+-  {
+-    control_points_ = points;
++  void UniformBspline::setUniformBspline(const Eigen::MatrixXd &points, const int &order,
++                                         const double &interval)
++  {
++    // 控制点按列存储为 3xN。均匀 B 样条的节点间隔固定为 interval_，
++    // 前 p_ 个节点允许为负数，这样 evaluateDeBoorT(0) 可以映射到有效时间起点。
++    control_points_ = points;
+     p_ = order;
+     interval_ = interval;
+ 
+@@ -58,12 +60,13 @@ namespace scan_planner
+   Eigen::MatrixXd UniformBspline::getControlPoint() { return control_points_; }
+ 
+   Eigen::VectorXd UniformBspline::evaluateDeBoor(const double &u) const
+-  {
+-
+-    double ub = min(max(u_(p_), u), u_(m_ - p_));
+-
+-    // determine which [ui,ui+1] lay in
+-    int k = p_;
++  {
++
++    double ub = min(max(u_(p_), u), u_(m_ - p_));
++
++    // determine which [ui,ui+1] lay in
++    // de Boor 求值只依赖当前 knot span 附近的 p_+1 个控制点。
++    int k = p_;
+     while (true)
+     {
+       if (u_(k + 1) >= ub)
+@@ -96,11 +99,12 @@ namespace scan_planner
+   //   return evaluateDeBoor(t + u_(p_));
+   // }
+ 
+-  Eigen::MatrixXd UniformBspline::getDerivativeControlPoints()
+-  {
+-    // The derivative of a b-spline is also a b-spline, its order become p_-1
+-    // control point Qi = p_*(Pi+1-Pi)/(ui+p_+1-ui+1)
+-    Eigen::MatrixXd ctp(control_points_.rows(), control_points_.cols() - 1);
++  Eigen::MatrixXd UniformBspline::getDerivativeControlPoints()
++  {
++    // The derivative of a b-spline is also a b-spline, its order become p_-1
++    // control point Qi = p_*(Pi+1-Pi)/(ui+p_+1-ui+1)
++    // 因此速度/加速度轨迹可以继续用同一套 de Boor 逻辑求值。
++    Eigen::MatrixXd ctp(control_points_.rows(), control_points_.cols() - 1);
+     for (int i = 0; i < ctp.cols(); ++i)
+     {
+       ctp.col(i) =
+@@ -131,9 +135,11 @@ namespace scan_planner
+     feasibility_tolerance_ = tolerance;
+   }
+ 
+-  bool UniformBspline::checkFeasibility(double &ratio, bool show)
+-  {
+-    bool fea = true;
++  bool UniformBspline::checkFeasibility(double &ratio, bool show)
++  {
++    // B 样条导数的控制点给出了速度/加速度的凸包界。
++    // 只要这些导数控制点在限制内，整条曲线也满足对应的分量限制。
++    bool fea = true;
+ 
+     Eigen::MatrixXd P = control_points_;
+     int dimension = control_points_.rows();
+@@ -191,9 +197,10 @@ namespace scan_planner
+     return fea;
+   }
+ 
+-  void UniformBspline::lengthenTime(const double &ratio)
+-  {
+-    int num1 = 5;
++  void UniformBspline::lengthenTime(const double &ratio)
++  {
++    // 只拉伸内部 knot，保持曲线几何控制点不变；时间变长后速度/加速度会降低。
++    int num1 = 5;
+     int num2 = getKnot().rows() - 1 - 5;
+ 
+     double delta_t = (ratio - 1.0) * (u_(num2) - u_(num1));
+@@ -206,11 +213,13 @@ namespace scan_planner
+ 
+   // void UniformBspline::recomputeInit() {}
+ 
+-  void UniformBspline::parameterizeToBspline(const double &ts, const vector<Eigen::Vector3d> &point_set,
+-                                             const vector<Eigen::Vector3d> &start_end_derivative,
+-                                             Eigen::MatrixXd &ctrl_pts)
+-  {
+-    if (ts <= 0)
++  void UniformBspline::parameterizeToBspline(const double &ts, const vector<Eigen::Vector3d> &point_set,
++                                             const vector<Eigen::Vector3d> &start_end_derivative,
++                                             Eigen::MatrixXd &ctrl_pts)
++  {
++    // 给定离散采样点和起终点速度/加速度，反解三次均匀 B 样条控制点。
++    // 对三次 B 样条，采样点与相邻三个控制点满足 (P_i + 4P_{i+1} + P_{i+2}) / 6。
++    if (ts <= 0)
+     {
+       cout << "[B-spline]:time step error." << endl;
+       return;
+diff --git a/src/planner/path_searching/src/dyn_a_star.cpp b/src/planner/path_searching/src/dyn_a_star.cpp
+index 4aedbf9..eb4dc32 100644
+--- a/src/planner/path_searching/src/dyn_a_star.cpp
++++ b/src/planner/path_searching/src/dyn_a_star.cpp
+@@ -14,9 +14,11 @@ AStar::~AStar()
+                 delete GridNodeMap_[i][j][k];
+ }
+ 
+-void AStar::initGridMap(GridMap::Ptr occ_map, const Eigen::Vector3i pool_size)
+-{
+-    POOL_SIZE_ = pool_size;
++void AStar::initGridMap(GridMap::Ptr occ_map, const Eigen::Vector3i pool_size)
++{
++    // A* 使用预分配节点池，避免每次碰撞段搜索都动态分配大量 GridNode。
++    // 真实搜索窗口由 start/end 的中点 center_ 和 step_size_ 映射到这个节点池。
++    POOL_SIZE_ = pool_size;
+     CENTER_IDX_ = pool_size / 2;
+ 
+     GridNodeMap_ = new GridNodePtr **[POOL_SIZE_(0)];
+@@ -91,8 +93,8 @@ vector<GridNodePtr> AStar::retrievePath(GridNodePtr current)
+     return path;
+ }
+ 
+-bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d end_pt, Vector3i &start_idx, Vector3i &end_idx)
+-{
++bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d end_pt, Vector3i &start_idx, Vector3i &end_idx)
++{
+     if (!Coord2Index(start_pt, start_idx) || !Coord2Index(end_pt, end_idx))
+         return false;
+ 
+@@ -102,10 +104,11 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d en
+     const double path_yaw = std::atan2(start_to_end(1), start_to_end(0));
+     start_to_end.normalize();
+ 
+-    int occ = checkOccupancy(Index2Coord(start_idx), path_yaw);
+-    if (occ)
+-    {
+-        //ROS_WARN("Start point is insdide an obstacle.");
++    int occ = checkOccupancy(Index2Coord(start_idx), path_yaw);
++    if (occ)
++    {
++        // 碰撞段入口可能仍在膨胀障碍内，沿反方向后退到最近自由栅格再开始搜索。
++        //ROS_WARN("Start point is insdide an obstacle.");
+         do
+         {
+             start_pt -= start_to_end * step_size_;
+@@ -121,10 +124,11 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d en
+         } while (occ);
+     }
+ 
+-    occ = checkOccupancy(Index2Coord(end_idx), path_yaw);
+-    if (occ)
+-    {
+-        //ROS_WARN("End point is insdide an obstacle.");
++    occ = checkOccupancy(Index2Coord(end_idx), path_yaw);
++    if (occ)
++    {
++        // 碰撞段出口同理，沿搜索方向向外推到自由栅格，保证 A* 有合法终点。
++        //ROS_WARN("End point is insdide an obstacle.");
+         do
+         {
+             end_pt += start_to_end * step_size_;
+@@ -143,8 +147,8 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d en
+     return true;
+ }
+ 
+-ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_pt)
+-{
++ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_pt)
++{
+     const auto time_1 = std::chrono::steady_clock::now();
+     ++rounds_;
+ 
+@@ -166,7 +170,9 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+     const Eigen::Vector2d search_xy_delta = search_end.head<2>() - search_start_xy;
+     const double search_xy_len2 = search_xy_delta.squaredNorm();
+ 
+-    auto interpolateZIndexOnSearchPlane = [&](const int x_idx, const int y_idx) -> int {
++    // SCAN-Planner 的局部绕障主要在 XY 平面展开，同时保留起终点的高度变化。
++    // 因此邻居只枚举 XY 8 邻域，Z 由起点到终点的线性高度面插值得到，降低完整 3D 搜索开销。
++    auto interpolateZIndexOnSearchPlane = [&](const int x_idx, const int y_idx) -> int {
+         if (search_xy_len2 < 1e-8)
+             return start_idx(2);
+ 
+@@ -193,8 +199,8 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+ 
+     endPtr->index = end_idx;
+ 
+-    startPtr->index = start_idx;
+-    startPtr->rounds = rounds_;
++    startPtr->index = start_idx;
++    startPtr->rounds = rounds_;
+     startPtr->gScore = 0;
+     startPtr->fScore = getHeu(startPtr, endPtr);
+     startPtr->state = GridNode::OPENSET; //put start node in open set
+@@ -204,8 +210,8 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+     double tentative_gScore;
+ 
+     int num_iter = 0;
+-    while (!openSet_.empty())
+-    {
++    while (!openSet_.empty())
++    {
+         num_iter++;
+         current = openSet_.top();
+         openSet_.pop();
+@@ -213,9 +219,10 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+         // if ( num_iter < 10000 )
+         //     cout << "current=" << current->index.transpose() << endl;
+ 
+-        if (current->index(0) == endPtr->index(0) && current->index(1) == endPtr->index(1) && current->index(2) == endPtr->index(2))
+-        {
+-            // ros::Time time_2 = ros::Time::now();
++        if (current->index(0) == endPtr->index(0) && current->index(1) == endPtr->index(1) && current->index(2) == endPtr->index(2))
++        {
++            // gridPath_ 中保存的是节点指针链，getPath() 会统一转换回世界坐标并反转顺序。
++            // ros::Time time_2 = ros::Time::now();
+             // printf("\033[34mA star iter:%d, time:%.3f\033[0m\n",num_iter, (time_2 - time_1).toSec()*1000);
+             // if((time_2 - time_1).toSec() > 0.1)
+             //     ROS_WARN("Time consume in A star path finding is %f", (time_2 - time_1).toSec() );
+@@ -252,9 +259,10 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+ 
+                 neighborPtr->rounds = rounds_;
+ 
+-                const double neighbor_yaw = std::atan2(static_cast<double>(dy), static_cast<double>(dx));
+-                if (checkOccupancy(Index2Coord(neighborPtr->index), neighbor_yaw))
+-                {
++                const double neighbor_yaw = std::atan2(static_cast<double>(dy), static_cast<double>(dx));
++                // 碰撞查询使用带航向的双圆柱膨胀模型，因此同一个位置在不同 yaw 下可能结果不同。
++                if (checkOccupancy(Index2Coord(neighborPtr->index), neighbor_yaw))
++                {
+                     continue;
+                 }
+ 
+diff --git a/src/planner/plan_env/include/plan_env/grid_map.h b/src/planner/plan_env/include/plan_env/grid_map.h
+index 19b77c5..4e97768 100644
+--- a/src/planner/plan_env/include/plan_env/grid_map.h
++++ b/src/planner/plan_env/include/plan_env/grid_map.h
+@@ -98,13 +98,14 @@ struct MappingParameters {
+ 
+ // intermediate mapping data for fusion
+ 
+-struct MappingData {
+-  // main map data, occupancy of each voxel and Euclidean distance
+-
+-  std::vector<double> occupancy_buffer_;
+-  std::vector<char> occupancy_buffer_inflate_;
+-  std::vector<int> occupancy_buffer_inflate_cnt_;
+-  vector<Eigen::Vector3i> inflate_offsets_;
++struct MappingData {
++  // main map data, occupancy of each voxel and Euclidean distance
++
++  std::vector<double> occupancy_buffer_;
++  // inflate_cnt_ 记录每个体素被多少个真实占据体素膨胀覆盖，避免多个障碍重叠时误清空膨胀层。
++  std::vector<char> occupancy_buffer_inflate_;
++  std::vector<int> occupancy_buffer_inflate_cnt_;
++  vector<Eigen::Vector3i> inflate_offsets_;
+ 
+   // raycast origin and sensor pose data
+ 
+@@ -368,9 +369,11 @@ inline int GridMap::getOccupancy(Eigen::Vector3d pos) {
+   return md_.occupancy_buffer_[toAddress(id)] > mp_.min_occupancy_log_ ? 1 : 0;
+ }
+ 
+-inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos, double yaw) {
+-  Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
+-  Eigen::Vector3d front = pos + mp_.double_cylinder_offset_ * heading;
++inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos, double yaw) {
++  // 四足机器人在水平面内近似为沿航向分布的两个圆柱。
++  // 只要前/后任一圆柱中心落入膨胀占据层，就认为该机体姿态不可通行。
++  Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
++  Eigen::Vector3d front = pos + mp_.double_cylinder_offset_ * heading;
+   Eigen::Vector3d rear = pos - mp_.double_cylinder_offset_ * heading;
+ 
+   int front_occ = getInflateOccupancyFromBuffer(front, md_.occupancy_buffer_inflate_);
+diff --git a/src/planner/plan_env/src/grid_map.cpp b/src/planner/plan_env/src/grid_map.cpp
+index 3efd86d..cb13f01 100644
+--- a/src/planner/plan_env/src/grid_map.cpp
++++ b/src/planner/plan_env/src/grid_map.cpp
+@@ -20,6 +20,8 @@ void GridMap::initMap(rclcpp::Node *node)
+   node_ = node;
+ 
+   /* get parameter */
++  // 这里的地图是固定尺寸的局部滑动窗口，而不是全局持久地图。
++  // map_origin_idx_ 会随机器人移动，底层缓冲区通过环形索引复用。
+   double x_size, y_size, z_size;
+   load_parameter(node_, "grid_map.resolution", mp_.resolution_, -1.0);
+   load_parameter(node_, "grid_map.sliding_map_size_x", x_size, -1.0);
+@@ -205,9 +207,11 @@ void GridMap::updateMapBoundaryFromIndex()
+   mp_.map_origin_ = mp_.map_min_boundary_;
+ }
+ 
+-void GridMap::rebuildInflationOffsets()
+-{
+-  const double double_radius = std::max(0.0, mp_.double_cylinder_radius_);
++void GridMap::rebuildInflationOffsets()
++{
++  // 预计算一个竖直圆柱形膨胀核。真实占据体素变为 occupied/free 时，
++  // 只需把这些 offset 累加/扣减到 inflation buffer。
++  const double double_radius = std::max(0.0, mp_.double_cylinder_radius_);
+   const int inf_step_xy = ceil(double_radius / mp_.resolution_);
+   const int inf_step_z_up = ceil(mp_.obstacles_inflation_z_up / mp_.resolution_);
+   const int inf_step_z_down = ceil(mp_.obstacles_inflation_z_down / mp_.resolution_);
+@@ -256,13 +260,15 @@ void GridMap::hashIdToGlobalIndex(int addr, Eigen::Vector3i& id_g) const
+   }
+ }
+ 
+-void GridMap::updateInflationLayer(const Eigen::Vector3i& id, int delta,
+-                                   const vector<Eigen::Vector3i>& offsets,
+-                                   std::vector<int>& cnt_buffer,
+-                                   std::vector<char>& flag_buffer,
+-                                   const std::vector<char>* ignore_mask)
+-{
+-  for (const auto& offset : offsets)
++void GridMap::updateInflationLayer(const Eigen::Vector3i& id, int delta,
++                                   const vector<Eigen::Vector3i>& offsets,
++                                   std::vector<int>& cnt_buffer,
++                                   std::vector<char>& flag_buffer,
++                                   const std::vector<char>* ignore_mask)
++{
++  // delta=+1 表示新增一个真实障碍体素，delta=-1 表示该障碍被清除。
++  // 计数缓冲使多个障碍膨胀区域重叠时不会被单个障碍清除误删。
++  for (const auto& offset : offsets)
+   {
+     const Eigen::Vector3i inf_id = id + offset;
+     if (!isInMap(inf_id))
+@@ -285,9 +291,10 @@ void GridMap::updateInflation(const Eigen::Vector3i& id, int delta, const std::v
+                        md_.occupancy_buffer_inflate_, ignore_mask);
+ }
+ 
+-void GridMap::applyOccupancyUpdate(const Eigen::Vector3i& id, double new_log_odds)
+-{
+-  if (!isInMap(id))
++void GridMap::applyOccupancyUpdate(const Eigen::Vector3i& id, double new_log_odds)
++{
++  // 只有跨过占据阈值时才更新膨胀层；普通 log-odds 累加不会反复重建局部膨胀。
++  if (!isInMap(id))
+     return;
+ 
+   const int addr = toAddress(id);
+@@ -321,9 +328,11 @@ void GridMap::resetCellByAddressForSliding(int addr, const std::vector<char>& cl
+     updateInflation(id_g, -1, &clear_mask);
+ }
+ 
+-void GridMap::updateSlidingMap(const Eigen::Vector3d& center)
+-{
+-  if (!mp_.map_sliding_en_)
++void GridMap::updateSlidingMap(const Eigen::Vector3d& center)
++{
++  // 局部地图随机器人位置滑动。缓冲区地址使用取模环形映射，
++  // 因此小幅移动只清空新进入窗口的切片，不需要整体搬移体素数据。
++  if (!mp_.map_sliding_en_)
+     return;
+ 
+   Eigen::Vector3i new_origin_idx;
+@@ -471,9 +480,10 @@ int GridMap::setCacheOccupancy(Eigen::Vector3d pos, int occ)
+   return idx_ctns;
+ }
+ 
+-void GridMap::projectDepthImage()
+-{
+-  // md_.proj_points_.clear();
++void GridMap::projectDepthImage()
++{
++  // 深度图先稀疏采样并投影到世界系，后续 raycastProcess 统一处理命中点和穿越射线。
++  // md_.proj_points_.clear();
+   md_.proj_points_cnt = 0;
+ 
+   uint16_t *row_ptr;
+@@ -539,9 +549,11 @@ void GridMap::projectDepthImage()
+   }
+ }
+ 
+-void GridMap::raycastProcess()
+-{
+-  // if (md_.proj_points_.size() == 0)
++void GridMap::raycastProcess()
++{
++  // Raycasting 将投影点转成 log-odds 观测：
++  // 终点若在量程内记为 hit，射线经过的体素记为 miss，最后批量写回 occupancy_buffer_。
++  // if (md_.proj_points_.size() == 0)
+   if (md_.proj_points_cnt == 0)
+     return;
+ 
+@@ -571,14 +583,16 @@ void GridMap::raycastProcess()
+ 
+     // set flag for projected point
+ 
+-    if (!isInMap(pt_w))
+-    {
+-      pt_w = closetPointInMap(pt_w, md_.ray_pos_);
++    if (!isInMap(pt_w))
++    {
++      // 观测点在地图外时，将射线截到地图边界附近，并作为 free endpoint 处理。
++      pt_w = closetPointInMap(pt_w, md_.ray_pos_);
+ 
+       length = (pt_w - md_.ray_pos_).norm();
+-      if (length > mp_.max_ray_length_)
+-      {
+-        pt_w = (pt_w - md_.ray_pos_) / length * mp_.max_ray_length_ + md_.ray_pos_;
++      if (length > mp_.max_ray_length_)
++      {
++        // 超出最大量程的点只提供自由空间信息，不把远端标成障碍。
++        pt_w = (pt_w - md_.ray_pos_) / length * mp_.max_ray_length_ + md_.ray_pos_;
+       }
+       vox_idx = setCacheOccupancy(pt_w, 0);
+     }
+@@ -619,11 +633,12 @@ void GridMap::raycastProcess()
+       }
+     }
+ 
+-    raycaster.setInput(pt_w / mp_.resolution_, md_.ray_pos_ / mp_.resolution_);
+-
+-    while (raycaster.step(ray_pt))
+-    {
+-      Eigen::Vector3d tmp = (ray_pt + half) * mp_.resolution_;
++    raycaster.setInput(pt_w / mp_.resolution_, md_.ray_pos_ / mp_.resolution_);
++
++    while (raycaster.step(ray_pt))
++    {
++      // 从传感器原点到观测点之间的体素为 miss，用于清除旧障碍或未知区域。
++      Eigen::Vector3d tmp = (ray_pt + half) * mp_.resolution_;
+       length = (tmp - md_.ray_pos_).norm();
+ 
+       vox_idx = setCacheOccupancy(tmp, 0);
+@@ -675,8 +690,9 @@ void GridMap::raycastProcess()
+     int idx_ctns = toAddress(idx);
+     md_.cache_voxel_.pop();
+ 
+-    double log_odds_update =
+-        md_.count_hit_[idx_ctns] >= md_.count_hit_and_miss_[idx_ctns] - md_.count_hit_[idx_ctns] ? mp_.prob_hit_log_ : mp_.prob_miss_log_;
++    // 同一轮 raycast 中，一个体素可能被多条射线访问；hit 多于 miss 时按占据更新，否则按空闲更新。
++    double log_odds_update =
++        md_.count_hit_[idx_ctns] >= md_.count_hit_and_miss_[idx_ctns] - md_.count_hit_[idx_ctns] ? mp_.prob_hit_log_ : mp_.prob_miss_log_;
+ 
+     md_.count_hit_[idx_ctns] = md_.count_hit_and_miss_[idx_ctns] = 0;
+ 
+@@ -692,9 +708,10 @@ void GridMap::raycastProcess()
+ 
+     bool in_local = idx(0) >= min_id(0) && idx(0) <= max_id(0) && idx(1) >= min_id(1) &&
+                     idx(1) <= max_id(1) && idx(2) >= min_id(2) && idx(2) <= max_id(2);
+-    if (!in_local)
+-    {
+-      applyOccupancyUpdate(idx, mp_.clamp_min_log_);
++    if (!in_local)
++    {
++      // 超出 local_update_range 的缓存体素不使用本轮观测，直接压回 free，防止远处噪声污染局部地图。
++      applyOccupancyUpdate(idx, mp_.clamp_min_log_);
+     }
+ 
+     const double new_log_odds =
+@@ -797,10 +814,11 @@ void GridMap::depthPoseCallback(const sensor_msgs::msg::Image::ConstSharedPtr &i
+     return;
+   ray_q.normalize();
+ 
+-  Eigen::Vector3d ray_pos(sensor_pose.position.x, sensor_pose.position.y, sensor_pose.position.z);
+-  if (mp_.need_extrinsic_)
+-  {
+-    const Eigen::Matrix3d pose_r = ray_q.toRotationMatrix();
++  Eigen::Vector3d ray_pos(sensor_pose.position.x, sensor_pose.position.y, sensor_pose.position.z);
++  if (mp_.need_extrinsic_)
++  {
++    // 实机模式下外部里程计通常给的是机体/IMU 位姿，这里转换到深度相机光心位姿再投影。
++    const Eigen::Matrix3d pose_r = ray_q.toRotationMatrix();
+     ray_pos += pose_r * mp_.depth_extrinsic_.block<3, 1>(0, 3);
+     ray_q = Eigen::Quaterniond(pose_r * mp_.depth_extrinsic_.block<3, 3>(0, 0));
+     ray_q.normalize();
+@@ -846,10 +864,11 @@ void GridMap::sensorPoseCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &
+     return;
+   ray_q.normalize();
+ 
+-  Eigen::Vector3d ray_pos(sensor_pose.position.x, sensor_pose.position.y, sensor_pose.position.z);
+-  if (mp_.need_extrinsic_)
+-  {
+-    const Eigen::Matrix3d pose_r = ray_q.toRotationMatrix();
++  Eigen::Vector3d ray_pos(sensor_pose.position.x, sensor_pose.position.y, sensor_pose.position.z);
++  if (mp_.need_extrinsic_)
++  {
++    // lidar 点云若在传感器系发布，需要先通过外参得到传感器在世界系的位姿。
++    const Eigen::Matrix3d pose_r = ray_q.toRotationMatrix();
+     ray_pos += pose_r * mp_.lidar_extrinsic_.block<3, 1>(0, 3);
+     ray_q = Eigen::Quaterniond(pose_r * mp_.lidar_extrinsic_.block<3, 3>(0, 0));
+     ray_q.normalize();
+@@ -904,10 +923,11 @@ void GridMap::cloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr
+     if (!std::isfinite(pt.x) || !std::isfinite(pt.y) || !std::isfinite(pt.z))
+       continue;
+ 
+-    Eigen::Vector3d pt_world;
+-    if (mp_.cloud_is_world_)
+-    {
+-      pt_world = Eigen::Vector3d(pt.x, pt.y, pt.z);
++    Eigen::Vector3d pt_world;
++    if (mp_.cloud_is_world_)
++    {
++      // 仿真器默认发布世界系点云，实机可通过 cloud_is_world=false 切换为传感器系点云。
++      pt_world = Eigen::Vector3d(pt.x, pt.y, pt.z);
+     }
+     else
+     {
+diff --git a/src/planner/plan_manage/launch/run.launch.py b/src/planner/plan_manage/launch/run.launch.py
+index 57cd6f3..8e28d26 100644
+--- a/src/planner/plan_manage/launch/run.launch.py
++++ b/src/planner/plan_manage/launch/run.launch.py
+@@ -15,6 +15,8 @@ def _as_bool(value):
+ 
+ 
+ def _setup(context):
++    # OpaqueFunction 让 launch 参数在运行期解析，便于根据 is_real_world/sensor_type
++    # 动态选择 remapping、参数覆盖和需要启动的辅助节点。
+     scan_share = get_package_share_directory("scan_planner")
+     go2_share = get_package_share_directory("go2_description")
+     planner_yaml = os.path.join(scan_share, "config", "planner.yaml")
+@@ -37,6 +39,8 @@ def _setup(context):
+         )
+ 
+     if is_real:
++        # 实机模式默认对接外部 LIO、深度相机和机器人底盘驱动。
++        # 若实际话题不同，优先在这里调整 remapping。
+         body_pose = "/LIO/odom_vehicle"
+         sensor_pose = "/LIO/odom_imu"
+         cloud = "/LIO/clouds_lidar"
+@@ -50,6 +54,7 @@ def _setup(context):
+             "grid_map.fy": 609.22021484375,
+         }
+     else:
++        # 仿真模式使用包内 kinematic simulator、map generator 和 local sensing 节点。
+         body_pose = "/quad_0/body_pose"
+         sensor_pose = "/quad_0/camera_pose" if sensor_type == "depth" else "/quad_0/lidar_pose"
+         cloud = "/quad_0/cloud"
+@@ -59,6 +64,7 @@ def _setup(context):
+         intrinsics = {}
+ 
+     common = {"use_sim_time": use_sim_time}
++    # planner_overrides 覆盖 YAML 中和运行场景强相关的参数，避免维护多份 planner.yaml。
+     planner_overrides = {
+         **common,
+         **intrinsics,
+@@ -68,6 +74,7 @@ def _setup(context):
+         "grid_map.need_extrinsic": need_extrinsic,
+     }
+     actions = [
++        # scan_planner_node 内部创建 FSM、GridMap、A* 和 B 样条优化器，是规划主节点。
+         Node(
+             package="scan_planner",
+             executable="scan_planner_node",
+@@ -85,6 +92,7 @@ def _setup(context):
+         )
+     ]
+     actions.append(
++        # RobotModel 可视化需要 robot_description；真实/仿真都启动，便于 RViz 中观察机体尺寸。
+         Node(
+             package="robot_state_publisher",
+             executable="robot_state_publisher",
+@@ -103,6 +111,7 @@ def _setup(context):
+     )
+ 
+     if controller_mode == "open_loop":
++        # 开环控制器直接消费 planning/bspline，更适合调试规划曲线本身。
+         actions.append(
+             Node(
+                 package="scan_planner",
+@@ -117,6 +126,7 @@ def _setup(context):
+             )
+         )
+     else:
++        # 闭环控制器根据 body_pose 反馈输出 cmd_vel，是默认仿真/实机执行路径。
+         actions.append(
+             Node(
+                 package="scan_planner",
+@@ -131,6 +141,7 @@ def _setup(context):
+             )
+         )
+         if not is_real:
++            # 非实机时用轻量运动学节点闭环产生 body_pose，不依赖 Gazebo 物理仿真。
+             actions.append(
+                 Node(
+                     package="scan_planner",
+@@ -155,6 +166,7 @@ def _setup(context):
+             )
+ 
+     if not is_real:
++        # 仿真地图、局部传感器和步态可视化都只在非实机模式启动。
+         actions.extend(
+             [
+                 Node(
+diff --git a/src/planner/plan_manage/scripts/keypoint_recorder.py b/src/planner/plan_manage/scripts/keypoint_recorder.py
+index 91b5b69..b30f47d 100644
+--- a/src/planner/plan_manage/scripts/keypoint_recorder.py
++++ b/src/planner/plan_manage/scripts/keypoint_recorder.py
+@@ -20,11 +20,13 @@ DEFAULT_OUTPUT = os.path.join(os.getcwd(), "keypoints.yaml")
+ 
+ 
+ def format_float(value):
++    # ROS 2 参数文件里不需要固定 6 位小数；去掉尾零能让生成的 waypoint 列表更易读。
+     text = f"{float(value):.6f}".rstrip("0").rstrip(".")
+     return "0" if text in ("", "-0") else text
+ 
+ 
+ def atomic_write(path, content):
++    # 先写临时文件再原子替换，避免 Ctrl-C 或异常时留下半截 YAML。
+     directory = os.path.dirname(os.path.abspath(path))
+     os.makedirs(directory, exist_ok=True)
+     temporary = path + ".tmp"
+@@ -40,6 +42,7 @@ class KeypointRecorder(Node):
+         self.output_path = os.path.abspath(output_path)
+         self.latest_odom = None
+         self.waypoints = []
++        # 只缓存最新里程计，按键时再把当前位置追加到 waypoint 列表。
+         self.create_subscription(Odometry, odom_topic, self.odom_callback, qos_profile_sensor_data)
+ 
+     def odom_callback(self, message):
+@@ -50,6 +53,7 @@ class KeypointRecorder(Node):
+             return None
+         position = self.latest_odom.pose.pose.position
+         point = (float(position.x), float(position.y), float(position.z))
++        # 过滤 NaN/Inf，防止坏里程计写入参数文件导致规划节点启动失败。
+         return point if all(math.isfinite(value) for value in point) else None
+ 
+     def record_current(self):
+@@ -74,6 +78,7 @@ class KeypointRecorder(Node):
+             self.get_logger().warning("Invalid waypoint index")
+ 
+     def build_yaml(self):
++        # plan_manage 读取的是扁平数组 fsm.waypoints: [x0,y0,z0,x1,y1,z1,...]。
+         values = [format_float(value) for point in self.waypoints for value in point]
+         return (
+             "scan_planner_node:\n"
+@@ -86,6 +91,7 @@ class KeypointRecorder(Node):
+         self.get_logger().info(f"Saved {len(self.waypoints)} waypoint(s) to {self.output_path}")
+ 
+     def prompt_index(self, settings, action):
++        # 输入数字前临时恢复终端 canonical 模式；输入完成后再切回单字符热键模式。
+         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+         try:
+             return int(input(f"{action} waypoint index (1-{len(self.waypoints)}): ").strip())
+@@ -99,6 +105,7 @@ class KeypointRecorder(Node):
+             raise RuntimeError("keyboard control requires a TTY")
+         print("Enter/Space/a: add, r: replace, d: delete, u: undo, l: list, s: save, q: save+quit")
+         settings = termios.tcgetattr(sys.stdin)
++        # cbreak 模式允许不按 Enter 就响应单个按键，适合边走边记录关键点。
+         tty.setcbreak(sys.stdin.fileno())
+         try:
+             while rclpy.ok():
+diff --git a/src/planner/plan_manage/src/planner_manager.cpp b/src/planner/plan_manage/src/planner_manager.cpp
+index 34c8c16..ade2108 100644
+--- a/src/planner/plan_manage/src/planner_manager.cpp
++++ b/src/planner/plan_manage/src/planner_manager.cpp
+@@ -7,10 +7,12 @@ namespace scan_planner
+ {
+   namespace
+   {
+-    void applyLinearZReference(std::vector<Eigen::Vector3d> &points, const double start_z, const double target_z)
+-    {
+-      if (points.empty())
+-        return;
++    void applyLinearZReference(std::vector<Eigen::Vector3d> &points, const double start_z, const double target_z)
++    {
++      // 局部规划主要在水平面内做绕障，Z 方向由目标高度给出参考。
++      // 这里按 XY 累积弧长线性分配高度，避免初始 B 样条在上下台阶/坡面时出现突变。
++      if (points.empty())
++        return;
+ 
+       if (points.size() == 1)
+       {
+@@ -63,14 +65,16 @@ namespace scan_planner
+     pp_.planning_horizon_ = get_double("manager.planning_horizon", 5.0);
+ 
+     local_data_.traj_id_ = 0;
+-    grid_map_.reset(new GridMap);
++    // GridMap 是后续所有碰撞查询的唯一环境来源；优化器和 A* 都共享它。
++    grid_map_.reset(new GridMap);
+     grid_map_->initMap(node_);
+-
+-    bspline_optimizer_rebound_.reset(new BsplineOptimizer);
++
++    bspline_optimizer_rebound_.reset(new BsplineOptimizer);
+     bspline_optimizer_rebound_->setParam(node_);
+-    bspline_optimizer_rebound_->setEnvironment(grid_map_);
+-    bspline_optimizer_rebound_->a_star_.reset(new AStar);
+-    bspline_optimizer_rebound_->a_star_->initGridMap(grid_map_, Eigen::Vector3i(100, 100, 100));
++    bspline_optimizer_rebound_->setEnvironment(grid_map_);
++    bspline_optimizer_rebound_->a_star_.reset(new AStar);
++    // A* 只在局部碰撞段内工作，pool 大小限制了单次 rebound 可搜索的体素窗口。
++    bspline_optimizer_rebound_->a_star_->initGridMap(grid_map_, Eigen::Vector3i(100, 100, 100));
+ 
+     visualization_ = vis;
+   }
+@@ -101,9 +105,13 @@ namespace scan_planner
+     auto t_start = std::chrono::steady_clock::now();
+     double t_init = 0.0, t_opt = 0.0, t_refine = 0.0;
+ 
+-    /*** STEP 1: INIT ***/
+-    double ts = (start_pt - local_target_pt).norm() > 0.1 ? pp_.ctrl_pt_dist / pp_.max_vel_ * 1.2 : pp_.ctrl_pt_dist / pp_.max_vel_ * 5; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
+-    vector<Eigen::Vector3d> point_set, start_end_derivatives;
++    /*** STEP 1: INIT ***/
++    // 先构造一条可参数化的离散几何路径：
++    // - 首次规划/新目标：用多项式连接起点和局部目标。
++    // - 普通重规划：截取当前未执行完的 B 样条，再拼接到局部目标。
++    // 之后再统一转换为三次 B 样条控制点，交给优化器处理碰撞和动力学。
++    double ts = (start_pt - local_target_pt).norm() > 0.1 ? pp_.ctrl_pt_dist / pp_.max_vel_ * 1.2 : pp_.ctrl_pt_dist / pp_.max_vel_ * 5; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
++    vector<Eigen::Vector3d> point_set, start_end_derivatives;
+     static bool flag_first_call = true, flag_force_polynomial = false;
+     bool flag_regenerate = false;
+     do
+@@ -112,24 +120,27 @@ namespace scan_planner
+       start_end_derivatives.clear();
+       flag_regenerate = false;
+ 
+-      if (flag_first_call || flag_polyInit || flag_force_polynomial /*|| ( start_pt - local_target_pt ).norm() < 1.0*/) // Initial path generated from a min-snap traj by order.
+-      {
+-        flag_first_call = false;
+-        flag_force_polynomial = false;
++      if (flag_first_call || flag_polyInit || flag_force_polynomial /*|| ( start_pt - local_target_pt ).norm() < 1.0*/) // Initial path generated from a min-snap traj by order.
++      {
++        // 多项式初值提供一条光滑但不一定避障的曲线。后续 rebound 阶段会把碰撞段推离障碍。
++        flag_first_call = false;
++        flag_force_polynomial = false;
+ 
+         PolynomialTraj gl_traj;
+ 
+         double dist = (start_pt - local_target_pt).norm();
+         double time = pow(pp_.max_vel_, 2) / pp_.max_acc_ > dist ? sqrt(dist / pp_.max_acc_) : (dist - pow(pp_.max_vel_, 2) / pp_.max_acc_) / pp_.max_vel_ + 2 * pp_.max_vel_ / pp_.max_acc_;
+ 
+-        if (!flag_randomPolyTraj)
+-        {
+-          gl_traj = PolynomialTraj::one_segment_traj_gen(start_pt, start_vel, start_acc, local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), time);
+-        }
+-        else
+-        {
+-          Eigen::Vector3d horizon_dir = ((start_pt - local_target_pt).cross(Eigen::Vector3d(0, 0, 1))).normalized();
+-          Eigen::Vector3d vertical_dir = ((start_pt - local_target_pt).cross(horizon_dir)).normalized();
++        if (!flag_randomPolyTraj)
++        {
++          // 常规情况使用单段五次多项式，满足起终点速度/加速度边界。
++          gl_traj = PolynomialTraj::one_segment_traj_gen(start_pt, start_vel, start_acc, local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), time);
++        }
++        else
++        {
++          // 连续失败时在中点附近加入随机扰动，帮助优化跳出同一侧碰撞约束。
++          Eigen::Vector3d horizon_dir = ((start_pt - local_target_pt).cross(Eigen::Vector3d(0, 0, 1))).normalized();
++          Eigen::Vector3d vertical_dir = ((start_pt - local_target_pt).cross(horizon_dir)).normalized();
+           Eigen::Vector3d random_inserted_pt = (start_pt + local_target_pt) / 2 +
+                                                (((double)rand()) / RAND_MAX - 0.5) * (start_pt - local_target_pt).norm() * horizon_dir * 0.8 * (-0.978 / (continuous_failures_count_ + 0.989) + 0.989) +
+                                                (((double)rand()) / RAND_MAX - 0.5) * (start_pt - local_target_pt).norm() * vertical_dir * 0.4 * (-0.978 / (continuous_failures_count_ + 0.989) + 0.989);
+@@ -145,10 +156,11 @@ namespace scan_planner
+         double t;
+         bool flag_too_far;
+         ts *= 1.5; // ts will be divided by 1.5 in the next
+-        do
+-        {
+-          ts /= 1.5;
+-          point_set.clear();
++        do
++        {
++          // 控制点过稀会让参数化后的曲线跨过障碍或超限，因此逐步减小 ts 直到采样足够密。
++          ts /= 1.5;
++          point_set.clear();
+           flag_too_far = false;
+           Eigen::Vector3d last_pt = gl_traj.evaluate(0);
+           for (t = 0; t < time; t += ts)
+@@ -169,10 +181,12 @@ namespace scan_planner
+         start_end_derivatives.push_back(gl_traj.evaluateAcc(0));
+         start_end_derivatives.push_back(gl_traj.evaluateAcc(t));
+       }
+-      else // Initial path generated from previous trajectory.
+-      {
+-
+-        double t;
++      else // Initial path generated from previous trajectory.
++      {
++        // 对执行中的轨迹做局部重规划时，保留当前轨迹的未执行部分作为初值，
++        // 可以减少新旧轨迹之间的速度/加速度跳变。
++
++        double t;
+         double t_cur = (node_->now() - local_data_.start_time_).seconds();
+ 
+         vector<double> pseudo_arc_length;
+@@ -215,10 +229,11 @@ namespace scan_planner
+         double sample_length = 0;
+         double cps_dist = pp_.ctrl_pt_dist * 1.5; // cps_dist will be divided by 1.5 in the next
+         size_t id = 0;
+-        do
+-        {
+-          cps_dist /= 1.5;
+-          point_set.clear();
++        do
++        {
++          // 按伪弧长重采样，使控制点密度尽量均匀，避免时间采样导致局部点过密/过稀。
++          cps_dist /= 1.5;
++          point_set.clear();
+           sample_length = 0;
+           id = 0;
+           while ((id <= pseudo_arc_length.size() - 2) && sample_length <= pseudo_arc_length.back())
+@@ -248,13 +263,15 @@ namespace scan_planner
+       }
+     } while (flag_regenerate);
+ 
+-    applyLinearZReference(point_set, start_pt(2), local_target_pt(2));
+-
+-    Eigen::MatrixXd ctrl_pts;
+-    UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
+-
+-    vector<vector<Eigen::Vector3d>> a_star_paths;
+-    a_star_paths = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
++    applyLinearZReference(point_set, start_pt(2), local_target_pt(2));
++
++    Eigen::MatrixXd ctrl_pts;
++    // 用离散点和端点导数约束求解三次均匀 B 样条控制点。
++    UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
++
++    // initControlPoints 会扫描初始曲线中的碰撞段，并为每段调用 A* 构造 rebound 方向。
++    vector<vector<Eigen::Vector3d>> a_star_paths;
++    a_star_paths = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
+ 
+     t_init = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
+ 
+@@ -264,8 +281,9 @@ namespace scan_planner
+ 
+     t_start = std::chrono::steady_clock::now();
+ 
+-    /*** STEP 2: OPTIMIZE ***/
+-    bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
++    /*** STEP 2: OPTIMIZE ***/
++    // Rebound 优化只移动中间控制点；代价项同时包含平滑性、A* 引导的避障距离和速度/加速度可行性。
++    bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
+     cout << "first_optimize_step_success=" << flag_step_1_success << endl;
+     if (!flag_step_1_success)
+     {
+@@ -278,8 +296,10 @@ namespace scan_planner
+     t_opt = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
+     t_start = std::chrono::steady_clock::now();
+ 
+-    /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/
+-    UniformBspline pos = UniformBspline(ctrl_pts, 3, ts);
++    /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/
++    // 空间曲线避障成功后仍可能超出动力学约束。此时拉长时间间隔，再用 fitness cost
++    // 让曲线尽量贴近原来的几何形状。
++    UniformBspline pos = UniformBspline(ctrl_pts, 3, ts);
+     pos.setPhysicalLimits(pp_.max_vel_, pp_.max_acc_, pp_.feasibility_tolerance_);
+ 
+     double ratio;
+@@ -327,14 +347,15 @@ namespace scan_planner
+     return true;
+   }
+ 
+-  bool SCANPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d &start_pos, const Eigen::Vector3d &start_vel, const Eigen::Vector3d &start_acc,
+-                                                  const std::vector<Eigen::Vector3d> &waypoints, const Eigen::Vector3d &end_vel, const Eigen::Vector3d &end_acc)
+-  {
+-
+-    // generate global reference trajectory
+-
+-    if (waypoints.empty())
+-      return false;
++  bool SCANPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d &start_pos, const Eigen::Vector3d &start_vel, const Eigen::Vector3d &start_acc,
++                                                  const std::vector<Eigen::Vector3d> &waypoints, const Eigen::Vector3d &end_vel, const Eigen::Vector3d &end_acc)
++  {
++
++    // generate global reference trajectory
++    // 全局轨迹只作为低频参考，不直接避障；局部窗口内的 rebound B 样条负责处理动态障碍和局部地图。
++
++    if (waypoints.empty())
++      return false;
+ 
+     vector<Eigen::Vector3d> points;
+     points.push_back(start_pos);
+@@ -473,23 +494,25 @@ namespace scan_planner
+     return true;
+   }
+ 
+-  bool SCANPlannerManager::refineTrajAlgo(UniformBspline &traj, vector<Eigen::Vector3d> &start_end_derivative, double ratio, double &ts, Eigen::MatrixXd &optimal_control_points)
+-  {
+-    double t_inc;
++  bool SCANPlannerManager::refineTrajAlgo(UniformBspline &traj, vector<Eigen::Vector3d> &start_end_derivative, double ratio, double &ts, Eigen::MatrixXd &optimal_control_points)
++  {
++    double t_inc;
+ 
+     Eigen::MatrixXd ctrl_pts; // = traj.getControlPoint()
+ 
+     // std::cout << "ratio: " << ratio << std::endl;
+-    reparamBspline(traj, start_end_derivative, ratio, ctrl_pts, ts, t_inc);
++    // ratio 来自速度/加速度超限程度。重新参数化会增加总时长并保持同一批采样点的几何形状。
++    reparamBspline(traj, start_end_derivative, ratio, ctrl_pts, ts, t_inc);
+ 
+     traj = UniformBspline(ctrl_pts, 3, ts);
+ 
+     double t_step = traj.getTimeSum() / (ctrl_pts.cols() - 3);
+-    bspline_optimizer_rebound_->ref_pts_.clear();
+-    for (double t = 0; t < traj.getTimeSum() + 1e-4; t += t_step)
+-      bspline_optimizer_rebound_->ref_pts_.push_back(traj.evaluateDeBoorT(t));
+-
+-    bool success = bspline_optimizer_rebound_->BsplineOptimizeTrajRefine(ctrl_pts, ts, optimal_control_points);
++    bspline_optimizer_rebound_->ref_pts_.clear();
++    for (double t = 0; t < traj.getTimeSum() + 1e-4; t += t_step)
++      bspline_optimizer_rebound_->ref_pts_.push_back(traj.evaluateDeBoorT(t));
++
++    // refine 阶段不再使用 rebound 距离项，而是用 fitness cost 约束重参数化后的曲线贴近 ref_pts_。
++    bool success = bspline_optimizer_rebound_->BsplineOptimizeTrajRefine(ctrl_pts, ts, optimal_control_points);
+ 
+     return success;
+   }
+@@ -505,9 +528,11 @@ namespace scan_planner
+     local_data_.traj_id_ += 1;
+   }
+ 
+-  bool SCANPlannerManager::checkDynamicFeasibility(UniformBspline position_traj)
+-  {
+-    UniformBspline vel_traj = position_traj.getDerivative();
++  bool SCANPlannerManager::checkDynamicFeasibility(UniformBspline position_traj)
++  {
++    // checkFeasibility 使用控制点差分给出快速判定；这里再按时间采样一次，
++    // 捕获数值误差或容差设置导致的实际速度/加速度超限。
++    UniformBspline vel_traj = position_traj.getDerivative();
+     UniformBspline acc_traj = vel_traj.getDerivative();
+     const double duration = position_traj.getTimeSum();
+     const double sample_dt = std::max(0.01, std::min(0.05, duration / 50.0));
+diff --git a/src/planner/plan_manage/src/scan_planner_node.cpp b/src/planner/plan_manage/src/scan_planner_node.cpp
+index 7062132..012a38f 100644
+--- a/src/planner/plan_manage/src/scan_planner_node.cpp
++++ b/src/planner/plan_manage/src/scan_planner_node.cpp
+@@ -11,6 +11,7 @@ int main(int argc, char **argv)
+ 
+   try
+   {
++    // scan_planner_node 本身很薄：真正的目标处理、地图更新、重规划和发布逻辑都在 SCANReplanFSM 内部。
+     scan_planner::SCANReplanFSM planner;
+     planner.init(node.get());
+     rclcpp::executors::SingleThreadedExecutor executor;
+diff --git a/src/planner/plan_manage/src/scan_replan_fsm.cpp b/src/planner/plan_manage/src/scan_replan_fsm.cpp
+index 9f6aa4e..d95aa54 100644
+--- a/src/planner/plan_manage/src/scan_replan_fsm.cpp
++++ b/src/planner/plan_manage/src/scan_replan_fsm.cpp
+@@ -33,6 +33,7 @@ namespace scan_planner
+     last_freeze_update_time_ = node_->now();
+ 
+     /*  fsm param  */
++    // FSM 层只保存调度和安全相关参数；轨迹优化权重、速度限制等由下层模块读取。
+     navi_mode_ = load_parameter<int>(node_, "fsm.navi_mode", -1);
+     replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_replan", -1.0);
+     no_replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_no_replan", -1.0);
+@@ -49,6 +50,7 @@ namespace scan_planner
+ 
+     if (navi_mode_ == NAVI_MODE::PRESET_TARGET)
+     {
++      // 预设路径点以扁平数组存储，形如 [x0,y0,z0,x1,y1,z1,...]，便于 ROS 2 参数文件覆盖。
+       const auto flat_waypoints = load_parameter<std::vector<double>>(node_, "fsm.waypoints", {});
+       if (flat_waypoints.empty() || flat_waypoints.size() % 3 != 0)
+         throw std::runtime_error("navi_mode=2 requires non-empty fsm.waypoints with x,y,z triples");
+@@ -62,6 +64,7 @@ namespace scan_planner
+     }
+ 
+     /* initialize main modules */
++    // visualization 只负责 RViz 输出；planner_manager_ 持有地图、A* 和 B 样条优化器。
+     visualization_.reset(new PlanningVisualization(node_));
+     planner_manager_.reset(new SCANPlannerManager);
+     planner_manager_->initPlanModules(node_, visualization_);
+@@ -96,9 +99,10 @@ namespace scan_planner
+       throw std::runtime_error("fsm.navi_mode must be 1, 2, or 3");
+   }
+ 
+-  void SCANReplanFSM::planGlobalTrajbyGivenWps()
+-  {
+-    std::vector<Eigen::Vector3d> wps = preset_waypoints_;
++  void SCANReplanFSM::planGlobalTrajbyGivenWps()
++  {
++    // navi_mode=2 的入口：收到首帧里程计后，从第一个预设路径点开始逐个规划。
++    std::vector<Eigen::Vector3d> wps = preset_waypoints_;
+ 
+     for (size_t i = 0; i < wps.size(); i++)
+     {
+@@ -131,6 +135,7 @@ namespace scan_planner
+       return;
+     }
+ 
++    // 手动目标和路径目标最终都复用 waypointCallback，保证全局轨迹生成和 FSM 触发逻辑一致。
+     auto path = std::make_shared<nav_msgs::msg::Path>();
+     path->header = msg->header;
+     path->poses.push_back(*msg);
+@@ -153,12 +158,16 @@ namespace scan_planner
+     trigger_ = true;
+     init_pt_ = odom_pos_;
+ 
+-    bool success = false;
+-    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, rviz_goal_height_;
+-    success = planner_manager_->planGlobalTraj(odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
+-
+-    if (success)
+-      success = adjustGlobalTargetIfOccupied();
++    bool success = false;
++    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, rviz_goal_height_;
++    // RViz 2D Goal 只可靠提供 XY，这里使用首帧 body_pose 的高度作为目标 Z。
++    success = planner_manager_->planGlobalTraj(odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
++
++    if (success)
++    {
++      // 如果最终目标正好落在障碍物内，则沿全局轨迹回退到最近的可行点。
++      success = adjustGlobalTargetIfOccupied();
++    }
+ 
+     visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
+ 
+@@ -208,7 +217,8 @@ namespace scan_planner
+       visualization_->displayGoalPoint(waypoints[i], Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, i);
+     }
+ 
+-    bool success = planner_manager_->planGlobalTrajWaypoints(
++    // navi_mode=3 或预设路径点序列会把多个点交给 minimum-snap 全局参考轨迹。
++    bool success = planner_manager_->planGlobalTrajWaypoints(
+         odom_pos_,
+         odom_vel_,
+         Eigen::Vector3d::Zero(),
+@@ -242,9 +252,11 @@ namespace scan_planner
+     return true;
+   }
+ 
+-  bool SCANReplanFSM::planNextWaypoint()
+-  {
+-    if (current_wp_ < 0 || current_wp_ >= (int)active_waypoints_.size())
++  bool SCANReplanFSM::planNextWaypoint()
++  {
++    // 路径点序列模式下，每到达当前 waypoint 后再生成下一段全局参考；
++    // 局部规划仍然复用相同的 reboundReplan 主链路。
++    if (current_wp_ < 0 || current_wp_ >= (int)active_waypoints_.size())
+     {
+       RCLCPP_WARN(node_->get_logger(), "[navi_mode=%d] No active waypoint to plan", navi_mode_);
+       return false;
+@@ -295,9 +307,11 @@ namespace scan_planner
+     return navi_mode_ == NAVI_MODE::PRESET_TARGET;
+   }
+ 
+-  bool SCANReplanFSM::adjustGlobalTargetIfOccupied()
+-  {
+-    auto map = planner_manager_->grid_map_;
++  bool SCANReplanFSM::adjustGlobalTargetIfOccupied()
++  {
++    // 全局参考轨迹本身不避障；目标点如果被膨胀层占据，局部规划很难收敛。
++    // 因此在进入局部规划前，先从轨迹末端向前搜索一个可达的终点。
++    auto map = planner_manager_->grid_map_;
+     auto &global_data = planner_manager_->global_data_;
+     const double duration = global_data.global_duration_;
+     if (!map || duration < 1e-3)
+@@ -352,10 +366,11 @@ namespace scan_planner
+ 
+     for (const auto& pose_stamped : msg->poses)
+     {
+-      Eigen::Vector3d wp;
+-      wp(0) = pose_stamped.pose.position.x;
+-      wp(1) = pose_stamped.pose.position.y;
+-      wp(2) = pose_stamped.pose.position.z + body_height_; // Adjust for body height
++      Eigen::Vector3d wp;
++      wp(0) = pose_stamped.pose.position.x;
++      wp(1) = pose_stamped.pose.position.y;
++      // 外部路径通常贴地发布；规划器跟踪的是机体中心高度，所以加 body_height_。
++      wp(2) = pose_stamped.pose.position.z + body_height_; // Adjust for body height
+       waypoints.push_back(wp);
+     }
+     bool success = planGlobalTrajByWaypoints(waypoints);
+@@ -427,7 +442,9 @@ namespace scan_planner
+     if (dt <= 0.0 || dt > 0.2)
+       return;
+ 
+-    LocalTrajData *info = &planner_manager_->local_data_;
++    LocalTrajData *info = &planner_manager_->local_data_;
++    // 控制器冻结执行时，规划轨迹的起始时间也向后平移，
++    // 这样恢复执行后不会直接跳到“已经过去”的轨迹点。
+     if (go2_execution_frozen_ && info->start_time_.seconds() > 1e-5)
+       info->start_time_ += rclcpp::Duration::from_seconds(dt);
+   }
+@@ -448,9 +465,10 @@ namespace scan_planner
+     return std::atan2(diff(1), diff(0));
+   }
+ 
+-  void SCANReplanFSM::publishSelfInflationMarker()
+-  {
+-    const double radius = std::max(0.0, self_double_cylinder_radius_);
++  void SCANReplanFSM::publishSelfInflationMarker()
++  {
++    // RViz 中显示与碰撞查询一致的双圆柱机体近似，便于调试膨胀半径和航向相关碰撞。
++    const double radius = std::max(0.0, self_double_cylinder_radius_);
+     const double z_up = std::max(0.0, self_inflation_z_up_);
+     const double z_down = std::max(0.0, self_inflation_z_down_);
+     const double height = std::max(1e-3, z_up + z_down);
+@@ -518,8 +536,9 @@ namespace scan_planner
+   }
+ 
+   void SCANReplanFSM::execFSMCallback()
+-  {
+-    updateLocalTrajTimeFreeze();
++  {
++    // 主状态机以 100 Hz 运行，只做轻量判断；真正耗时的优化在状态转换时触发。
++    updateLocalTrajTimeFreeze();
+ 
+     static int fsm_num = 0;
+     fsm_num++;
+@@ -560,9 +579,10 @@ namespace scan_planner
+       break;
+     }
+ 
+-    case GEN_NEW_TRAJ:
+-    {
+-      setStartStateFromOdomOrCurrentTraj();
++    case GEN_NEW_TRAJ:
++    {
++      // 新目标规划必须用多项式初值；如果同一状态连续失败，则启用随机中间点增加绕障多样性。
++      setStartStateFromOdomOrCurrentTraj();
+ 
+       // Eigen::Vector3d rot_x = odom_orient_.toRotationMatrix().block(0, 0, 3, 1);
+       // start_yaw_(0)         = atan2(rot_x(1), rot_x(0));
+@@ -590,10 +610,11 @@ namespace scan_planner
+       break;
+     }
+ 
+-    case REPLAN_TRAJ:
+-    {
+-
+-      if (planFromCurrentTraj())
++    case REPLAN_TRAJ:
++    {
++
++      // 普通重规划优先从当前轨迹状态继续，保持速度/加速度连续。
++      if (planFromCurrentTraj())
+       {
+         replan_fail_count_ = 0;
+         changeFSMExecState(EXEC_TRAJ, "FSM");
+@@ -607,10 +628,12 @@ namespace scan_planner
+       break;
+     }
+ 
+-    case EXEC_TRAJ:
+-    {
+-      /* determine if need to replan */
+-      LocalTrajData *info = &planner_manager_->local_data_;
++    case EXEC_TRAJ:
++    {
++      /* determine if need to replan */
++      // 执行阶段根据当前位置在局部轨迹上的进度判断是否需要提前重规划：
++      // 靠近起点不重规划，靠近终点不重规划，中段则滚动生成下一条局部轨迹。
++      LocalTrajData *info = &planner_manager_->local_data_;
+       rclcpp::Time time_now = node_->now();
+       double t_cur = (time_now - info->start_time_).seconds();
+       t_cur = min(info->duration_, t_cur);
+@@ -722,24 +745,26 @@ namespace scan_planner
+     }
+   }
+ 
+-  bool SCANReplanFSM::planFromCurrentTraj()
+-  {
+-    LocalTrajData *info = &planner_manager_->local_data_;
++  bool SCANReplanFSM::planFromCurrentTraj()
++  {
++    LocalTrajData *info = &planner_manager_->local_data_;
+     rclcpp::Time time_now = node_->now();
+     double t_cur = (time_now - info->start_time_).seconds();
+     t_cur = std::min(std::max(t_cur, 0.0), info->duration_);
+ 
+     //cout << "info->velocity_traj_=" << info->velocity_traj_.get_control_points() << endl;
+ 
+-    start_pt_ = odom_pos_;
++    // 位置使用真实里程计，速度/加速度优先沿用当前 B 样条，降低新旧轨迹拼接处的导数跳变。
++    start_pt_ = odom_pos_;
+     start_vel_ = info->velocity_traj_.evaluateDeBoorT(t_cur);
+     start_acc_ = info->acceleration_traj_.evaluateDeBoorT(t_cur);
+ 
+     const Eigen::Vector2d to_goal = end_pt_.head<2>() - odom_pos_.head<2>();
+-    if (to_goal.norm() > 1e-3 && start_vel_.head<2>().dot(to_goal) < 0.0)
+-    {
+-      start_vel_.setZero();
+-      start_acc_.setZero();
++    if (to_goal.norm() > 1e-3 && start_vel_.head<2>().dot(to_goal) < 0.0)
++    {
++      // 如果旧轨迹速度已经背离目标，继续沿用会把初始曲线拉向错误方向，直接清零更稳。
++      start_vel_.setZero();
++      start_acc_.setZero();
+     }
+ 
+     if (!planner_manager_->planGlobalTraj(
+@@ -769,9 +794,10 @@ namespace scan_planner
+     return true;
+   }
+ 
+-  void SCANReplanFSM::setStartStateFromOdomOrCurrentTraj()
+-  {
+-    start_pt_ = odom_pos_;
++  void SCANReplanFSM::setStartStateFromOdomOrCurrentTraj()
++  {
++    // 初次规划时只有 odom；已有局部轨迹时，用轨迹导数作为边界条件，让 replanning 更平滑。
++    start_pt_ = odom_pos_;
+     start_vel_ = odom_vel_;
+     start_acc_.setZero();
+ 
+@@ -796,8 +822,9 @@ namespace scan_planner
+   }
+ 
+   void SCANReplanFSM::checkCollisionCallback()
+-  {
+-    updateLocalTrajTimeFreeze();
++  {
++    // 安全定时器独立于主 FSM：即使仍处于 EXEC_TRAJ，也会持续检查未来轨迹是否被新障碍物占据。
++    updateLocalTrajTimeFreeze();
+ 
+     LocalTrajData *info = &planner_manager_->local_data_;
+     auto map = planner_manager_->grid_map_;
+@@ -808,10 +835,11 @@ namespace scan_planner
+     /* ---------- check trajectory ---------- */
+     constexpr double time_step = 0.01;
+     double t_cur = (node_->now() - info->start_time_).seconds();
+-    double t_2_3 = info->duration_ * 2 / 3;
+-    for (double t = t_cur; t < info->duration_; t += time_step)
+-    {
+-      if (t_cur < t_2_3 && t >= t_2_3) // If t_cur < t_2_3, only the first 2/3 partition of the trajectory is considered valid and will get checked.
++    double t_2_3 = info->duration_ * 2 / 3;
++    for (double t = t_cur; t < info->duration_; t += time_step)
++    {
++      // 只检查靠近当前时刻的前 2/3 轨迹，远端会在后续滚动规划中重新生成。
++      if (t_cur < t_2_3 && t >= t_2_3) // If t_cur < t_2_3, only the first 2/3 partition of the trajectory is considered valid and will get checked.
+         break;
+ 
+       Eigen::Vector3d pos = info->position_traj_.evaluateDeBoorT(t);
+@@ -825,8 +853,9 @@ namespace scan_planner
+         }
+         else
+         {
+-          if (t - t_cur < emergency_time_) // 0.8s of emergency time
+-          {
++          if (t - t_cur < emergency_time_) // 0.8s of emergency time
++          {
++            // 碰撞点太近时，重规划可能来不及执行，直接发布急停 B 样条。
+             RCLCPP_WARN(node_->get_logger(), "Obstacle discovered; emergency stop in %.3fs", t - t_cur);
+             changeFSMExecState(EMERGENCY_STOP, "SAFETY");
+           }
+@@ -842,10 +871,11 @@ namespace scan_planner
+     }
+   }
+ 
+-  bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj)
+-  {
+-
+-    getLocalTarget();
++  bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj)
++  {
++
++    // 每次局部规划都先沿全局参考截取一个局部目标，再调用 manager 执行 B 样条优化。
++    getLocalTarget();
+ 
+     bool plan_success =
+         planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_, local_target_pt_, local_target_vel_, (have_new_target_ || flag_use_poly_init), flag_randomPolyTraj);
+@@ -926,9 +956,11 @@ namespace scan_planner
+     return true;
+   }
+ 
+-  void SCANReplanFSM::getLocalTarget()
+-  {
+-    double t;
++  void SCANReplanFSM::getLocalTarget()
++  {
++    // 沿全局参考轨迹向前搜索 planning_horizon_ 距离处的点。
++    // 这样局部规划器只处理有限窗口，终点速度则取全局参考在该点的速度。
++    double t;
+ 
+     double t_step = planning_horizon_ / 20 / planner_manager_->pp_.max_vel_;
+     double dist_min = 9999, dist_min_t = 0.0;
+@@ -948,9 +980,10 @@ namespace scan_planner
+         planner_manager_->global_data_.last_progress_time_ = t;
+         break;
+       }
+-      if (dist < dist_min)
+-      {
+-        dist_min = dist;
++      if (dist < dist_min)
++      {
++        // last_progress_time_ 用最近点时间更新，防止机器人绕障时局部目标沿全局轨迹倒退。
++        dist_min = dist;
+         dist_min_t = t;
+       }
+       if (dist >= planning_horizon_)
+@@ -971,9 +1004,10 @@ namespace scan_planner
+       return planner_manager_->grid_map_->getInflateOccupancy(pt, estimateYawFromSegment(odom_pos_, pt));
+     };
+ 
+-    if (targetOccupancy(local_target_pt_) != 0)
+-    {
+-      bool found_free_target = false;
++    if (targetOccupancy(local_target_pt_) != 0)
++    {
++      // 局部目标本身不能在障碍物里；否则 B 样条优化会一边避障一边被终点约束拉回障碍。
++      bool found_free_target = false;
+       double adjusted_t = target_t;
+ 
+       for (double dt = 0.0; dt <= planner_manager_->global_data_.global_duration_; dt += t_step)
+@@ -1018,9 +1052,10 @@ namespace scan_planner
+       }
+     }
+ 
+-    if ((end_pt_ - local_target_pt_).norm() < (planner_manager_->pp_.max_vel_ * planner_manager_->pp_.max_vel_) / (2 * planner_manager_->pp_.max_acc_))
+-    {
+-      // local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_ * (( end_pt_ - local_target_pt_ ).norm() / ((planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_)));
++    if ((end_pt_ - local_target_pt_).norm() < (planner_manager_->pp_.max_vel_ * planner_manager_->pp_.max_vel_) / (2 * planner_manager_->pp_.max_acc_))
++    {
++      // 进入制动距离后，局部目标速度设为 0，让最终轨迹自然收敛到终点。
++      // local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_ * (( end_pt_ - local_target_pt_ ).norm() / ((planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_)));
+       // cout << "A" << endl;
+       local_target_vel_ = Eigen::Vector3d::Zero();
+     }
+diff --git a/src/simulator/local_sensing/src/pointcloud_render_node.cpp b/src/simulator/local_sensing/src/pointcloud_render_node.cpp
+index a894e9b..6ed2c83 100644
+--- a/src/simulator/local_sensing/src/pointcloud_render_node.cpp
++++ b/src/simulator/local_sensing/src/pointcloud_render_node.cpp
+@@ -10,6 +10,7 @@
+ #include <pcl/io/pcd_io.h>
+ #include <rclcpp/rclcpp.hpp>
+ #include <sensor_msgs/msg/point_cloud2.hpp>
++#include <sensor_msgs/point_cloud2_iterator.hpp>
+ #include <Eigen/Dense>
+ #include <iostream>
+ #include <pcl/search/impl/kdtree.hpp>
+@@ -81,6 +82,42 @@ rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr comp_time_pub;
+ sensor_msgs::msg::PointCloud2 local_map_pcl;
+ sensor_msgs::msg::PointCloud2 local_depth_pcl;
+ 
++void toCompactPointCloud2(
++    const pcl::PointCloud<PointType> &cloud,
++    sensor_msgs::msg::PointCloud2 &message)
++{
++  // PCL serializes PointXYZI with its 32-byte Eigen alignment padding.  The
++  // ROS field representation only needs four float32 values (16 bytes).
++  // Compact serialization preserves every point and keeps best-effort local
++  // clouds below the local CycloneDDS message-size limit.
++  sensor_msgs::PointCloud2Modifier modifier(message);
++  modifier.setPointCloud2Fields(
++      4,
++      "x", 1, sensor_msgs::msg::PointField::FLOAT32,
++      "y", 1, sensor_msgs::msg::PointField::FLOAT32,
++      "z", 1, sensor_msgs::msg::PointField::FLOAT32,
++      "intensity", 1, sensor_msgs::msg::PointField::FLOAT32);
++  modifier.resize(cloud.points.size());
++  sensor_msgs::PointCloud2Iterator<float> x(message, "x");
++  sensor_msgs::PointCloud2Iterator<float> y(message, "y");
++  sensor_msgs::PointCloud2Iterator<float> z(message, "z");
++  sensor_msgs::PointCloud2Iterator<float> intensity(message, "intensity");
++  for (const auto &point : cloud.points)
++  {
++    *x = point.x;
++    *y = point.y;
++    *z = point.z;
++    *intensity = point.intensity;
++    ++x;
++    ++y;
++    ++z;
++    ++intensity;
++  }
++  message.height = 1;
++  message.width = static_cast<std::uint32_t>(cloud.points.size());
++  message.is_dense = cloud.is_dense;
++}
++
+ rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
+ rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr global_map_sub;
+ std::vector<rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr> other_odom_subs;
+@@ -88,10 +125,13 @@ std::vector<rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr> other_odom
+ rclcpp::TimerBase::SharedPtr local_sensing_timer, dynobj_timer;
+ std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster;
+ 
+-bool has_global_map(false);
+-bool has_local_map(false);
+-bool has_odom(false);
+-bool has_dyn_map(false);
++bool has_global_map(false);
++bool has_local_map(false);
++bool has_odom(false);
++bool has_dyn_map(false);
++bool allow_global_map_updates(false);
++bool logged_first_odom(false);
++bool logged_first_render(false);
+ 
+ nav_msgs::msg::Odometry odom_;
+ Eigen::Matrix4d sensor2body, sensor2world;
+@@ -791,8 +831,18 @@ void rcvOdometryCallback(const nav_msgs::msg::Odometry::ConstSharedPtr message)
+   const auto &odom = *message;
+   /*if(!has_global_map)
+     return;*/
+-  has_odom = true;
+-  odom_ = odom;
++  has_odom = true;
++  odom_ = odom;
++  if (!logged_first_odom)
++  {
++    logged_first_odom = true;
++    RCLCPP_INFO(
++        ros_node->get_logger(),
++        "First renderer odometry received at (%.3f, %.3f, %.3f)",
++        odom_.pose.pose.position.x,
++        odom_.pose.pose.position.y,
++        odom_.pose.pose.position.z);
++  }
+ 
+   Matrix4d body2world = Matrix4d::Identity();
+ 
+@@ -849,10 +899,41 @@ void rcvOdometryCallback(const nav_msgs::msg::Odometry::ConstSharedPtr message)
+ 
+ void rcvGlobalPointCloudCallBack(const sensor_msgs::msg::PointCloud2::ConstSharedPtr message)
+ {
+-  if (has_global_map)
+-    return;
+-
+-  RCLCPP_INFO(ros_node->get_logger(), "Global point cloud received");
++  if (has_global_map && !allow_global_map_updates)
++    return;
++
++  if (has_global_map)
++  {
++    // The upstream renderer keeps the first map forever. The multi-floor
++    // integration opts into this small reload seam so the same renderer can
++    // rebuild all of its native ray-casting indices after a PCD switch.
++    has_global_map = false;
++    has_local_map = false;
++    has_dyn_map = false;
++    point_hashmap.clear();
++    pointindex_hashmap.clear();
++    cloud_all_map.clear();
++    local_map.clear();
++    local_map_filled.clear();
++    point_in_sensor.clear();
++    cloud_explored.clear();
++    all_normals->clear();
++    dynobj_poss.clear();
++    dynobj_move_modes.clear();
++    dynobj_types.clear();
++    dynobj_dir.clear();
++    dynobj_points.clear();
++    dynobj_points_vis.clear();
++    dynobj_pointsindex.clear();
++    dyn_obs_size_vec.clear();
++    dyn_start_time_vec.clear();
++    logged_first_render = false;
++    RCLCPP_INFO(ros_node->get_logger(), "Reloading global point cloud");
++  }
++  else
++  {
++    RCLCPP_INFO(ros_node->get_logger(), "Global point cloud received");
++  }
+ 
+   pcl::PointCloud<PointType> cloud_input;
+   const bool has_intensity = std::any_of(
+@@ -1015,10 +1096,20 @@ void renderSensedPoints()
+ 
+   auto t1 = std::chrono::steady_clock::now();
+ 
+-  if (!has_global_map || !has_odom)
+-    return;
+-
+-  if (useDepthSensor())
++  if (!has_global_map || !has_odom)
++    return;
++
++  const bool first_render = !logged_first_render;
++  if (first_render)
++  {
++    logged_first_render = true;
++    RCLCPP_INFO(
++        ros_node->get_logger(),
++        "Starting first native cloud render: map_points=%zu",
++        cloud_all_map.points.size());
++  }
++
++  if (useDepthSensor())
+   {
+     publishPinholeDepth(rclcpp::Time(odom_.header.stamp));
+     return;
+@@ -1331,14 +1422,31 @@ void renderSensedPoints()
+         {
+           ind_x = cen_x + i;
+           ind_y = cen_y + j;
+-          ind_z = cen_z + k;
+-
+-          long int box_index = ind_x + ind_y * cube_numx + ind_z * cube_numx * cube_numy;
+-          fov_points.insert(fov_points.end(), point_hashmap[box_index].begin(), point_hashmap[box_index].end());
+-          fov_pointsindex.insert(fov_pointsindex.end(), pointindex_hashmap[box_index].begin(), pointindex_hashmap[box_index].end());
+-        }
+-      }
+-    }
++          ind_z = cen_z + k;
++
++          long int box_index = ind_x + ind_y * cube_numx + ind_z * cube_numx * cube_numy;
++          // Preserve the upstream 40 m/360-degree search while avoiding
++          // operator[] insertion for the hundreds of thousands of empty
++          // cubes around a flat warehouse map.  Creating those empty vectors
++          // on every frame delayed the first native cloud beyond the map
++          // switch readiness timeout.
++          const auto points = point_hashmap.find(box_index);
++          if (points == point_hashmap.end())
++          {
++            continue;
++          }
++          const auto indices = pointindex_hashmap.find(box_index);
++          if (indices == pointindex_hashmap.end())
++          {
++            continue;
++          }
++          fov_points.insert(
++              fov_points.end(), points->second.begin(), points->second.end());
++          fov_pointsindex.insert(
++              fov_pointsindex.end(), indices->second.begin(), indices->second.end());
++        }
++      }
++    }
+     // ROS_INFO("POINT SIZE = %d, box size = %d", fov_points.size(), fov_boxes.size());
+   }
+   else
+@@ -1387,6 +1495,14 @@ void renderSensedPoints()
+ 
+   auto t4 = std::chrono::steady_clock::now();
+   duration3 += std::chrono::duration<double>(t4 - t3).count();
++  if (first_render)
++  {
++    RCLCPP_INFO(
++        ros_node->get_logger(),
++        "First render FOV collection: points=%zu, elapsed=%.3fs",
++        fov_points.size(),
++        std::chrono::duration<double>(t4 - t1).count());
++  }
+ 
+   const size_t size_ = fov_points.size();
+ 
+@@ -1511,6 +1627,13 @@ shared(pattern_matrix, polar_matrix, cloud_all_map, pointIdxRadiusSearch,
+ #endif
+   auto t5 = std::chrono::steady_clock::now();
+   duration4 += std::chrono::duration<double>(t5 - t4).count();
++  if (first_render)
++  {
++    RCLCPP_INFO(
++        ros_node->get_logger(),
++        "First render nearest-ray pass: elapsed=%.3fs",
++        std::chrono::duration<double>(t5 - t4).count());
++  }
+ 
+   // ROS_INFO("After first filter");
+   auto t6 = std::chrono::steady_clock::now();
+@@ -1761,6 +1884,14 @@ shared(culling_kdindex,
+ 
+   auto t7 = std::chrono::steady_clock::now();
+   duration6 += std::chrono::duration<double>(t7 - t6).count();
++  if (first_render)
++  {
++    RCLCPP_INFO(
++        ros_node->get_logger(),
++        "First render plane pass: enabled=%d, elapsed=%.3fs",
++        plane_interline,
++        std::chrono::duration<double>(t7 - t6).count());
++  }
+   // ROS_INFO("Duration interline = %f, duration direct = %f",duration_interline,duration_direct);
+ 
+   for (int i = 0; i < polar_width; i++)
+@@ -1935,6 +2066,14 @@ shared(use_avia_pattern, use_vlp32_pattern, use_minicf_pattern, is_360lidar,
+ 
+   auto t8 = std::chrono::steady_clock::now();
+   duration7 += std::chrono::duration<double>(t8 - t7).count();
++  if (first_render)
++  {
++    RCLCPP_INFO(
++        ros_node->get_logger(),
++        "First render point conversion: points=%zu, elapsed=%.3fs",
++        local_map_filled.points.size(),
++        std::chrono::duration<double>(t8 - t7).count());
++  }
+ 
+   if (free_flag == 1)
+   {
+@@ -1951,10 +2090,26 @@ shared(use_avia_pattern, use_vlp32_pattern, use_minicf_pattern, is_360lidar,
+   local_map_filled.height = 1;
+   local_map_filled.is_dense = true;
+ 
+-  pcl::toROSMsg(local_map_filled, local_map_pcd);
+-  local_map_pcd.header = odom_.header;
+-  local_map_pcd.header.frame_id = "world";
++  toCompactPointCloud2(local_map_filled, local_map_pcd);
++  if (first_render)
++  {
++    RCLCPP_INFO(
++        ros_node->get_logger(),
++        "First render ROS conversion: width=%u, bytes=%zu",
++        local_map_pcd.width,
++        local_map_pcd.data.size());
++  }
++  local_map_pcd.header = odom_.header;
++  local_map_pcd.header.frame_id = "world";
+   pub_cloud->publish(local_map_pcd);
++  if (first_render)
++  {
++    RCLCPP_INFO(
++        ros_node->get_logger(),
++        "First native cloud published on %s; matched_subscriptions=%zu",
++        pub_cloud->get_topic_name(),
++        pub_cloud->get_subscription_count());
++  }
+ 
+   // transform
+   std::string sensor_frame_id_ = "sensor";
+@@ -1988,7 +2143,7 @@ shared(use_avia_pattern, use_vlp32_pattern, use_minicf_pattern, is_360lidar,
+   point_in_sensor.width = point_in_sensor.points.size();
+   point_in_sensor.height = 1;
+   point_in_sensor.is_dense = true;
+-  pcl::toROSMsg(point_in_sensor, sensor_map_pcd);
++  toCompactPointCloud2(point_in_sensor, sensor_map_pcd);
+   sensor_map_pcd.header.frame_id = sensor_frame_id_;
+   sensor_map_pcd.header.stamp = time_stamp_;
+   pub_intercloud->publish(sensor_map_pcd);
+@@ -2044,6 +2199,7 @@ int main(int argc, char **argv)
+   use_os128_pattern = ros_node->declare_parameter<int>("use_os128_pattern", 0);
+   use_os64_pattern = ros_node->declare_parameter<int>("use_os64_pattern", 0);
+   use_minicf_pattern = ros_node->declare_parameter<int>("use_minicf_pattern", 1);
++  plane_interline = ros_node->declare_parameter<int>("plane_interline", 1);
+   cam_width = ros_node->declare_parameter<int>("cam_width", cam_width);
+   cam_height = ros_node->declare_parameter<int>("cam_height", cam_height);
+   cam_fx = ros_node->declare_parameter<double>("cam_fx", cam_fx);
+@@ -2065,6 +2221,10 @@ int main(int argc, char **argv)
+   collisioncheck_enable = ros_node->declare_parameter<int>("collision_check.enable", 0);
+   collision_range = ros_node->declare_parameter<double>("collision_check.range", 0.3);
+   output_pcd = ros_node->declare_parameter<int>("output_pcd", 0);
++  allow_global_map_updates =
++      ros_node->declare_parameter<bool>("allow_global_map_updates", false);
++  const bool reliable_cloud_transport =
++      ros_node->declare_parameter<bool>("reliable_cloud_transport", false);
+ 
+   // subscribe other uav pos
+   drone_num = ros_node->declare_parameter<int>("uav_num", 1);
+@@ -2141,12 +2301,15 @@ int main(int argc, char **argv)
+     pinhole_depth_pub_ = ros_node->create_publisher<sensor_msgs::msg::Image>("depth", rclcpp::SensorDataQoS());
+     camera_pose_pub_ = ros_node->create_publisher<nav_msgs::msg::Odometry>(quadTopic("camera_pose"), rclcpp::SensorDataQoS());
+   }
+-  else
+-  {
++  else
++  {
+     pub_intercloud = ros_node->create_publisher<sensor_msgs::msg::PointCloud2>("sensor_cloud", rclcpp::SensorDataQoS());
+-    pub_cloud = ros_node->create_publisher<sensor_msgs::msg::PointCloud2>("cloud", rclcpp::SensorDataQoS());
++    const auto cloud_qos = reliable_cloud_transport
++        ? rclcpp::QoS(rclcpp::KeepLast(5)).reliable()
++        : rclcpp::SensorDataQoS();
++    pub_cloud = ros_node->create_publisher<sensor_msgs::msg::PointCloud2>("cloud", cloud_qos);
+     lidar_pose_pub_ = ros_node->create_publisher<nav_msgs::msg::Odometry>(quadTopic("lidar_pose"), rclcpp::SensorDataQoS());
+-  }
++  }
+   comp_time_pub = ros_node->create_publisher<geometry_msgs::msg::PoseStamped>("simulator_compute_time", 10);
+   double sensing_duration = 1.0 / sensing_rate;
+ 
+@@ -2170,7 +2333,41 @@ int main(int argc, char **argv)
+ 
+   rclcpp::executors::SingleThreadedExecutor executor;
+   executor.add_node(ros_node);
+-  executor.spin();
+-  rclcpp::shutdown();
+-  return 0;
+-}
++  try
++  {
++    executor.spin();
++  }
++  catch (const std::system_error &error)
++  {
++    // Some ROS 2/PCL builds invalidate the executor wait primitive while a
++    // SIGINT is being handled. Treat that teardown-only condition as a clean
++    // stop, while preserving real runtime failures.
++    if (rclcpp::ok())
++      throw;
++    std::cerr << "pcl_render_node shutdown: " << error.what() << std::endl;
++  }
++  local_sensing_timer.reset();
++  dynobj_timer.reset();
++  executor.remove_node(ros_node);
++
++  // ROS 2 may shut down the middleware context before main() resumes from
++  // executor.spin(). Release every entity while its owning node is still
++  // alive; otherwise these file-scope shared pointers are destroyed after the
++  // node and Fast DDS can dereference an invalid reader/writer during exit.
++  other_odom_subs.clear();
++  global_map_sub.reset();
++  odom_sub.reset();
++  pub_cloud.reset();
++  pub_intercloud.reset();
++  pub_dyncloud.reset();
++  pub_uavcloud.reset();
++  pinhole_depth_pub_.reset();
++  camera_pose_pub_.reset();
++  lidar_pose_pub_.reset();
++  comp_time_pub.reset();
++  tf_broadcaster.reset();
++  ros_node.reset();
++  if (rclcpp::ok())
++    rclcpp::shutdown();
++  return 0;
++}

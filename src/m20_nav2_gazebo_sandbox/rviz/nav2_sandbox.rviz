@@ -1,0 +1,120 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Selection
+    Name: Selection
+  - Class: rviz_common/Tool Properties
+    Name: Tool Properties
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz_default_plugins/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Name: Grid
+      Plane: XY
+      Plane Cell Count: 40
+      Reference Frame: <Fixed Frame>
+    - Class: rviz_default_plugins/TF
+      Enabled: false
+      Frame Timeout: 15
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+    - Class: rviz_default_plugins/RobotModel
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+      Enabled: true
+      Name: Robot
+      Visual Enabled: true
+    - Alpha: 0.7
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: true
+      Enabled: true
+      Name: Map
+      Topic:
+        Value: /map
+    - Alpha: 1
+      Class: rviz_default_plugins/LaserScan
+      Color: 255; 80; 40
+      Enabled: true
+      Name: Scan
+      Size (Pixels): 3
+      Size (m): 0.04
+      Style: Points
+      Topic:
+        Value: /scan
+    - Alpha: 1
+      Class: rviz_default_plugins/PointCloud2
+      Color: 40; 150; 255
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Name: RSLidar Points
+      Position Transformer: XYZ
+      Size (Pixels): 2
+      Size (m): 0.025
+      Style: Points
+      Topic:
+        Value: /LIDAR/POINTS
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 40; 120; 255
+      Enabled: true
+      Line Style: Lines
+      Line Width: 0.06
+      Name: Global Path
+      Topic:
+        Value: /plan
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Inspection Route
+      Topic:
+        Value: /m20_factory_inspection/route_marker
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Inspection Goal
+      Topic:
+        Value: /m20_factory_inspection/current_goal_marker
+    - Alpha: 0.45
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: Local Costmap
+      Topic:
+        Value: /local_costmap/costmap
+    - Alpha: 0.35
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: Global Costmap
+      Topic:
+        Value: /global_costmap/costmap
+  Enabled: true
+  Global Options:
+    Background Color: 238; 239; 241
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/SetInitialPose
+      Topic:
+        Value: /initialpose
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /m20_nav2/goal_pose_raw
+  Value: true
+Window Geometry:
+  Height: 900
+  Width: 1400

@@ -1,0 +1,75 @@
+schema_version: 1
+project_release: 1.4.0
+
+baseline:
+  operating_system: ubuntu_22.04
+  ros_distribution: humble
+  build_type: RelWithDebInfo
+
+project_packages:
+  - m20_warehouse_interfaces
+  - m20_multifloor_map
+  - m20_official_description
+  - m20_warehouse_sim
+  - m20_inspection_core
+  - m20_scan_planner
+  - m20_scan_navigation
+  - m20_locomotion_control
+  - m20_mujoco_backend
+  - m20_warehouse_inspection
+
+# These historical or hardware-lab packages remain available as source but
+# are intentionally excluded from the default integrated colcon workspace.
+excluded_project_packages:
+  - m20_foxy_nav_deploy
+  - m20_industrial_inspection
+  - m20_industrial_inspection_gazebo
+  - m20_industrial_inspection_mujoco
+  - m20_lidar_bridge
+  - m20_lidar_to_scan
+  - m20_motion_demo
+  - m20_nav2_gazebo_sandbox
+
+source_dependencies:
+  scan_planner:
+    path: src/vendor/SCAN-Planner
+    url: https://github.com/wuyi2121/SCAN-Planner.git
+    revision: d0b921c9b05a6d291d144d60882b2e0e88d2c0e0
+    patch: patches/scan_planner_humble_cpu.patch
+    patch_sha256: 8cfa3e13bfd3c7ddd0311eeaf46058ffbe61cd28e75dff633968e53cf17de974
+    integration_patch: patches/scan_planner_multifloor_integration.patch
+    integration_patch_sha256: e5080a336087e78e74036446b16b24f1ffd47e1021396bad501f2a0f5778e4a4
+  deep_robotics_model:
+    path: src/vendor/deep_robotics_model
+    url: https://github.com/DeepRoboticsLab/deep_robotics_model.git
+    revision: 6113c62da96295e8d53abbc079af5296bf4649f8
+  m20_sdk_deploy:
+    path: src/third_party/sdk_deploy
+    url: https://github.com/DeepRoboticsLab/sdk_deploy.git
+    revision: ee289d475f2dedf0332b7542f2b173fa9e8d1456
+    patch: patches/m20_sdk_cmdvel_adapter.patch
+    sdk_patch_sha256: 41a198698c8bae00d14b9bf0e9f18cd31b912780bde8e5a1f928058fd7aa5356
+
+build_closure:
+  - drdds
+  - local_sensing_node
+  - map_generator
+  - mockamap
+  - m20_official_description
+  - m20_warehouse_interfaces
+  - odom_visualization
+  - plan_env
+  - pose_utils
+  - scan_planner_msgs
+  - m20_locomotion_control
+  - m20_inspection_core
+  - m20_mujoco_backend
+  - m20_multifloor_map
+  - m20_warehouse_sim
+  - path_searching
+  - bspline_opt
+  - traj_utils
+  - m20_scan_planner
+  - m20_scan_navigation
+  - m20_sdk_deploy
+  - m20_warehouse_inspection
