@@ -36,21 +36,16 @@ QoS、控制权和急停行为。
 2. `/MOTION_INFO`：`MotionInfo`，20 Hz，包含实测 `vel_x/vel_y/vel_yaw`、状态和步态；
 3. `/MOTION_STATE`：`MotionState`，显式切换站立、RL、趴下和软急停；
 4. `/GAIT`：`Gait`，停稳后切换步态；
-5. `MetaType` 使用 `builtin_interfaces/Time stamp`；`MotionInfoValue` 的
-   `state/gait` 是扁平字段；`/HES_STATUS` 使用 `StdMsgInt32.value`。
+5. `MetaType` 使用 `builtin_interfaces/Time stamp`；真实 1.1.0
+   `MotionInfoValue` 使用嵌套 `motion_state.state/gait_state.gait`；
+   `/HES_STATUS` 使用 `StdMsgInt32.value`。
 
-顶层 `src/drdds` 已成为唯一启用的完整消息包，同时保留 SDK 使用的低层关节、IMU、
-电池类型。`src/drdds-背部主机当前版` 是 M20-PRO 已部署 v1.2.0 基准，仅供 ABI 比对并用
-`COLCON_IGNORE` 隔离；SDK 内旧同名包也被隔离。静态预检会比较全部 25 个消息的规范化
-字段，而不是按旧手册截图推断。
-
-当前预检结果为：
-
-```text
-Foxy source preflight: PASS
-selected factory transport: direct_ros
-drdds interface schema: MATCHES BACKPACK BASELINE; direct_ros QoS: TARGET TEST PENDING
-```
+Humble 仿真与 Foxy 实机发布现统一启用从背部主机同步的 `src/deep-robotics-msg`；它的
+目录名不等于 ROS 包名，真实 `package.xml` 明确声明 `drdds` 1.1.0。历史 `src/drdds` 和
+SDK 内同名包均隔离。源码只定义消息，不定义运行时话题；`/NAV_CMD`、`/MOTION_INFO`、
+`/MOTION_STATE`、`/GAIT`、`/HES_STATUS` 来自开发指南并保持参数化。现有背部主机
+抓取记录中，前四者是 `RELIABLE/VOLATILE`，`/HES_STATUS` 是
+`RELIABLE/TRANSIENT_LOCAL`；目标机上仍要复核当前固件没有改变该合同。
 
 ### 2.2 速度反馈选择
 
@@ -133,9 +128,10 @@ ros2 launch m20_warehouse_inspection inspection_mission_mujoco.launch.py
   -> /LIO/odom_imu           (传感器位姿/速度)
   -> /LIO/in_elevator + /LIO/elevator_state
 
-/LIO/odom_vehicle + factory measured Twist
+/LIO/odom_vehicle (lio_world -> lio_base_link) + factory measured Twist
   -> m20_hardware_localization_adapter
-  -> /m20/localization/body_pose (位姿 + 可用的机体系速度)
+  -> /m20/localization/body_pose + sensor_pose + cloud
+     (仅修改消息 frame 名给 SCAN 使用，不发布 TF)
 
 /m20/locomotion/cmd_vel_sdk
   -> basic_server 或 direct_ros（启动参数二选一）
@@ -146,8 +142,8 @@ ros2 launch m20_warehouse_inspection inspection_mission_mujoco.launch.py
 ```
 
 真机不启动 MuJoCo、本地 ONNX 关节策略、PCD ray caster、`/JOINTS_CMD` 仿真执行器或
-RViz 运动学位姿积分器。一个启动图中只能有一个 `world -> base_link` 权威发布源和一个
-最终运动后端。
+RViz 运动学位姿积分器。M20 开机自带服务继续独占 `map -> base_link`；Elevator-LIO
+只发布隔离的 `lio_world -> lio_base_link/lio_imu` TF，适配器不发布 TF。
 
 ## 4. Elevator-LIO 接入结果
 
@@ -163,9 +159,11 @@ RViz 运动学位姿积分器。一个启动图中只能有一个 `world -> base
 - `/LIO/elevator_state` 提供相对位移、速度、加速度；
 - `/LIO/set_elevator_flag` 可手动进入/退出电梯模式。
 
-新增 `root_config_m20_navigation.yaml`，保持已验证的双 RoboSense 话题和外参，只把输出
-坐标系收敛为系统使用的 `world`、`base_link`、`m20_lio_imu`。原来的
-`root_config_m20.yaml/robosense_m20.yaml` 未改，可独立继续对照测试。
+此前验证的原始 M20 建图配置就是 `yaml/root_config_m20.yaml`，它引用
+`yaml/sensors/robosense_m20.yaml` 与 `runtime/mapping.yaml`。它已经包含已验证的双
+RoboSense 话题、外参和用于规避厂家 TF 的 `lio_*` 坐标系，因此不再新增平行的 mapping
+入口。导航定位只保留必要的 `root_config_m20_navigation_relocation.yaml`，传感器配置仍
+引用同一个 `robosense_m20.yaml`，只把 runtime 切为 relocation。
 
 ### 4.2 为什么增加定位适配器
 
@@ -174,10 +172,12 @@ SCAN 主要使用位姿，但栅格分段停车、楼层切换停止确认也读
 
 新增适配器做以下工作：
 
-1. 校验输入必须是 `world -> base_link`，不匹配则不发布、ready=false；
+1. 校验输入必须是 `lio_world -> lio_base_link/lio_imu`，不匹配则不发布；
 2. 优先把出厂 `MotionStatus` 或 `/MOTION_INFO` 的机体系速度合并到 LIO 位姿；
 3. 状态短暂缺失时，由连续 LIO 位姿差分得到有界机体系速度；
-4. 发布统一 `/m20/localization/body_pose` 和可诊断的 adapter state。
+4. 将已经位于 `lio_world` 数值坐标中的 body pose、sensor pose、cloud 复制为 SCAN 使用的
+   `world/base_link/m20_lio_sensor` 消息名，发布统一导航话题和诊断状态；
+5. 绝不发布 `world -> base_link` 或 `map -> base_link` TF。
 
 它不修改 LIO 算法、不复制高带宽点云，也不把运动速度反馈伪装成全局定位。
 

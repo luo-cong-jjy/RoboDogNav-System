@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -13,8 +14,18 @@
 #include <scan_planner_msgs/msg/bspline.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/string.hpp>
+#if __has_include(<tf2_geometry_msgs/tf2_geometry_msgs.hpp>)
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#else
+// ROS 2 Foxy installs this compatibility header with the legacy suffix.
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#endif
+#if __has_include(<tf2/utils.hpp>)
 #include <tf2/utils.hpp>
+#else
+// ROS 2 Foxy installs this compatibility header with the legacy suffix.
+#include <tf2/utils.h>
+#endif
 
 #include "bspline_opt/uniform_bspline.h"
 
@@ -34,6 +45,9 @@ public:
     max_vy_ = declare_parameter<double>("max_vy", 0.35);
     max_vyaw_ = std::min(declare_parameter<double>("max_vyaw", 1.0), kMaxVYawLimit);
     finish_dist_ = declare_parameter<double>("finish_dist", 0.15);
+    trajectory_progress_sync_ = declare_parameter<bool>("trajectory_progress_sync", true);
+    projection_samples_ = std::max(8, static_cast<int>(declare_parameter<int>("projection_samples", 60)));
+    max_time_ahead_ = std::max(0.0, declare_parameter<double>("max_time_ahead", 0.20));
     bidirectional_tracking_enabled_ =
       declare_parameter<bool>("bidirectional_tracking_enabled", false);
     reverse_tracking_enter_angle_ =
@@ -104,6 +118,23 @@ private:
   {
     const double norm = value.norm();
     return (norm <= max_norm || norm < 1e-6) ? value : value / norm * max_norm;
+  }
+
+  double projectTimeToCurrentPose() const
+  {
+    if (traj_.empty() || traj_duration_ <= 1e-6 || !have_odom_) return 0.0;
+    double best_t = 0.0;
+    double best_dist = std::numeric_limits<double>::infinity();
+    for (int i = 0; i <= projection_samples_; ++i) {
+      const double t = traj_duration_ * static_cast<double>(i) / projection_samples_;
+      const Eigen::Vector3d p = traj_[0].evaluateDeBoorT(t);
+      const double d = (p.head<2>() - odom_pos_.head<2>()).squaredNorm();
+      if (d < best_dist) {
+        best_dist = d;
+        best_t = t;
+      }
+    }
+    return best_t;
   }
 
   double estimateDesiredYaw(double t_cur, const Eigen::Vector3d & pos_des) const
@@ -217,7 +248,7 @@ private:
     traj_.push_back(traj_[1].getDerivative());
     traj_duration_ = traj_[0].getTimeSum();
     traj_id_ = msg->traj_id;
-    exec_time_ = 0.0;
+    exec_time_ = trajectory_progress_sync_ ? projectTimeToCurrentPose() : 0.0;
     last_update_time_ = now();
     receive_traj_ = true;
     const Eigen::Vector3d initial_position = traj_[0].evaluateDeBoorT(0.0);
@@ -280,6 +311,10 @@ private:
     publishExecutionFrozen(external_execution_hold_);
     if (!external_execution_hold_) {
       exec_time_ = std::min(traj_duration_, exec_time_ + dt);
+      if (trajectory_progress_sync_) {
+        const double projected_time = projectTimeToCurrentPose();
+        exec_time_ = std::min(exec_time_, projected_time + max_time_ahead_);
+      }
     }
     last_update_time_ = current_time;
     pos_des = traj_[0].evaluateDeBoorT(exec_time_);
@@ -325,6 +360,9 @@ private:
   rclcpp::Time last_update_time_{0, 0, RCL_ROS_TIME};
   double time_forward_, heading_error_threshold_, kp_pos_, kp_yaw_;
   double max_vx_, max_vy_, max_vyaw_, finish_dist_;
+  bool trajectory_progress_sync_{true};
+  int projection_samples_{60};
+  double max_time_ahead_{0.20};
   double reverse_tracking_enter_angle_, reverse_tracking_exit_angle_;
   double reverse_tracking_min_hold_sec_;
   double reverse_tracking_entry_alignment_, reverse_tracking_exit_alignment_;

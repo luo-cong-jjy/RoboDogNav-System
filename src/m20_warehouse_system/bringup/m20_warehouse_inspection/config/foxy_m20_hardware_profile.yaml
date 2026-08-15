@@ -9,6 +9,13 @@ host:
   ros_distribution: foxy
   build_from_clean_source: true
 
+message_interfaces:
+  source_directory: deep-robotics-msg
+  expected_ros_package: drdds
+  version: 1.1.0
+  source_revision: aa646c1782aa982f384b7e46469723f31696f778
+  status: synchronized_and_source_validated
+
 localization:
   backend: elevator_lio
   package: lio
@@ -24,19 +31,27 @@ localization:
     in_elevator: /LIO/in_elevator
     elevator_state: /LIO/elevator_state
   frames:
-    world: world
-    body: base_link
-    imu: m20_lio_imu
+    # Keep LIO isolated from the M20 boot-time map -> base_link publisher.
+    lio_world: lio_world
+    lio_body: lio_base_link
+    lio_imu: lio_imu
   navigation_adapter:
+    # Message-only aliases; this adapter never publishes TF.
+    input_world_frame: lio_world
+    input_body_frame: lio_base_link
+    output_world_frame: world
+    output_body_frame: base_link
     output_odometry: /m20/localization/body_pose
+    output_sensor_odometry: /m20/localization/sensor_pose
+    output_world_cloud: /m20/localization/cloud
     measured_twist: /m20/locomotion/measured_twist
     measured_twist_timeout_sec: 0.50
 
 navigation:
   planner: scan_planner
   body_pose_topic: /m20/localization/body_pose
-  cloud_topic: /LIO/clouds_lidar
-  sensor_pose_topic: /LIO/odom_imu
+  cloud_topic: /m20/localization/cloud
+  sensor_pose_topic: /m20/localization/sensor_pose
   cloud_is_world: true
   local_pcd_raycaster: false
 
@@ -46,12 +61,14 @@ motion:
   robot_host: 10.21.31.103
   direct_ros:
     enabled: true
-    readiness: source_complete_target_qos_pending
+    readiness: source_abi_and_recorded_target_topics_validated
     command_topic: /NAV_CMD
     feedback_topic: /MOTION_INFO
     state_topic: /MOTION_STATE
     gait_topic: /GAIT
     hard_estop_topic: /HES_STATUS
+    motion_qos: reliable_volatile
+    hard_estop_qos: reliable_transient_local
     command_rate_hz: 20.0
     firmware_minimum: V1.1.7
     rmw: rmw_fastrtps_cpp
@@ -60,6 +77,7 @@ motion:
       - drdds/msg/MotionInfo
       - drdds/msg/MotionState
       - drdds/msg/Gait
+      - drdds/msg/StdMsgInt32
 
 floor_transfer:
   # Elevator-LIO provides elevator-state estimation, not elevator calling,

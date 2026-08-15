@@ -77,30 +77,44 @@ def test_backend_is_downstream_of_safety_supervisor() -> None:
     assert "executable='m20_navigation_adapter'" in launch
 
 
-def test_integrated_system_keeps_vendor_scan_controller() -> None:
+def test_integrated_system_uses_m20_velocity_overlays() -> None:
     launch = (
         PACKAGE_ROOT / 'launch' / 'multifloor_scan_rviz.launch.py'
     ).read_text(encoding='utf-8')
-    assert 'scan_vendor_controller.yaml' in launch
+    assert 'scan_m20_velocity_planner.yaml' in launch
+    assert 'scan_m20_velocity_controller.yaml' in launch
     assert 'scan_m20_physical_controller.yaml' not in launch
+    assert "'planner_config': planner_config" in launch
     assert "'controller_config': controller_config" in launch
     assert 'capability_profile.controller_parameters()' in launch
     assert "'bidirectional_tracking_enabled'" in launch
     assert "'reverse_tracking_entry_alignment'" in launch
     assert "'reverse_tracking_exit_alignment'" in launch
     assert "executable='m20_navigation_adapter'" in launch
+    assert "executable='m20_trajectory_progress_tracker'" in launch
+    assert "execution_profile == 'm20_safe'" in launch
+    assert "execution_profile == 'm20_progress'" in launch
+    assert "default_value='scan_native'" in launch
 
 
-def test_integrated_system_has_no_scan_planner_speed_override() -> None:
+def test_complete_uses_m20_velocity_and_standalone_keeps_vendor_defaults() -> None:
     launch = (
         PACKAGE_ROOT / 'launch' / 'multifloor_scan_rviz.launch.py'
     ).read_text(encoding='utf-8')
     assert 'scan_m20_physical_planner.yaml' not in launch
-    assert 'planner_config' not in launch
+    assert 'scan_m20_velocity_planner.yaml' in launch
+    assert 'scan_m20_velocity_controller.yaml' in launch
 
-    f1_launch = _launch_text()
+    f1_launch = (
+        NAVIGATION_ROOT
+        / 'm20_scan_navigation'
+        / 'launch'
+        / 'f1_scan.launch.py'
+    ).read_text(encoding='utf-8')
     assert 'scan_m20_physical_planner.yaml' not in f1_launch
     assert 'scan_m20_physical_controller.yaml' not in f1_launch
+    assert "share / 'config' / 'scan_vendor_planner.yaml'" in f1_launch
+    assert "share / 'config' / 'scan_vendor_controller.yaml'" in f1_launch
 
 
 def test_collision_guard_profile_follows_navigation_profile() -> None:
@@ -128,9 +142,16 @@ def test_collision_guard_profile_follows_navigation_profile() -> None:
 
 
 def test_scan_world_frame_is_explicitly_connected_to_map() -> None:
-    launch = _launch_text()
-    assert "'--frame-id', 'map'" in launch
-    assert "'--child-frame-id', 'world'" in launch
+    for name in (
+        'f1_scan_rviz.launch.py',
+        'multifloor_scan_rviz.launch.py',
+    ):
+        launch = (PACKAGE_ROOT / 'launch' / name).read_text(
+            encoding='utf-8'
+        )
+        assert "'map', 'world'" in launch
+        assert "'--frame-id'" not in launch
+        assert "'--child-frame-id'" not in launch
 
 
 def test_system_navigation_contract_matches_phase2_graph() -> None:
@@ -172,6 +193,13 @@ def test_rviz_restores_scan_debug_layers_and_live_sensor_cloud() -> None:
     assert 'Name: M20' in rviz
     assert 'Name: Copied Scene (Inactive Floor)' in rviz
     assert 'Hide Left Dock: false' in rviz
+
+
+def test_f1_entry_uses_the_canonical_scan_rviz_contract() -> None:
+    launch = _launch_text()
+    assert "get_package_share_directory('m20_scan_planner')" in launch
+    assert "scan_vendor / 'rviz' / 'default.rviz'" in launch
+    assert 'phase2_f1_navigation.rviz' not in launch
 
 
 def test_scan_pointcloud_and_path_styles_match_upstream_rviz() -> None:

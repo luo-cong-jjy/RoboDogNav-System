@@ -15,6 +15,7 @@
 """Unit tests for the Foxy-compatible real localization boundary."""
 
 import math
+from pathlib import Path
 
 import pytest
 
@@ -22,6 +23,26 @@ from m20_warehouse_inspection.hardware_localization import (
     derive_body_twist,
     PoseSample,
 )
+
+
+ROOT = Path(__file__).parents[1]
+
+
+def test_localization_adapter_aliases_lio_messages_without_publishing_tf():
+    text = (
+        ROOT
+        / 'm20_warehouse_inspection'
+        / 'hardware_localization_adapter_node.py'
+    ).read_text(encoding='utf-8')
+
+    assert "'expected_world_frame', 'lio_world'" in text
+    assert "'expected_body_frame', 'lio_base_link'" in text
+    assert "'expected_sensor_frame', 'lio_imu'" in text
+    assert "'output_world_frame', 'world'" in text
+    assert "'output_body_frame', 'base_link'" in text
+    assert "'output_cloud_topic', '/m20/localization/cloud'" in text
+    assert 'TransformBroadcaster' not in text
+    assert 'StaticTransformBroadcaster' not in text
 
 
 def test_pose_difference_is_rotated_into_body_frame():

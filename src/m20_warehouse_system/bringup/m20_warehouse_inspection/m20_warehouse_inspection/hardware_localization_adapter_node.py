@@ -24,6 +24,7 @@ from nav_msgs.msg import Odometry
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Bool, String
 
 from .hardware_localization import (
@@ -43,7 +44,7 @@ def _latched_qos() -> QoSProfile:
 
 
 class HardwareLocalizationAdapter(Node):
-    """Overlay factory body velocity on the pose produced by Elevator-LIO."""
+    """Expose isolated Elevator-LIO messages to SCAN without publishing TF."""
 
     def __init__(self) -> None:
         super().__init__('m20_hardware_localization_adapter')
@@ -55,13 +56,28 @@ class HardwareLocalizationAdapter(Node):
             'output_odometry_topic', '/m20/localization/body_pose'
         )
         self.declare_parameter(
+            'input_sensor_odometry_topic', '/LIO/odom_imu'
+        )
+        self.declare_parameter(
+            'output_sensor_odometry_topic',
+            '/m20/localization/sensor_pose',
+        )
+        self.declare_parameter('input_cloud_topic', '/LIO/clouds_lidar')
+        self.declare_parameter(
+            'output_cloud_topic', '/m20/localization/cloud'
+        )
+        self.declare_parameter(
             'ready_topic', '/m20/localization/ready'
         )
         self.declare_parameter(
             'state_topic', '/m20/localization/adapter_state'
         )
-        self.declare_parameter('expected_world_frame', 'world')
-        self.declare_parameter('expected_body_frame', 'base_link')
+        self.declare_parameter('expected_world_frame', 'lio_world')
+        self.declare_parameter('expected_body_frame', 'lio_base_link')
+        self.declare_parameter('expected_sensor_frame', 'lio_imu')
+        self.declare_parameter('output_world_frame', 'world')
+        self.declare_parameter('output_body_frame', 'base_link')
+        self.declare_parameter('output_sensor_frame', 'm20_lio_sensor')
         self.declare_parameter('measured_twist_timeout_sec', 0.50)
         self.declare_parameter('minimum_pose_dt_sec', 0.02)
         self.declare_parameter('maximum_pose_dt_sec', 0.50)
@@ -73,6 +89,18 @@ class HardwareLocalizationAdapter(Node):
         )
         self._body_frame = str(
             self.get_parameter('expected_body_frame').value
+        )
+        self._sensor_frame = str(
+            self.get_parameter('expected_sensor_frame').value
+        )
+        self._output_world_frame = str(
+            self.get_parameter('output_world_frame').value
+        )
+        self._output_body_frame = str(
+            self.get_parameter('output_body_frame').value
+        )
+        self._output_sensor_frame = str(
+            self.get_parameter('output_sensor_frame').value
         )
         self._twist_timeout = max(
             0.05,
@@ -110,6 +138,16 @@ class HardwareLocalizationAdapter(Node):
             str(self.get_parameter('output_odometry_topic').value),
             20,
         )
+        self._sensor_odom_publisher = self.create_publisher(
+            Odometry,
+            str(self.get_parameter('output_sensor_odometry_topic').value),
+            20,
+        )
+        self._cloud_publisher = self.create_publisher(
+            PointCloud2,
+            str(self.get_parameter('output_cloud_topic').value),
+            rclpy.qos.qos_profile_sensor_data,
+        )
         self._ready_publisher = self.create_publisher(
             Bool, str(self.get_parameter('ready_topic').value), qos
         )
@@ -128,10 +166,22 @@ class HardwareLocalizationAdapter(Node):
             self._odometry_callback,
             20,
         )
+        self.create_subscription(
+            Odometry,
+            str(self.get_parameter('input_sensor_odometry_topic').value),
+            self._sensor_odometry_callback,
+            20,
+        )
+        self.create_subscription(
+            PointCloud2,
+            str(self.get_parameter('input_cloud_topic').value),
+            self._cloud_callback,
+            rclpy.qos.qos_profile_sensor_data,
+        )
         self._publish_state('WAITING_FOR_LIO', 'none')
         self.get_logger().info(
-            'hardware localization adapter ready: Elevator-LIO pose + '
-            'factory measured body velocity'
+            'hardware localization adapter ready: isolated Elevator-LIO '
+            'messages + factory measured body velocity; no TF is published'
         )
 
     def _now(self) -> float:
@@ -158,6 +208,8 @@ class HardwareLocalizationAdapter(Node):
                 'velocity_source': velocity_source,
                 'world_frame': self._world_frame,
                 'body_frame': self._body_frame,
+                'output_world_frame': self._output_world_frame,
+                'output_body_frame': self._output_body_frame,
             },
             sort_keys=True,
             separators=(',', ':'),
@@ -168,10 +220,13 @@ class HardwareLocalizationAdapter(Node):
             self._last_state = payload
 
     def _measured_twist_callback(self, message: TwistStamped) -> None:
-        if message.header.frame_id not in {'', self._body_frame}:
+        if message.header.frame_id not in {
+            '', self._body_frame, self._output_body_frame
+        }:
             self.get_logger().warn(
                 'ignoring measured TwistStamped with frame '
-                f'{message.header.frame_id!r}; expected {self._body_frame!r}'
+                f'{message.header.frame_id!r}; expected '
+                f'{self._body_frame!r} or {self._output_body_frame!r}'
             )
             return
         if not finite_planar_twist(self._twist_tuple(message)):
@@ -231,6 +286,11 @@ class HardwareLocalizationAdapter(Node):
         sample = self._pose_sample(message)
         derived = self._derived_twist(sample)
         output = deepcopy(message)
+        # This is a message-frame alias only. Elevator-LIO retains the
+        # lio_world -> lio_base_link TF tree, while the robot firmware remains
+        # the sole publisher of map -> base_link.
+        output.header.frame_id = self._output_world_frame
+        output.child_frame_id = self._output_body_frame
         velocity_source = 'pose_difference'
         measured = self._last_measured_twist
         if (
@@ -256,6 +316,35 @@ class HardwareLocalizationAdapter(Node):
         self._odom_publisher.publish(output)
         self._ready = True
         self._publish_state('READY', velocity_source)
+
+    def _sensor_odometry_callback(self, message: Odometry) -> None:
+        """Alias the isolated LIO sensor pose for SCAN ray casting."""
+        if (
+            message.header.frame_id != self._world_frame
+            or message.child_frame_id != self._sensor_frame
+        ):
+            self.get_logger().error(
+                'Elevator-LIO sensor frame mismatch: got '
+                f'{message.header.frame_id!r}->{message.child_frame_id!r}, '
+                f'expected {self._world_frame!r}->{self._sensor_frame!r}'
+            )
+            return
+        output = deepcopy(message)
+        output.header.frame_id = self._output_world_frame
+        output.child_frame_id = self._output_sensor_frame
+        self._sensor_odom_publisher.publish(output)
+
+    def _cloud_callback(self, message: PointCloud2) -> None:
+        """Alias the already world-transformed LIO cloud for native SCAN."""
+        if message.header.frame_id != self._world_frame:
+            self.get_logger().error(
+                'Elevator-LIO cloud frame mismatch: got '
+                f'{message.header.frame_id!r}, expected {self._world_frame!r}'
+            )
+            return
+        output = deepcopy(message)
+        output.header.frame_id = self._output_world_frame
+        self._cloud_publisher.publish(output)
 
 
 def main(args=None) -> None:

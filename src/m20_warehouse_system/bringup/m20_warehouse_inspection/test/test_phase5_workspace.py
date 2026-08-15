@@ -184,11 +184,12 @@ def test_prepare_script_is_non_destructive_and_verifies_revisions() -> None:
     assert 'M20 SDK adapter patch checksum mismatch' in script
     assert 'git -C "${sdk_target}" apply --check' in script
     assert 'ignored_dependency_packages' in script
-    assert 'canonical_drdds_source="${source_root}/drdds"' in script
-    assert 'backpack_drdds_source=' in script
-    assert 'drdds-背部主机当前版' in script
+    assert 'deployed_message_source=' in script
+    assert 'deep-robotics-msg' in script
+    assert '--exclude \'COLCON_IGNORE\'' in script
+    assert 'canonical_drdds_source=' not in script
     assert '"${sdk_target}/src/drdds"' in script
-    assert 'COLCON_IGNORE' in script
+    assert 'historical top-level src/drdds copy is ignored' in script
     assert script.index('patch checksum mismatch') < script.index(
         'git -C "${scan_target}" apply --check'
     )

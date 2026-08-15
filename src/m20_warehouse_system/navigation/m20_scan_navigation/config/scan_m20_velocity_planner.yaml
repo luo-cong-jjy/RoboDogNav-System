@@ -1,0 +1,5 @@
+scan_planner_node:
+  ros__parameters:
+    # Match SCAN trajectory limits to the validated M20 command envelope.
+    manager.max_vel: 0.45
+    optimization.max_vel: 0.45

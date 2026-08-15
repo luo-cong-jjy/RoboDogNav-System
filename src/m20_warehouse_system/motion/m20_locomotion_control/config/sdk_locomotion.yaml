@@ -33,6 +33,25 @@ m20_navigation_adapter:
     velocity_feedback_linear_correction_limit: 0.10
     velocity_feedback_yaw_correction_limit: 0.12
 
+m20_trajectory_progress_tracker:
+  ros__parameters:
+    trajectory_topic: /planning/bspline
+    odometry_topic: /m20/sim/body_pose
+    execution_hold_topic: /m20/control/execution_hold
+    output_topic: /m20/navigation/cmd_vel_candidate
+    mode_topic: /m20/navigation/candidate_mode
+    state_topic: /m20/navigation/progress_tracker_state
+    control_rate_hz: 50.0
+    odometry_timeout_sec: 0.25
+    spline_sample_period_sec: 0.02
+    # Preserve SCAN's native spatial preview: 0.75 m/s * 0.8 s = 0.60 m.
+    lookahead_m: 0.60
+    yaw_gain: 1.50
+    finish_distance_m: 0.15
+    terminal_speed_threshold_mps: 0.10
+    terminal_slowdown_distance_m: 0.80
+    terminal_min_speed_mps: 0.10
+
 m20_locomotion_manager:
   ros__parameters:
     input_topic: /m20/control/cmd_vel_safe

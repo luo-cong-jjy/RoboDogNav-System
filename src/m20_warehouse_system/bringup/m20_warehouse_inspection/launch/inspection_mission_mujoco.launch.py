@@ -42,6 +42,8 @@ def generate_launch_description() -> LaunchDescription:
     use_planner = LaunchConfiguration('use_planner')
     execution_profile = LaunchConfiguration('execution_profile')
     clearance_config = LaunchConfiguration('clearance_config')
+    planner_config = LaunchConfiguration('planner_config')
+    controller_config = LaunchConfiguration('controller_config')
     use_mujoco_viewer = LaunchConfiguration('use_mujoco_viewer')
     mujoco_viewer_distance = LaunchConfiguration(
         'mujoco_viewer_distance'
@@ -88,7 +90,9 @@ def generate_launch_description() -> LaunchDescription:
                 default_value='scan_native',
                 description=(
                     'Default upstream-compatible SCAN command path; '
-                    'm20_safe restores the experimental adapter/guard chain.'
+                    'm20_safe restores the Twist adapter/guard chain; '
+                    'm20_progress enables measured-progress B-spline '
+                    'execution for an explicit A/B run.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -105,6 +109,38 @@ def generate_launch_description() -> LaunchDescription:
                 description=(
                     'M20 geometry override for native SCAN planning and the '
                     'optional independent command guard.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'planner_config',
+                default_value=str(
+                    Path(
+                        get_package_share_directory(
+                            'm20_scan_navigation'
+                        )
+                    )
+                    / 'config'
+                    / 'scan_m20_velocity_planner.yaml'
+                ),
+                description=(
+                    'Velocity-only M20 overlay layered after the upstream '
+                    'SCAN planner profile.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'controller_config',
+                default_value=str(
+                    Path(
+                        get_package_share_directory(
+                            'm20_scan_navigation'
+                        )
+                    )
+                    / 'config'
+                    / 'scan_m20_velocity_controller.yaml'
+                ),
+                description=(
+                    'Velocity-only M20 overlay layered after the upstream '
+                    'SCAN closed-loop controller profile.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -195,6 +231,8 @@ def generate_launch_description() -> LaunchDescription:
                     'use_rviz': use_rviz,
                     'use_planner': use_planner,
                     'clearance_config': clearance_config,
+                    'planner_config': planner_config,
+                    'controller_config': controller_config,
                     'motion_backend': 'external',
                     'execution_profile': execution_profile,
                     'velocity_feedback_enabled': velocity_feedback_enabled,

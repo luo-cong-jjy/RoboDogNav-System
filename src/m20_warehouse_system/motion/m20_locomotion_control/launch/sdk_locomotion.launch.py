@@ -39,23 +39,28 @@ def _runtime_actions(context):
     execution_profile = LaunchConfiguration(
         'execution_profile'
     ).perform(context)
-    if execution_profile not in {'scan_native', 'm20_safe'}:
+    if execution_profile not in {
+        'scan_native',
+        'm20_safe',
+        'm20_progress',
+    }:
         raise RuntimeError(
-            'execution_profile must be scan_native or m20_safe'
+            'execution_profile must be scan_native, m20_safe, or '
+            'm20_progress'
         )
     native_command_parameters = (
         {
-            # Keep the upstream SCAN Twist unchanged until the official SDK's
-            # own documented command envelope. Backend readiness and timeout
-            # handling remain active.
+            # Keep the upstream SCAN Twist semantics, then apply the validated
+            # M20 numeric envelope at this downstream motion boundary. Backend
+            # readiness and timeout handling stay active.
             'rolling_navigation_enabled': False,
-            'max_forward': 0.75,
-            'max_side': 0.35,
-            'max_yaw': 1.0,
+            'max_forward': profile.max_forward,
+            'max_side': profile.max_side,
+            'max_yaw': profile.max_yaw,
             'deadband_linear': 0.0,
             'deadband_yaw': 0.0,
-            'turn_max_forward': 0.75,
-            'lateral_max_forward': 0.75,
+            'turn_max_forward': profile.max_forward,
+            'lateral_max_forward': profile.max_forward,
             'suppress_side_in_cruise': False,
             'suppress_side_in_turn': False,
         }
@@ -139,7 +144,8 @@ def generate_launch_description() -> LaunchDescription:
                 default_value='scan_native',
                 description=(
                     'scan_native relays SCAN Twist without project-side '
-                    'motion projection; m20_safe uses the M20 profile.'
+                    'motion projection; m20_safe uses the Twist adapter; '
+                    'm20_progress uses measured spatial path progress.'
                 ),
             ),
             OpaqueFunction(function=_runtime_actions),

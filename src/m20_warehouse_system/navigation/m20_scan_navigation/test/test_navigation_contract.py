@@ -185,15 +185,46 @@ def test_m20_controller_keeps_vendor_heading_behavior() -> None:
     assert 'reverse_tracking_exit_alignment' in launch
 
 
-def test_scan_launch_has_no_planner_parameter_override() -> None:
+def test_scan_launch_keeps_vendor_default_with_an_explicit_override_seam() -> None:
     launch = (
         PACKAGE_ROOT / 'launch' / 'f1_scan.launch.py'
     ).read_text(encoding='utf-8')
-    assert 'planner_config' not in launch
+    assert "planner_config = LaunchConfiguration('planner_config')" in launch
     assert (
         "str(share / 'config' / 'scan_vendor_planner.yaml'),\n"
+        "            planner_config,\n"
         "            clearance_config,"
     ) in launch
+    assert (
+        "'planner_config',\n"
+        "                default_value=str(\n"
+        "                    share / 'config' / 'scan_vendor_planner.yaml'"
+        in launch
+    )
+
+
+def test_m20_velocity_overrides_match_the_capability_envelope() -> None:
+    planner = yaml.safe_load(
+        (PACKAGE_ROOT / 'config' / 'scan_m20_velocity_planner.yaml')
+        .read_text(encoding='utf-8')
+    )['scan_planner_node']['ros__parameters']
+    controller = yaml.safe_load(
+        (PACKAGE_ROOT / 'config' / 'scan_m20_velocity_controller.yaml')
+        .read_text(encoding='utf-8')
+    )['closed_loop_controller']['ros__parameters']
+
+    assert planner == {
+        'manager.max_vel': 0.45,
+        'optimization.max_vel': 0.45,
+    }
+    assert controller == {
+        'max_vx': 0.45,
+        'max_vy': 0.20,
+        'max_vyaw': 0.65,
+        'trajectory_progress_sync': True,
+        'projection_samples': 60,
+        'max_time_ahead': 0.20,
+    }
 
 
 def test_conservative_profile_keeps_vendor_scan_clearance() -> None:

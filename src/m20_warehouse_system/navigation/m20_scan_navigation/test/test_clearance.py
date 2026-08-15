@@ -77,3 +77,15 @@ def test_balanced_profile_marks_subnominal_widths_as_marginal() -> None:
         == 'GRID_GUARD_BLOCKED'
     )
     assert profile.classify(0.75, map_resolution=0.05) == 'MARGINAL'
+
+
+def test_profile_name_parsing_remains_python38_compatible() -> None:
+    profile = load_clearance_profile(
+        PACKAGE_ROOT / 'config' / 'clearance_m20.yaml'
+    )
+    assert profile.name == 'm20'
+    source = (
+        PACKAGE_ROOT / 'm20_scan_navigation' / 'clearance.py'
+    ).read_text(encoding='utf-8')
+    code_lines = (line.split('#', 1)[0] for line in source.splitlines())
+    assert '.removeprefix(' not in '\n'.join(code_lines)

@@ -2,30 +2,34 @@
 
 > 审计日期：2026-08-12  
 > 机器人目标：山猫 M20-PRO，背部 x86 Ubuntu 20.04 / ROS 2 Foxy  
-> 结论性质：源码与手册审计已完成；目标机 QoS、固件行为和物理测试仍待现场验收
+> 结论性质：源码、手册与已保存目标机话题/QoS 记录审计已完成；当前固件
+> 复核和物理测试仍待现场验收
 
 ## 1. drdds 真值与差异
 
-本次以 `src/drdds-背部主机当前版` 作为消息 ABI 真值，因为它是最近实际部署在背部主机的
-v1.2.0 包；开发指南截图可能来自较旧版本，只用于理解语义。
+2026-08-12 的审计曾以 `src/drdds-背部主机当前版` 作为 v1.2.0 真值。2026-08-13 已同步
+当前 `src/deep-robotics-msg`：源码目录名虽改变，但它声明 ROS 包 `drdds` 1.1.0，现为
+Humble 仿真与 Foxy 实机唯一启用的消息真值。
 
-修正前活动包有三处实质差异：
+相对旧历史副本有两处关键差异：
 
 - `MetaType.msg` 错用自定义 `Timestamp timestamp`，实机版是
   `builtin_interfaces/Time stamp`；
-- `MotionInfoValue.msg` 错用嵌套 `MotionStateValue/GaitValue`，实机版是扁平
-  `int32 state/uint32 gait`；
-- 活动包多出实机版不存在的 `Timestamp.msg`，且缺少 `builtin_interfaces` 依赖。
+- 新版 `MotionInfoValue.msg` 使用嵌套 `MotionStateValue motion_state` 与
+  `GaitValue gait_state`；direct ROS 后端现读取 `motion_state.state/gait_state.gait`；
+- 新包增加公开 fault、GPS、Steer、Joints 等接口，并移除旧 `GamepadData`。
 
-现在活动 `src/drdds` 与背部基准共有 25 个 `.msg`；忽略注释和空白后，消息集合及字段
+旧活动 `src/drdds` 与旧背部基准共有 25 个 `.msg`；忽略注释和空白后，消息集合及字段
 完全一致，规范化集合 SHA-256 均为：
 
 ```text
 443389e6e52e2bbca3604afc639fc5a6d2db23ff42f2ff98bf5d8cbdf943a5e2
 ```
 
-背部基准和 SDK 内旧 drdds 均用 `COLCON_IGNORE` 隔离，只编译顶层活动包。Foxy 预检会在
-每次发布时重做全部消息对比；SDK/MuJoCo 中的 `header.stamp` 消费者及锁定补丁也已同步。
+Humble/Foxy 都编译 `src/deep-robotics-msg`。历史 `src/drdds` 和 SDK 内旧 drdds 均隔离；
+预检已在 basic_server/direct_ros 两种模式通过源码 ABI 校验。背部主机已有记录显示
+`/MOTION_INFO`、`/MOTION_STATE`、`/GAIT`、`/NAV_CMD` 为 `RELIABLE/VOLATILE`，
+`/HES_STATUS` 为 `RELIABLE/TRANSIENT_LOCAL`；后端已按此适配，现场仍应复核。
 
 ## 2. 官方安全事实与当前实现
 
@@ -68,8 +72,9 @@ v1.2.0 包；开发指南截图可能来自较旧版本，只用于理解语义�
 ```
 
 Elevator-LIO 只在 mapping 模式正常退出时合并保存地图，实际输出目录由源码编译宏确定为
-`src/Elevator-LIO/PCD/`。导航定位使用 relocation profile 加载稳定名
-`m20_pao_f1_scans.pcd`，且要求靠近原地图起点冷启动；它不提供任意初始位姿全局定位。
+`src/Elevator-LIO/PCD/`。导航定位使用 relocation profile，其
+`runtime/relocation.yaml` 中的 `pcd_load_name` 必须在部署时填写为本次建图的真实文件名；
+且要求靠近原地图起点冷启动，它不提供任意初始位姿全局定位。
 
 原厂 `drmap mapping/stop_mapping/pack/unpack/apply` 属于 M20-PRO 厂家自带建图定位栈，是
 一条可选替代方案。当前 SCAN+Elevator-LIO 项目不调用这些命令，也不把厂商地图包和 LIO
@@ -82,7 +87,8 @@ PCD 混用。若以后切到厂商定位，必须另建后端适配 `/ODOM`、`/
 - `m20_import_site_pcd`：规范化真实 PCD并生成来源/输出 SHA 元数据，默认拒绝覆盖；
 - `validate_map_assets`：仿真资产继续走严格生成器校验，真实资产走 surveyed 校验；
 - 硬件 launch 默认指向缺少实场资产的模板，因此未建图时安全失败，不会误加载仿真地图；
-- `root_config_m20_navigation_relocation.yaml`：明确加载 F1 稳定地图名。
+- `root_config_m20_navigation_relocation.yaml`：沿用原始 `robosense_m20.yaml` 的
+  `lio_*` 隔离坐标系，只把运行模式切到 relocation；地图文件名由部署人员填写。
 
 ## 5. 仍需现场提供/确认
 

@@ -39,6 +39,8 @@ def generate_launch_description() -> LaunchDescription:
     use_planner = LaunchConfiguration('use_planner')
     use_local_sensing = LaunchConfiguration('use_local_sensing')
     clearance_config = LaunchConfiguration('clearance_config')
+    planner_config = LaunchConfiguration('planner_config')
+    controller_config = LaunchConfiguration('controller_config')
     motion_backend = LaunchConfiguration('motion_backend')
     execution_profile = LaunchConfiguration('execution_profile')
     body_pose_topic = LaunchConfiguration('body_pose_topic')
@@ -106,6 +108,38 @@ def generate_launch_description() -> LaunchDescription:
                 ),
             ),
             DeclareLaunchArgument(
+                'planner_config',
+                default_value=str(
+                    Path(
+                        get_package_share_directory(
+                            'm20_scan_navigation'
+                        )
+                    )
+                    / 'config'
+                    / 'scan_m20_velocity_planner.yaml'
+                ),
+                description=(
+                    'Velocity-only M20 overlay layered after the upstream '
+                    'SCAN planner profile.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'controller_config',
+                default_value=str(
+                    Path(
+                        get_package_share_directory(
+                            'm20_scan_navigation'
+                        )
+                    )
+                    / 'config'
+                    / 'scan_m20_velocity_controller.yaml'
+                ),
+                description=(
+                    'Velocity-only M20 overlay layered after the upstream '
+                    'SCAN closed-loop controller profile.'
+                ),
+            ),
+            DeclareLaunchArgument(
                 'motion_backend',
                 default_value='rviz',
                 description='rviz planar backend or an external backend.',
@@ -115,7 +149,8 @@ def generate_launch_description() -> LaunchDescription:
                 default_value='scan_native',
                 description=(
                     'Default upstream-compatible SCAN execution; use '
-                    'm20_safe only for the experimental M20 guard/adapter.'
+                    'm20_safe for the Twist guard/adapter or m20_progress '
+                    'for measured-progress B-spline execution.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -170,6 +205,8 @@ def generate_launch_description() -> LaunchDescription:
                     'sensor_pose_topic': sensor_pose_topic,
                     'relocation_service': relocation_service,
                     'clearance_config': clearance_config,
+                    'planner_config': planner_config,
+                    'controller_config': controller_config,
                     'motion_backend': motion_backend,
                     'execution_profile': execution_profile,
                     'velocity_feedback_enabled': velocity_feedback_enabled,

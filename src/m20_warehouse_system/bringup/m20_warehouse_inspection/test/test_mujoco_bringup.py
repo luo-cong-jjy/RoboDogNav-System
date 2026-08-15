@@ -34,7 +34,10 @@ def test_complete_launch_composes_scan_sdk_and_physics():
     assert 'dense_four_corner_system.yaml' in launch
     assert 'clearance_m20.yaml' in launch
     assert 'scan_m20_physical_planner.yaml' not in launch
-    assert 'planner_config' not in launch
+    assert 'scan_m20_velocity_planner.yaml' in launch
+    assert 'scan_m20_velocity_controller.yaml' in launch
+    assert "'planner_config': planner_config" in launch
+    assert "'controller_config': controller_config" in launch
     assert "default_value='300.0'" in launch
     assert (
         "'use_mujoco_viewer',\n                default_value='true'"
@@ -51,6 +54,7 @@ def test_complete_launch_composes_scan_sdk_and_physics():
     )
     assert "'locomotion_capability_config'" in launch
     assert 'm20_policy_v1_capabilities.yaml' in launch
+    assert 'm20_progress' in launch
 
 
 def test_rviz_launch_keeps_its_compatible_default_backend():
@@ -70,9 +74,9 @@ def test_rviz_launch_keeps_its_compatible_default_backend():
     assert 'capability_profile.collision_guard_parameters()' in launch
     assert 'capability_profile.safety_parameters()' in launch
     assert "default_value='scan_native'" in launch
-    assert "'max_linear_x': 0.75" in launch
-    assert "'max_linear_y': 0.35" in launch
-    assert "'max_angular_z': 1.0" in launch
+    assert "'max_linear_x': capability_profile.max_forward" in launch
+    assert "'max_linear_y': capability_profile.max_side" in launch
+    assert "'max_angular_z': capability_profile.max_yaw" in launch
     assert "'collision_guard_enabled': False" in launch
     assert "'collision_guard_required': str(" in launch
 

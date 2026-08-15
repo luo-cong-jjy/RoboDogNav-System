@@ -36,6 +36,7 @@ def generate_launch_description() -> LaunchDescription:
         get_package_share_directory('m20_official_description')
     )
     scan = Path(get_package_share_directory('m20_scan_navigation'))
+    scan_vendor = Path(get_package_share_directory('m20_scan_planner'))
     simulation = Path(get_package_share_directory('m20_warehouse_sim'))
     core = Path(get_package_share_directory('m20_inspection_core'))
     locomotion = Path(
@@ -46,7 +47,10 @@ def generate_launch_description() -> LaunchDescription:
     with system_config.open('r', encoding='utf-8') as stream:
         initial_pose = yaml.safe_load(stream)['floors']['F1']['initial_pose']
     model = description / 'urdf' / 'm20_official.urdf'
-    rviz = integration / 'rviz' / 'phase2_f1_navigation.rviz'
+    # Keep the lightweight F1 entry on the same RViz contract as the native
+    # SCAN stack.  The former phase-2 file still referenced retired /m20/*
+    # aliases, so its goal tool and most planner displays had no subscribers.
+    rviz = scan_vendor / 'rviz' / 'default.rviz'
     use_rviz = LaunchConfiguration('use_rviz')
     use_local_sensing = LaunchConfiguration('use_local_sensing')
     use_planner = LaunchConfiguration('use_planner')
@@ -91,10 +95,11 @@ def generate_launch_description() -> LaunchDescription:
                 package='tf2_ros',
                 executable='static_transform_publisher',
                 name='m20_map_to_scan_world',
+                # Positional arguments work on both Foxy and Humble.  Foxy
+                # does not implement Humble's named-argument CLI.
                 arguments=[
-                    '--x', '0', '--y', '0', '--z', '0',
-                    '--yaw', '0', '--pitch', '0', '--roll', '0',
-                    '--frame-id', 'map', '--child-frame-id', 'world',
+                    '0', '0', '0', '0', '0', '0',
+                    'map', 'world',
                 ],
                 output='screen',
             ),

@@ -14,10 +14,31 @@
 
 """Tests for the explicit factory ROS 2 motion transition contract."""
 
+from types import SimpleNamespace
+
 from m20_locomotion_control.direct_ros_policy import (
+    decode_motion_info,
     DirectMotionStatus,
     select_direct_transition,
 )
+
+
+def test_current_deep_robotics_motion_info_nested_abi_is_decoded():
+    data = SimpleNamespace(
+        vel_x=0.21,
+        vel_y=-0.04,
+        vel_yaw=0.33,
+        motion_state=SimpleNamespace(state=17),
+        gait_state=SimpleNamespace(gait=0x3002),
+    )
+
+    status = decode_motion_info(data)
+
+    assert status.state == 17
+    assert status.gait == 0x3002
+    assert status.linear_x == 0.21
+    assert status.linear_y == -0.04
+    assert status.angular_z == 0.33
 
 
 def _status(state, gait=0x1001, velocity=0.0):

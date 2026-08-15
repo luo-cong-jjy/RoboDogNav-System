@@ -8,7 +8,12 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/LinearMath/Quaternion.h>
+#if __has_include(<tf2_geometry_msgs/tf2_geometry_msgs.hpp>)
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#else
+// ROS 2 Foxy installs this compatibility header with the legacy suffix.
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#endif
 #include <tf2_ros/transform_broadcaster.h>
 
 namespace scan_planner

@@ -177,7 +177,13 @@ def load_clearance_profile(path: Path) -> ClearanceProfile:
                 f'{profile_path}: {key} must be a non-negative number'
             )
     return ClearanceProfile(
-        name=profile_path.stem.removeprefix('clearance_'),
+        # str.removeprefix() requires Python 3.9; the real M20 host uses the
+        # Python 3.8 shipped with Ubuntu 20.04 / ROS 2 Foxy.
+        name=(
+            profile_path.stem[len('clearance_'):]
+            if profile_path.stem.startswith('clearance_')
+            else profile_path.stem
+        ),
         **{key: float(value) for key, value in numeric_fields.items()},
     )
 

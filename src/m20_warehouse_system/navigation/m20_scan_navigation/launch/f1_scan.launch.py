@@ -36,6 +36,7 @@ def generate_launch_description() -> LaunchDescription:
     )
     sensor_pose_topic = LaunchConfiguration('sensor_pose_topic')
     clearance_config = LaunchConfiguration('clearance_config')
+    planner_config = LaunchConfiguration('planner_config')
     controller_config = LaunchConfiguration('controller_config')
     require_external_execution_hold = LaunchConfiguration(
         'require_external_execution_hold'
@@ -89,6 +90,7 @@ def generate_launch_description() -> LaunchDescription:
         output='screen',
         parameters=[
             str(share / 'config' / 'scan_vendor_planner.yaml'),
+            planner_config,
             clearance_config,
         ],
         remappings=[
@@ -194,6 +196,16 @@ def generate_launch_description() -> LaunchDescription:
                 description=(
                     'ROS parameter override for native SCAN and the '
                     'independent online-point-cloud collision guard.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'planner_config',
+                default_value=str(
+                    share / 'config' / 'scan_vendor_planner.yaml'
+                ),
+                description=(
+                    'Optional planner parameter override layered after the '
+                    'exact vendor profile. Standalone SCAN remains vendor-like.'
                 ),
             ),
             DeclareLaunchArgument(

@@ -30,6 +30,10 @@ def test_sdk_is_opt_in_until_a_joint_backend_exists():
     assert 'load_capability_profile' in launch_text
     assert 'profile.intent_parameters()' in launch_text
     assert 'profile.sdk_parameters()' in launch_text
+    assert "'max_forward': profile.max_forward" in launch_text
+    assert "'max_side': profile.max_side" in launch_text
+    assert "'max_yaw': profile.max_yaw" in launch_text
+    assert "'max_forward': 0.75" not in launch_text
 
 
 def test_navigation_adapter_precedes_safety_and_backend_gate():
@@ -45,6 +49,23 @@ def test_navigation_adapter_precedes_safety_and_backend_gate():
     assert 'output_topic: /m20/locomotion/cmd_vel_sdk' in config_text
     assert 'max_forward:' not in config_text
     assert 'turn_min_forward:' not in config_text
+
+
+def test_measured_progress_tracker_is_an_explicit_execution_profile():
+    config_text = (
+        ROOT / 'config' / 'sdk_locomotion.yaml'
+    ).read_text(encoding='utf-8')
+    sdk_launch = (
+        ROOT / 'launch' / 'sdk_locomotion.launch.py'
+    ).read_text(encoding='utf-8')
+    script = ROOT / 'scripts' / 'm20_trajectory_progress_tracker'
+
+    assert 'm20_trajectory_progress_tracker:' in config_text
+    assert 'trajectory_topic: /planning/bspline' in config_text
+    assert 'lookahead_m: 0.60' in config_text
+    assert "'m20_progress'" in sdk_launch
+    assert script.exists()
+    assert script.stat().st_mode & 0o111
 
 
 def test_autonomous_rolling_does_not_remove_manual_lateral_control():
@@ -99,6 +120,11 @@ def test_factory_backends_are_guarded_behind_the_common_twist_contract():
     direct_text = (
         ROOT / 'config' / 'm20_factory_direct_ros.yaml'
     ).read_text(encoding='utf-8')
+    direct_node_text = (
+        ROOT
+        / 'm20_locomotion_control'
+        / 'direct_ros_backend_node.py'
+    ).read_text(encoding='utf-8')
 
     assert 'input_topic: /m20/control/cmd_vel_safe' in config_text
     assert 'output_topic: /m20/locomotion/cmd_vel_sdk' in config_text
@@ -119,6 +145,24 @@ def test_factory_backends_are_guarded_behind_the_common_twist_contract():
     assert 'command_timeout_sec: 0.30' in direct_text
     assert 'auto_enable_motion: false' in direct_text
     assert 'command_ownership_confirmed: false' in direct_text
+    assert 'reliability=ReliabilityPolicy.RELIABLE' in direct_node_text
+    assert 'durability=DurabilityPolicy.VOLATILE' in direct_node_text
+    assert 'self._hard_estop_callback,\n            latched_qos' in (
+        direct_node_text
+    )
+
+
+def test_direct_ros_shutdown_sends_zero_before_destroying_ros_context():
+    node_text = (
+        ROOT
+        / 'm20_locomotion_control'
+        / 'direct_ros_backend_node.py'
+    ).read_text(encoding='utf-8')
+
+    assert 'signal.signal(signal.SIGINT, request_stop)' in node_text
+    assert 'signal.signal(signal.SIGTERM, request_stop)' in node_text
+    assert 'while rclpy.ok() and not stop_requested:' in node_text
+    assert 'if rclpy.ok():\n            node.stop()' in node_text
 
 
 def test_feedback_can_use_factory_motion_status_without_fake_odometry():

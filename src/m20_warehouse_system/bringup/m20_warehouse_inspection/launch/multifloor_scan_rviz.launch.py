@@ -69,11 +69,18 @@ def _runtime_actions(context):
     execution_profile = LaunchConfiguration(
         'execution_profile'
     ).perform(context)
-    if execution_profile not in {'scan_native', 'm20_safe'}:
+    if execution_profile not in {
+        'scan_native',
+        'm20_safe',
+        'm20_progress',
+    }:
         raise RuntimeError(
-            'execution_profile must be scan_native or m20_safe'
+            'execution_profile must be scan_native, m20_safe, or '
+            'm20_progress'
         )
     scan_native = execution_profile == 'scan_native'
+    m20_safe = execution_profile == 'm20_safe'
+    m20_progress = execution_profile == 'm20_progress'
     velocity_feedback_enabled = LaunchConfiguration(
         'velocity_feedback_enabled'
     )
@@ -89,6 +96,7 @@ def _runtime_actions(context):
     )
     sensor_pose_topic = LaunchConfiguration('sensor_pose_topic')
     relocation_service = LaunchConfiguration('relocation_service')
+    planner_config = LaunchConfiguration('planner_config')
     capability_profile = load_capability_profile(
         LaunchConfiguration(
             'locomotion_capability_config'
@@ -100,14 +108,15 @@ def _runtime_actions(context):
     safety_parameters = capability_profile.safety_parameters()
     native_safety_parameters = (
         {
-            # Preserve SCAN's upstream holonomic Twist and numeric envelope.
+            # Preserve SCAN's upstream command semantics while applying the
+            # validated M20 numeric envelope loaded above.
             # This supervisor is only the indispensable multi-floor/e-stop
             # gate in the native profile; it performs no obstacle veto.
             'navigation_topic': '/m20/navigation/cmd_vel_raw',
             'collision_guard_enabled': False,
-            'max_linear_x': 0.75,
-            'max_linear_y': 0.35,
-            'max_angular_z': 1.0,
+            'max_linear_x': capability_profile.max_forward,
+            'max_linear_y': capability_profile.max_side,
+            'max_angular_z': capability_profile.max_yaw,
             'max_linear_accel': 50.0,
             'max_angular_accel': 50.0,
         }
@@ -148,10 +157,12 @@ def _runtime_actions(context):
                 package='tf2_ros',
                 executable='static_transform_publisher',
                 name='m20_map_to_scan_world',
+                # Foxy only accepts the legacy positional CLI.  Humble keeps
+                # this form for compatibility, so use one launch contract on
+                # both the development and M20-PRO target systems.
                 arguments=[
-                    '--x', '0', '--y', '0', '--z', '0',
-                    '--yaw', '0', '--pitch', '0', '--roll', '0',
-                    '--frame-id', 'map', '--child-frame-id', 'world',
+                    '0', '0', '0', '0', '0', '0',
+                    'map', 'world',
                 ],
                 output='screen',
             ),
@@ -203,7 +214,36 @@ def _runtime_actions(context):
                         ),
                     },
                 ],
-                condition=IfCondition(str(not scan_native).lower()),
+                condition=IfCondition(str(m20_safe).lower()),
+            ),
+            Node(
+                package='m20_locomotion_control',
+                executable='m20_trajectory_progress_tracker',
+                name='m20_trajectory_progress_tracker',
+                output='screen',
+                parameters=[
+                    str(locomotion / 'config' / 'sdk_locomotion.yaml'),
+                    intent_parameters,
+                    {
+                        'odometry_topic': body_pose_topic,
+                        'reverse_tracking_enabled': (
+                            controller_parameters[
+                                'bidirectional_tracking_enabled'
+                            ]
+                        ),
+                        'reverse_tracking_enter_angle': (
+                            controller_parameters[
+                                'reverse_tracking_enter_angle'
+                            ]
+                        ),
+                        'reverse_tracking_exit_angle': (
+                            controller_parameters[
+                                'reverse_tracking_exit_angle'
+                            ]
+                        ),
+                    },
+                ],
+                condition=IfCondition(str(m20_progress).lower()),
             ),
             Node(
                 package='m20_inspection_core',
@@ -242,6 +282,7 @@ def _runtime_actions(context):
                     'navigation_cloud_topic': navigation_cloud_topic,
                     'sensor_pose_topic': sensor_pose_topic,
                     'clearance_config': clearance_config,
+                    'planner_config': planner_config,
                     'controller_config': controller_config,
                     'require_external_execution_hold': str(
                         not scan_native
@@ -369,6 +410,22 @@ def generate_launch_description() -> LaunchDescription:
                 ),
             ),
             DeclareLaunchArgument(
+                'planner_config',
+                default_value=str(
+                    Path(
+                        get_package_share_directory(
+                            'm20_scan_navigation'
+                        )
+                    )
+                    / 'config'
+                    / 'scan_m20_velocity_planner.yaml'
+                ),
+                description=(
+                    'Velocity-only M20 overlay layered after the upstream '
+                    'SCAN planner profile.'
+                ),
+            ),
+            DeclareLaunchArgument(
                 'controller_config',
                 default_value=str(
                     Path(
@@ -377,11 +434,11 @@ def generate_launch_description() -> LaunchDescription:
                         )
                     )
                     / 'config'
-                    / 'scan_vendor_controller.yaml'
+                    / 'scan_m20_velocity_controller.yaml'
                 ),
                 description=(
-                    'Closed-loop controller profile. The complete system '
-                    'defaults to the vendor SCAN values.'
+                    'Velocity-only M20 overlay layered after the upstream '
+                    'SCAN closed-loop controller profile.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -398,7 +455,9 @@ def generate_launch_description() -> LaunchDescription:
                 description=(
                     'scan_native preserves the upstream SCAN command path; '
                     'm20_safe enables the experimental rolling adapter, '
-                    'footprint guard and trajectory hold chain.'
+                    'footprint guard and trajectory hold chain; m20_progress '
+                    'tracks the unchanged B-spline by measured M20 spatial '
+                    'progress before the same guard.'
                 ),
             ),
             DeclareLaunchArgument(

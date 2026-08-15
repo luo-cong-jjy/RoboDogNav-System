@@ -25,6 +25,8 @@ m20_direct_ros_backend:
     motion_state_topic: /MOTION_STATE
     gait_topic: /GAIT
     hard_estop_topic: /HES_STATUS
+    # Recorded M20-PRO endpoints are RELIABLE/VOLATILE for motion topics and
+    # RELIABLE/TRANSIENT_LOCAL for HES_STATUS; the node mirrors that contract.
     # The guide recommends at least 10 Hz and separately advises keeping
     # 20 Hz; 300 ms freshness stays below the documented 500 ms watchdog.
     command_rate_hz: 20.0

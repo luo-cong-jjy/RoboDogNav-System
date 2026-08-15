@@ -27,7 +27,9 @@ import xml.etree.ElementTree as ET
 WORKSPACE = Path(__file__).resolve().parents[5]
 SOURCE = WORKSPACE / 'src'
 SYSTEM = SOURCE / 'm20_warehouse_system'
-BACKPACK_DRDDS = SOURCE / 'drdds-背部主机当前版'
+DEPLOYED_MESSAGE_SOURCE = SOURCE / 'deep-robotics-msg'
+DEPLOYED_MESSAGE_PACKAGE = 'drdds'
+DEPLOYED_MESSAGE_VERSION = '1.1.0'
 PYTHON_RUNTIME_ROOTS = (
     SYSTEM
     / 'safety_mission'
@@ -65,8 +67,8 @@ DIRECT_SCHEMAS = {
         'float32 vel_y',
         'float32 vel_yaw',
         'float32 height',
-        'int32 state',
-        'uint32 gait',
+        'MotionStateValue motion_state',
+        'GaitValue gait_state',
         'float32 payload',
         'float32 remain_mile',
     ),
@@ -139,6 +141,21 @@ def risky_python_annotations():
     return sorted(set(findings))
 
 
+def post_python38_runtime_calls():
+    """Find runtime APIs unavailable in Ubuntu 20.04's Python 3.8."""
+    findings = []
+    unsupported = ('.removeprefix(', '.removesuffix(', '.is_relative_to(')
+    for root in PYTHON_RUNTIME_ROOTS:
+        for path in root.rglob('*.py'):
+            for line_number, line in enumerate(
+                path.read_text(encoding='utf-8').splitlines(), start=1
+            ):
+                code = line.split('#', 1)[0]
+                if any(token in code for token in unsupported):
+                    findings.append((path, line_number))
+    return findings
+
+
 def direct_interface_files():
     """Return high-level drdds interface files found in active packages."""
     found = {}
@@ -173,14 +190,44 @@ def direct_schema_errors(found):
     return errors
 
 
-def backpack_drdds_errors():
-    """Compare every active message ABI with the latest backpack package."""
-    active = SOURCE / 'drdds' / 'msg'
-    baseline = BACKPACK_DRDDS / 'msg'
+def deployed_message_source_errors():
+    """Validate interfaces used by this project in the deployed source."""
+    manifest = DEPLOYED_MESSAGE_SOURCE / 'package.xml'
+    baseline = DEPLOYED_MESSAGE_SOURCE / 'msg'
+    if not manifest.is_file():
+        return [
+            'deployed message source is incomplete (package.xml missing): '
+            '{0}'.format(DEPLOYED_MESSAGE_SOURCE)
+        ]
     if not baseline.is_dir():
         return [
-            'latest backpack drdds baseline is missing: {0}'.format(
-                BACKPACK_DRDDS
+            'deployed message source has no msg directory: {0}'.format(
+                DEPLOYED_MESSAGE_SOURCE
+            )
+        ]
+    try:
+        manifest_root = ET.parse(str(manifest)).getroot()
+        package_name = manifest_root.findtext('name')
+        package_version = manifest_root.findtext('version')
+    except ET.ParseError as error:
+        return [
+            'invalid deployed message package.xml: {0}: {1}'.format(
+                manifest, error
+            )
+        ]
+    package_name = (package_name or '').strip()
+    if package_name != DEPLOYED_MESSAGE_PACKAGE:
+        return [
+            'deep-robotics-msg declares ROS package {0!r}; the current direct '
+            'backend imports drdds.msg, so package dependencies and imports '
+            'must be adapted before hardware release'.format(package_name)
+        ]
+    package_version = (package_version or '').strip()
+    if package_version != DEPLOYED_MESSAGE_VERSION:
+        return [
+            'deep-robotics-msg version is {0!r}; expected the synchronized '
+            'M20-PRO ABI baseline {1!r}'.format(
+                package_version, DEPLOYED_MESSAGE_VERSION
             )
         ]
 
@@ -191,33 +238,46 @@ def backpack_drdds_errors():
             if (line := ' '.join(raw.split('#', 1)[0].split()))
         )
 
-    active_files = {path.name: path for path in active.glob('*.msg')}
     baseline_files = {path.name: path for path in baseline.glob('*.msg')}
     errors = []
-    if set(active_files) != set(baseline_files):
+    required_files = {'{0}.msg'.format(name) for name in DIRECT_SCHEMAS}
+    missing = sorted(required_files - set(baseline_files))
+    if missing:
         errors.append(
-            'drdds message set differs from backpack baseline: '
-            'active_only={0}, baseline_only={1}'.format(
-                sorted(set(active_files) - set(baseline_files)),
-                sorted(set(baseline_files) - set(active_files)),
-            )
+            'deployed deep-robotics-msg is missing required interfaces: '
+            + ', '.join(missing)
         )
-    for name in sorted(set(active_files) & set(baseline_files)):
-        if normalized(active_files[name]) != normalized(baseline_files[name]):
+    for name, expected in DIRECT_SCHEMAS.items():
+        path = baseline_files.get('{0}.msg'.format(name))
+        if path is not None and normalized(path) != expected:
             errors.append(
-                'drdds ABI differs from backpack baseline: {0}'.format(name)
+                'deployed deep-robotics-msg ABI differs from the current '
+                'direct backend contract: {0}'.format(name)
             )
     return errors
 
 
+def deployed_direct_interface_files():
+    """Return required message files from the synchronized hardware package."""
+    root = DEPLOYED_MESSAGE_SOURCE / 'msg'
+    return {
+        name: root / '{0}.msg'.format(name)
+        for name in DIRECT_SCHEMAS
+        if (root / '{0}.msg'.format(name)).is_file()
+    }
+
+
 def validate_lio_profile():
     root = SOURCE / 'Elevator-LIO' / 'yaml'
-    root_path = root / 'root_config_m20_navigation.yaml'
+    runbook_path = (
+        SOURCE / 'Elevator-LIO' / 'Virdy-m20-pro-建图定位启动.md'
+    )
+    root_path = root / 'root_config_m20.yaml'
     relocation_root_path = (
         root / 'root_config_m20_navigation_relocation.yaml'
     )
     relocation_runtime_path = root / 'runtime' / 'relocation.yaml'
-    sensor_path = root / 'sensors' / 'robosense_m20_navigation.yaml'
+    sensor_path = root / 'sensors' / 'robosense_m20.yaml'
     missing_paths = [
         str(path)
         for path in (
@@ -225,6 +285,7 @@ def validate_lio_profile():
             relocation_root_path,
             relocation_runtime_path,
             sensor_path,
+            runbook_path,
         )
         if not path.is_file()
     ]
@@ -237,16 +298,16 @@ def validate_lio_profile():
     )
     sensor_text = sensor_path.read_text(encoding='utf-8')
     required = (
-        'sensors/robosense_m20_navigation.yaml',
-        'world_frame_name: "world"',
-        'body_frame_name: "base_link"',
-        'lidar_frame_name: "base_link"',
+        'sensors/robosense_m20.yaml',
+        'world_frame_name: "lio_world"',
+        'body_frame_name: "lio_base_link"',
+        'lidar_frame_name: "lio_base_link"',
         '"/rslidar_points_front"',
         '"/rslidar_points_rear"',
         'imu_topic_name: "/IMU"',
         'runtime/relocation.yaml',
         'relocation_enable: true',
-        'pcd_load_name: "m20_pao_f1_scans.pcd"',
+        'pcd_load_name:',
     )
     joined = '\n'.join(
         (
@@ -257,6 +318,58 @@ def validate_lio_profile():
         )
     )
     return [item for item in required if item not in joined]
+
+
+def foxy_launch_errors():
+    """Reject static-TF syntax that ROS 2 Foxy cannot parse."""
+    launch_root = (
+        SYSTEM / 'bringup' / 'm20_warehouse_inspection' / 'launch'
+    )
+    errors = []
+    for name in (
+        'f1_scan_rviz.launch.py',
+        'multifloor_scan_rviz.launch.py',
+    ):
+        path = launch_root / name
+        if not path.is_file():
+            errors.append('missing launch file: {0}'.format(path))
+            continue
+        text = path.read_text(encoding='utf-8')
+        if "'--frame-id'" in text or "'--child-frame-id'" in text:
+            errors.append(
+                '{0}: named static_transform_publisher arguments are not '
+                'supported by ROS 2 Foxy'.format(path)
+            )
+        if "'map', 'world'" not in text:
+            errors.append(
+                '{0}: missing positional map -> world static TF'.format(path)
+            )
+    return errors
+
+
+def foxy_cpp_compatibility_errors():
+    """Guard known ROS header renames between Foxy and Humble."""
+    source_root = (
+        SYSTEM / 'navigation' / 'm20_scan_planner' / 'src'
+    )
+    errors = []
+    header_pairs = (
+        (
+            '<tf2_geometry_msgs/tf2_geometry_msgs.hpp>',
+            '<tf2_geometry_msgs/tf2_geometry_msgs.h>',
+        ),
+        ('<tf2/utils.hpp>', '<tf2/utils.h>'),
+    )
+    for path in source_root.glob('*.cpp'):
+        text = path.read_text(encoding='utf-8')
+        for humble_header, foxy_header in header_pairs:
+            if humble_header in text and foxy_header not in text:
+                errors.append(
+                    '{0}: Humble header {1} has no Foxy fallback {2}'.format(
+                        path, humble_header, foxy_header
+                    )
+                )
+    return errors
 
 
 def main(argv=None) -> int:
@@ -288,6 +401,13 @@ def main(argv=None) -> int:
             )
         )
 
+    for path, line in post_python38_runtime_calls():
+        errors.append(
+            'Python 3.8 runtime API incompatibility: {0}:{1}'.format(
+                path, line
+            )
+        )
+
     missing_lio = validate_lio_profile()
     if missing_lio:
         errors.append(
@@ -295,7 +415,11 @@ def main(argv=None) -> int:
             + ', '.join(missing_lio)
         )
 
+    errors.extend(foxy_launch_errors())
+    errors.extend(foxy_cpp_compatibility_errors())
+
     found = direct_interface_files()
+    deployed_found = deployed_direct_interface_files()
     missing_direct = sorted(set(DIRECT_SCHEMAS) - set(found))
     if arguments.transport == 'direct_ros' and missing_direct:
         errors.append(
@@ -304,7 +428,8 @@ def main(argv=None) -> int:
         )
     if arguments.transport == 'direct_ros':
         errors.extend(direct_schema_errors(found))
-    errors.extend(backpack_drdds_errors())
+        errors.extend(direct_schema_errors(deployed_found))
+    errors.extend(deployed_message_source_errors())
 
     if errors:
         for error in errors:
@@ -321,8 +446,8 @@ def main(argv=None) -> int:
         )
     else:
         print(
-            'drdds interface schema: MATCHES BACKPACK BASELINE; '
-            'direct_ros QoS: TARGET TEST PENDING'
+            'drdds interface schema: MATCHES DEPLOYED deep-robotics-msg; '
+            'direct_ros topics/QoS: MATCH RECORDED M20-PRO ENDPOINTS'
         )
     return 0
 

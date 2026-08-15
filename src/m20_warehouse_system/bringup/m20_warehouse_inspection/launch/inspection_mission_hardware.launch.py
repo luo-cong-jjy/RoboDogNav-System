@@ -71,8 +71,8 @@ def generate_launch_description() -> LaunchDescription:
                 description=(
                     'Elevator-LIO root YAML filename under lio/yaml. The '
                     'hardware default loads the commissioned F1 map and '
-                    'publishes world -> base_link; mapping is a separate '
-                    'commissioning command.'
+                    'keeps its TF isolated as lio_world -> lio_base_link; '
+                    'mapping is a separate commissioning command.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -96,15 +96,15 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 'navigation_cloud_topic',
-                default_value='/LIO/clouds_lidar',
+                default_value='/m20/localization/cloud',
                 description=(
-                    'Elevator-LIO deskewed live cloud transformed into the '
+                    'Elevator-LIO deskewed live cloud message-aliased to the '
                     'SCAN world frame; raw lidar points are not sufficient.'
                 ),
             ),
             DeclareLaunchArgument(
                 'sensor_pose_topic',
-                default_value='/LIO/odom_imu',
+                default_value='/m20/localization/sensor_pose',
             ),
             DeclareLaunchArgument(
                 'relocation_service',
@@ -169,8 +169,12 @@ def generate_launch_description() -> LaunchDescription:
                         'measured_twist_topic': (
                             '/m20/locomotion/measured_twist'
                         ),
-                        'expected_world_frame': 'world',
-                        'expected_body_frame': 'base_link',
+                        'expected_world_frame': 'lio_world',
+                        'expected_body_frame': 'lio_base_link',
+                        'expected_sensor_frame': 'lio_imu',
+                        'output_world_frame': 'world',
+                        'output_body_frame': 'base_link',
+                        'output_sensor_frame': 'm20_lio_sensor',
                     }
                 ],
                 condition=IfCondition(

@@ -1,6 +1,6 @@
 # 实物部署准备 04：M20-pao 逐步部署与单层导航验收手册
 
-> 基线日期：2026-08-12  
+> 基线日期：2026-08-13（部署前核对版）
 > 开发机：Ubuntu 22.04 / ROS 2 Humble  
 > 目标机：山猫 M20-pao 背部 x86，Ubuntu 20.04 / ROS 2 Foxy  
 > 目标工作空间：`/home/m20/robodog_nav_system`  
@@ -13,6 +13,14 @@
 本文不是“已经完成实机验收”的证明。当前代码已具备 Foxy 源码预检、Elevator-LIO
 适配、`basic_server`/`direct_ros` 双运动后端和失效停车保护；目标机编译、真实地图、现场
 坐标对齐、AOS 控制权及实机运动仍需按本文逐级放行。
+
+Elevator-LIO 包内的建图与已建地图定位权威操作说明位于
+`src/Elevator-LIO/Virdy-m20-pro-建图定位启动.md`。本文保留相同命令是为了呈现完整
+系统放行顺序；涉及 LIO 配置、PCD 保存或 relocation 时，应同时按包内手册核对。
+
+本手册中 `20260813_r1` 是发布号示例。正式操作前换成本次唯一发布号，
+并在每个新终端重新执行 `export RELEASE_TAG=<本次发布号>`。不得在同一
+发布号下覆盖旧的 `src_backup_*`、`build/`或 `install/`。
 
 ## 1. 当前部署结论
 
@@ -60,6 +68,22 @@
 模板故意引用仓库中不存在的 `maps/sites/m20_pao/F1/static_map.*`，并且任务只停在起点。
 完成建图、PCD 导入、现场坐标审核前，一键硬件启动会因缺少资产而安全失败，不能误用
 仿真 F2 欺骗系统。多层仍需独立的楼层定位与运输 provider，F1 成功不等于多层完成。
+
+### 1.4 2026-08-13 部署前核对结论
+
+开发机源码已通过 `basic_server` 和 `direct_ros` 两种 Foxy 静态预检，
+`deep-robotics-msg` 的实际 ROS 包名、版本和项目所用 ABI 已对齐。本轮还完成了：
+
+- 将 `map -> world` 静态 TF 改为 Foxy/Humble 共用的位置参数形式；
+- 为 SCAN 控制器增加 Foxy/Humble 的 `tf2_geometry_msgs` 头文件双版本选择；
+- 移除导航闭包中 Python 3.9 才提供的运行时字符串 API，保持 Foxy/Python 3.8 可执行；
+- 将 Elevator-LIO 手册入口统一为 `src/Elevator-LIO/Virdy-m20-pro-建图定位启动.md`；
+- 把顶层已验证 `rslidar_sdk`/`rslidar_msg` 的保留、构建和启动纳入发布流程；
+- 补齐现场 PCD/site 资产导入后重新安装集成包的命令；
+- 统一 release tag，并使软急停命令的 QoS 与运动后端匹配。
+
+这些结论只表明“源码可进入目标机 G1/G2”，不是实机放行。目标机 Foxy 原生构建、
+实际雷达/IMU、建图重定位、支撑架急停和 F1 导航仍必须按 G2→G8 逐级完成。
 
 ## 2. 分阶段放行总表
 
@@ -199,10 +223,10 @@ git diff --check
 | --- | --- | --- |
 | 实场系统配置 | `config/sites/m20_pao_warehouse.yaml` | 新建，不覆盖仿真 YAML |
 | 每层静态地图 | `maps/sites/m20_pao/F1/`、`F2/` | PCD、JSON 一组一层；不生成 PGM/YAML |
-| LIO 建图根配置 | `Elevator-LIO/yaml/root_config_m20_navigation.yaml` | 已提供；使用 mapping runtime |
-| LIO 重定位根配置 | `Elevator-LIO/yaml/root_config_m20_navigation_relocation.yaml` | 已提供；加载稳定 F1 PCD 名 |
-| 雷达/IMU 外参 | 新的 site sensor YAML | 用实机标定值，不猜测 |
-| LIO 运行模式 | 新的 site runtime YAML | 明确 mapping 或 relocation |
+| LIO 建图根配置 | `Elevator-LIO/yaml/root_config_m20.yaml` | 此前已验证的原始 M20 mapping 配置 |
+| LIO 重定位根配置 | `Elevator-LIO/yaml/root_config_m20_navigation_relocation.yaml` | 已提供；部署时填写实际 PCD 文件名 |
+| 雷达/IMU 外参 | `Elevator-LIO/yaml/sensors/robosense_m20.yaml` | 以此前实机验证值为唯一基线；只有硬件安装发生变化且重新标定后才另存 site 配置 |
+| LIO 运行模式 | `runtime/mapping.yaml` / `runtime/relocation.yaml` | 由两个根配置选择，不为改文件名额外复制配置 |
 | AOS 地址 | launch 参数 `robot_host` | 默认参考值 `10.21.31.103`，现场核对 |
 | DDS | `RMW_IMPLEMENTATION`、`ROS_DOMAIN_ID` | 与 AOS/驱动一致，禁止残留 Cyclone URI |
 | 运动传输 | `factory_transport` | 第一轮固定 `basic_server` |
@@ -228,8 +252,8 @@ DATA ascii
 Elevator-LIO 保存的 PCD 可能是 binary 或包含不同字段，不能未经检查直接放入系统。真实
 地图还必须满足：
 
-- PCD 使用 LIO `world` 原点、x/y 朝向和米制单位；
-- F1 的启动位姿、巡检点、障碍点和 LIO `world` 完全对齐；
+- PCD 使用 LIO `lio_world` 原点、x/y 朝向和米制单位；
+- F1 的启动位姿、巡检点、障碍点和 LIO `lio_world` 完全对齐；
 - 删除动态人员、车辆和临时物体，保留墙、柱、货架等静态结构；
 - `initial_pose` 和所有目标位于自由区，四周给 M20 双圆足迹留下余量；
 - 现场先在 RViz 叠加静态 PCD、实时 `/LIO/clouds_lidar`、SCAN 在线占据点云和机器人
@@ -249,21 +273,23 @@ JSON。硬件 profile 的 `--require-assets` 会校验这些字段，不会套�
 
 ### 4.4 LIO 模式和起点
 
-`root_config_m20_navigation.yaml` 当前默认是 mapping：
+此前已经验证的原始 M20 建图入口是 `root_config_m20.yaml`，它引用
+`sensors/robosense_m20.yaml` 和 `runtime/mapping.yaml`：
 
 ```yaml
 relocation_enable: false
 ```
 
-它会以本次启动点建立 `world`。如果静态导航地图来自另一次建图，本次启动必须能恢复到
+它会以本次启动点建立 `lio_world`。如果静态导航地图来自另一次建图，本次启动必须能恢复到
 相同原点和朝向。可选方式是：
 
 1. 每次在已标定的地图原点和朝向启动；或
 2. 使用 Elevator-LIO relocation，加载对应 PCD，并按该项目要求在地图原点附近启动。
 
-建图结束后使用 `root_config_m20_navigation_relocation.yaml`，它加载固定文件名
-`src/Elevator-LIO/PCD/m20_pao_f1_scans.pcd`。当前 Elevator-LIO 没有“任意初始位姿重定位”
-服务。没有验证重定位时，不允许在仓库任意
+建图结束后使用 `root_config_m20_navigation_relocation.yaml`。启动前必须把
+`src/Elevator-LIO/yaml/runtime/relocation.yaml` 的 `pcd_load_name` 填成实际生成文件名，
+不存在项目强制的固定地图名。当前 Elevator-LIO 没有“任意初始位姿重定位”服务。没有
+验证重定位时，不允许在仓库任意
 位置开机后直接导航。site LIO 配置还要按实机复核双雷达外参、IMU 外参、时间同步、blind
 区、体素大小和帧名；基线中的数值只能作为已经验证硬件布局相同时的起点。
 
@@ -277,12 +303,49 @@ m20_locomotion_control/config/m20_factory_agile_flat_capabilities.yaml
 
 该 profile 已明确 M20 机身约 `0.82 m × 0.506 m`，并使用保守速度上限。MuJoCo 中测得的
 漂移补偿不能直接复制到出厂实机。实机直行、转向和停车数据出来以后，再单独建立
-`m20_pao_factory_<date>.yaml` 做 A/B 测试。
+ `m20_pao_factory_<date>.yaml` 做 A/B 测试。
+
+### 4.6 仿真定位/感知由谁平替，实机保留什么
+
+Elevator-LIO 没有一个一对一的仿真替代包。仿真并不在线建图，而是直接使用已知场景
+PCD；定位和实时感知又被拆成“真值位姿”和“虚拟实时点云”两部分。实机替换关系如下：
+
+| 职责 | Humble 仿真实现 | Foxy 实机实现 | 实机运行是否需要仿真包 |
+| --- | --- | --- | --- |
+| 建图/地图采集 | `m20_generate_maps` 离线生成测试 PCD，运行时直接加载预生成资产 | Elevator-LIO mapping + 现场静态清理和审计导入 | 否 |
+| 机体真值位姿 | `m20_mujoco_backend`；纯 RViz 模式可用 `m20_warehouse_sim` | Elevator-LIO `/LIO/odom_vehicle` + 硬件定位适配器 | 否 |
+| 传感器位姿/实时局部点云 | SCAN `local_sensing_node` 按仿真 PCD 和真值位姿裁剪 `/quad_0/cloud` | Elevator-LIO `/LIO/odom_imu`、`/LIO/clouds_lidar` + 硬件定位适配器 | 否 |
+| 每层静态障碍地图 | `m20_flat_map_server` 读取项目 PCD | 同一个地图服务器读取现场审计后的 PCD | 是，继续保留 |
+| 规划与轨迹 | `m20_scan_planner` 及 SCAN 核心库 | 同一套规划与核心库 | 是，继续保留 |
+| 轮腿动力学/低层策略 | `m20_sdk_deploy` + `m20_mujoco_backend` | M20 AOS 出厂控制器，项目只通过 `basic_server` 或 direct ROS 下发安全速度 | 否 |
+
+因此，从**实机运行功能**看，不需要启动 `m20_mujoco_backend`、`m20_warehouse_sim`、
+`local_sensing_node` 或仿真用 `m20_sdk_deploy/ONNX`。但不能把 SCAN 核心规划库、
+`m20_flat_map_server`、`m20_multifloor_map`、安全层和运动适配层一并删掉。
+
+当前 `prepare_isolated_workspace.sh` 和 `m20_warehouse_inspection/package.xml` 仍生成统一的
+仿真/实机源码闭包，所以发布目录中会带上上述仿真源码，目标机用
+`--packages-up-to m20_warehouse_inspection` 时也可能构建其中一部分；它们在 hardware
+launch 中不会启动。这是当前已经回归过的安全发布边界，不代表实机依赖这些节点。真正
+做到“源码也不上传”的 hardware-only 闭包，需要先拆出独立 hardware bringup/manifest，
+再完成 Foxy 构建和整链回归；在此之前不要在现场手工删除依赖目录。
 
 ## 5. G1：在开发机生成可上传的源码发布目录
 
 不要把整个当前 `src/` 原样上传。当前工作空间包含旧实验包、第三方手册、调试数据和被
 隔离包；应使用锁定脚本生成可复现闭包，再补入 Elevator-LIO 与 site 资产。
+
+在运行发布脚本前，先把背部主机当前的 `deep-robotics-msg` 完整同步到开发机：
+
+```bash
+rsync -a m20@<背部主机IP>:/home/m20/robodog_nav_system/src/deep-robotics-msg/ \
+  /home/virdyn/robodog_nav_system/src/deep-robotics-msg/
+```
+
+必须包含 `package.xml`、`CMakeLists.txt`、`msg/`，不能只创建同名空目录。若
+`package.xml` 的 `<name>` 不是 `drdds`，先停止发布并适配代码依赖；不要把目录名直接
+写进 Python import。`deep-robotics-msg` 是唯一应启用的 `drdds` 源码，不能在这个目录
+创建 `COLCON_IGNORE`；需要隔离的是历史 `src/drdds` 和 SDK 内的旧同名包。
 
 ### 5.1 建立发布目录
 
@@ -291,8 +354,8 @@ m20_locomotion_control/config/m20_factory_agile_flat_capabilities.yaml
 ```bash
 cd /home/virdyn/robodog_nav_system
 
-RELEASE_TAG=20260811_r1
-STAGE=/tmp/m20_pao_release_20260811_r1
+export RELEASE_TAG=20260813_r1
+export STAGE="/tmp/m20_pao_release_${RELEASE_TAG}"
 mkdir -p "$STAGE"
 
 src/m20_warehouse_system/bringup/m20_warehouse_inspection/tools/prepare_isolated_workspace.sh \
@@ -329,7 +392,39 @@ touch "$STAGE/src/Elevator-LIO/rslidar_sdk/COLCON_IGNORE"
 
 不要同时启动或编译两套向 `/rslidar_points_front`、`/rslidar_points_rear` 发布的驱动。
 
-### 5.3 补入真实 site 配置和资产
+### 5.3 保留背部主机已验证的外部 RoboSense 驱动
+
+目标机现有记录显示，生产雷达链使用顶层 `src/rslidar_sdk`（v1.5.20）和
+`src/rslidar_msg`，启动命令为 `ros2 launch rslidar_sdk start.py`，并且实际构建的
+`ENABLE_TRANSFORM:BOOL=ON`。本次会整体替换目标机 `src`，所以不能只在文档中
+声称“继续使用旧驱动”；必须先把它们原样纳入本次发布。
+
+在开发机执行：
+
+```bash
+export M20_PAO_IP=<背部主机IP>
+
+ssh "m20@${M20_PAO_IP}" \
+  'test -f /home/m20/robodog_nav_system/src/rslidar_sdk/package.xml && \
+   test -f /home/m20/robodog_nav_system/src/rslidar_msg/package.xml'
+
+rsync -a "m20@${M20_PAO_IP}:/home/m20/robodog_nav_system/src/rslidar_sdk/" \
+  "$STAGE/src/rslidar_sdk/"
+rsync -a "m20@${M20_PAO_IP}:/home/m20/robodog_nav_system/src/rslidar_msg/" \
+  "$STAGE/src/rslidar_msg/"
+
+test -f "$STAGE/src/rslidar_sdk/package.xml"
+test -f "$STAGE/src/rslidar_msg/package.xml"
+test ! -e "$STAGE/src/rslidar_sdk/COLCON_IGNORE"
+grep -n '<version>1.5.20</version>' "$STAGE/src/rslidar_sdk/package.xml"
+```
+
+如第一条 `ssh` 检查失败，说明现场驱动源码布局已与历史验证记录不同。
+此时停止发布，先用 `colcon list --base-paths /home/m20/robodog_nav_system/src`
+找到两个包的真实源码目录，不能改用 Elevator-LIO 内嵌副本或丢掉现场
+`config/config.yaml`。
+
+### 5.4 补入真实 site 配置和资产
 
 如果真实资产是在发布目录生成后才完成，可再同步：
 
@@ -346,7 +441,7 @@ rsync -a \
 路径不存在说明 site 资产还没有完成，此时可以继续上传并构建 LIO，但不能执行 G5 的完整
 导航启动。
 
-### 5.4 生成源码清单
+### 5.5 生成源码清单
 
 ```bash
 cd "$STAGE/src"
@@ -366,12 +461,13 @@ colcon list --base-paths "$STAGE/src" --topological-order \
 
 人工检查 `SOURCE_PACKAGES.txt`：
 
-- `drdds` 只能出现一次；
+- ROS 包 `drdds` 只能出现一次，路径应来自 `src/deep-robotics-msg`；
 - `lio` 必须出现；
+- `rslidar_sdk` 和 `rslidar_msg` 必须各出现一次，且来自顶层目录；
 - SDK 中旧 `drdds` 不能再次出现；
 - 旧工业巡检、Gazebo 沙箱和旧 Foxy 实验包不应出现。
 
-### 5.5 对最终暂存源码再做一次 Humble 冒烟
+### 5.6 对最终暂存源码再做一次 Humble 冒烟
 
 准备脚本会从锁定 revision 重建第三方源码，不会带入第三方仓库中的未提交修改。因此真正
 上传前，必须对 `$STAGE/src` 再构建一次，并至少重复 G0 的 F1 单层冒烟；不能只验收原
@@ -404,10 +500,13 @@ ros2 launch m20_warehouse_inspection \
 急停可用，然后建立 incoming 目录：
 
 ```bash
-ssh m20@<M20_PAO_IP>
+export RELEASE_TAG=20260813_r1
+export M20_PAO_IP=<背部主机IP>
 
-mkdir -p /home/m20/robodog_nav_system/src_incoming_20260811_r1
-exit
+ssh "m20@${M20_PAO_IP}" \
+  "test ! -e /home/m20/robodog_nav_system/src_incoming_${RELEASE_TAG} && \
+   mkdir /home/m20/robodog_nav_system/src_incoming_${RELEASE_TAG} && \
+   mkdir -p /home/m20/robodog_nav_system/deployment_records/${RELEASE_TAG}"
 ```
 
 如果 incoming 目录不是空目录，停止上传并换一个新 release tag，不能用 `rsync --delete`
@@ -418,13 +517,13 @@ exit
 ```bash
 rsync -av --info=progress2 \
   "$STAGE/src/" \
-  m20@<M20_PAO_IP>:/home/m20/robodog_nav_system/src_incoming_20260811_r1/
+  "m20@${M20_PAO_IP}:/home/m20/robodog_nav_system/src_incoming_${RELEASE_TAG}/"
 
 rsync -av \
   "$STAGE/SOURCE_SHA256SUMS.txt" \
   "$STAGE/SOURCE_PACKAGES.txt" \
   "$STAGE/m20_workspace.lock" \
-  m20@<M20_PAO_IP>:/home/m20/robodog_nav_system/
+  "m20@${M20_PAO_IP}:/home/m20/robodog_nav_system/deployment_records/${RELEASE_TAG}/"
 ```
 
 不要上传 Humble 的 `build/`、`install/`、`log/`，也不要上传运行中的 rosbag 和临时 core
@@ -433,9 +532,11 @@ dump。
 ### 6.3 目标机校验并切换源码
 
 ```bash
-ssh m20@<M20_PAO_IP>
-cd /home/m20/robodog_nav_system/src_incoming_20260811_r1
-sha256sum -c ../SOURCE_SHA256SUMS.txt
+ssh "m20@${M20_PAO_IP}"
+export RELEASE_TAG=20260813_r1
+cd "/home/m20/robodog_nav_system/src_incoming_${RELEASE_TAG}"
+sha256sum -c \
+  "/home/m20/robodog_nav_system/deployment_records/${RELEASE_TAG}/SOURCE_SHA256SUMS.txt"
 ```
 
 所有条目必须是 `OK`。之后才切换：
@@ -444,9 +545,9 @@ sha256sum -c ../SOURCE_SHA256SUMS.txt
 cd /home/m20/robodog_nav_system
 
 # 仅在已有 src 时执行；备份目录必须事先不存在。
-test ! -e src_backup_before_20260811_r1
-mv src src_backup_before_20260811_r1
-mv src_incoming_20260811_r1 src
+test ! -e "src_backup_before_${RELEASE_TAG}"
+mv src "src_backup_before_${RELEASE_TAG}"
+mv "src_incoming_${RELEASE_TAG}" src
 ```
 
 如果目标工作空间原来没有 `src`，跳过第一条 `mv`。不要覆盖同名备份；源码回退依赖这个
@@ -519,8 +620,9 @@ Foxy 已结束官方支持。若 `apt`/`rosdep` 因镜像源失效，不要用�
 内容如下；`ROS_DOMAIN_ID=0` 只是官方指南示例，必须改成实机实际值：
 
 ```bash
+export RELEASE_TAG=20260813_r1
 source /opt/ros/foxy/setup.bash
-source /home/m20/robodog_nav_system/install/20260811_r1/setup.bash
+source "/home/m20/robodog_nav_system/install/${RELEASE_TAG}/setup.bash"
 
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_DOMAIN_ID=0
@@ -570,8 +672,8 @@ colcon list --base-paths src --topological-order
 colcon list --base-paths src | awk '$1 == "drdds" {print}'
 ```
 
-第二条必须只输出一个 `drdds`，路径应指向当前工作空间的 canonical 包。然后运行两种后端
-源码预检：
+第二条必须只输出一个 `drdds`，路径应指向当前 release 的
+`src/deep-robotics-msg`。然后运行两种后端源码预检：
 
 ```bash
 python3 src/m20_warehouse_system/bringup/m20_warehouse_inspection/tools/validate_foxy_hardware_source.py \
@@ -581,20 +683,38 @@ python3 src/m20_warehouse_system/bringup/m20_warehouse_inspection/tools/validate
   --transport direct_ros
 ```
 
-两条都应为 PASS。输出中的 `MATCHES BACKPACK BASELINE` 表示活动 drdds 的 25 个消息字段
-与最近部署在背部主机的 v1.2.0 源码一致；direct ROS 的 QoS 仍必须在目标 AOS 实测。
+两条都应为 PASS。输出中的 `MATCHES DEPLOYED deep-robotics-msg` 表示当前 release 的
+消息字段与本次从背部主机同步的源码一致。已有实机记录中运动话题为
+`RELIABLE/VOLATILE`，`/HES_STATUS` 为 `RELIABLE/TRANSIENT_LOCAL`；现场还必须复核当前
+AOS 固件没有改变话题名或 QoS。
 
 ### 8.2 使用版本化目录原生构建
 
 目标机不使用开发机的 install，也不在不同 release 之间复用 build。生产发布默认用复制
 安装而不是 `--symlink-install`，便于以后回退到不可变 install。
 
-先单独构建 Elevator-LIO：
+先把本次发布中的外部雷达驱动构建进同一个 install。这一步会同时构建
+`rslidar_msg`：
 
 ```bash
 cd /home/m20/robodog_nav_system
 source /opt/ros/foxy/setup.bash
-RELEASE_TAG=20260811_r1
+export RELEASE_TAG=20260813_r1
+
+colcon --log-base "log/$RELEASE_TAG/rslidar" build \
+  --build-base "build/$RELEASE_TAG/rslidar" \
+  --install-base "install/$RELEASE_TAG" \
+  --packages-up-to rslidar_sdk \
+  --cmake-args -DCMAKE_BUILD_TYPE=Release -DENABLE_TRANSFORM=ON
+
+grep '^ENABLE_TRANSFORM:BOOL=ON$' \
+  "build/$RELEASE_TAG/rslidar/rslidar_sdk/CMakeCache.txt"
+```
+
+`grep` 必须成功。然后单独构建 Elevator-LIO：
+
+```bash
+source "/home/m20/robodog_nav_system/install/$RELEASE_TAG/setup.bash"
 
 colcon --log-base "log/$RELEASE_TAG/lio" build \
   --build-base "build/$RELEASE_TAG/lio" \
@@ -664,12 +784,22 @@ ros2 launch m20_warehouse_inspection \
 ```
 
 `ros2 pkg prefix drdds` 必须指向当前 release，不能指向厂商旧 overlay。上述输出还要与
-`src/drdds-背部主机当前版` 留档对比；静态预检已核对源码 ABI，但目标机 install 仍须复核。
+本次同步的 `src/deep-robotics-msg` 对比；静态预检只核对源码 ABI，目标机 install 和
+AOS 实际话题仍须复核。
 
 ## 9. G3：双雷达和 IMU 单独验证
 
-这一阶段不启动本项目运动后端。使用已经在 M20-pao 验证过的 RoboSense 驱动启动命令，
-不要猜测新的 launch 文件名。启动后执行：
+这一阶段不启动本项目运动后端。根据背部主机已验证记录，启动本次发布中的外部
+RoboSense 驱动：
+
+```bash
+source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh
+ros2 launch rslidar_sdk start.py
+```
+
+启动日志应显示 v1.5.20，且配置路径应是顶层
+`/home/m20/robodog_nav_system/src/rslidar_sdk/config/config.yaml`。不得从
+`src/Elevator-LIO/rslidar_sdk` 启动第二套驱动。另开终端执行：
 
 ```bash
 ros2 topic type /rslidar_points_front
@@ -680,10 +810,13 @@ timeout 15s ros2 topic hz /rslidar_points_front
 timeout 15s ros2 topic hz /rslidar_points_rear
 timeout 15s ros2 topic hz /IMU
 
-ros2 topic echo /rslidar_points_front --once --field header
-ros2 topic echo /rslidar_points_rear --once --field header
-ros2 topic echo /IMU --once --field header
+timeout 3s ros2 topic echo /rslidar_points_front --no-arr
+timeout 3s ros2 topic echo /rslidar_points_rear --no-arr
+timeout 3s ros2 topic echo /IMU --no-arr
 ```
+
+Foxy 自带 `ros2 topic echo` 不支持 Humble 中常用的 `--once`/`--field`，所以本手册
+用 `timeout` 取一小段输出。`timeout` 到时返回 124 是正常终止，不是传感器错误。
 
 此前目标机记录中两路雷达约为 8.3～10 Hz，只能作为参考。现场通过标准是：
 
@@ -695,18 +828,24 @@ ros2 topic echo /IMU --once --field header
 
 ## 10. G4：Elevator-LIO 单独验证
 
+本章给出完整系统中的 G4 放行顺序。Elevator-LIO 自身的独立、可随包携带的操作手册为
+`src/Elevator-LIO/Virdy-m20-pro-建图定位启动.md`。
+
 ### 10.1 启动 LIO-only
 
 ```bash
 source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh
+mkdir -p "/home/m20/robodog_nav_system/deployment_records/${RELEASE_TAG}"
 
 ros2 launch lio start_ros2.launch.py \
-  config_path:=root_config_m20_navigation.yaml \
+  config_path:=root_config_m20.yaml \
   use_rviz:=false
 ```
 
-该基线可用于接口检查和建图，但必须先确认其双雷达/IMU 外参与当前实物完全一致。实际
-导航改用 `root_config_m20_navigation_relocation.yaml`，不能用 mapping 模式直接放行。
+这是此前已经验证的原始 M20 建图基线：它引用 `sensors/robosense_m20.yaml`、
+`runtime/mapping.yaml`，并保留 `lio_world/lio_imu/lio_base_link` 以避开机器狗开机自带的
+`map -> base_link`。实际导航改用 `root_config_m20_navigation_relocation.yaml`，不能用
+mapping 模式直接放行。
 
 ### 10.2 检查输出和 TF
 
@@ -719,15 +858,15 @@ timeout 15s ros2 topic hz /LIO/clouds_lidar
 timeout 15s ros2 topic hz /LIO/odom_vehicle
 timeout 15s ros2 topic hz /LIO/odom_imu
 
-ros2 topic echo /LIO/odom_vehicle --once
-ros2 run tf2_ros tf2_echo world base_link
+timeout 3s ros2 topic echo /LIO/odom_vehicle --no-arr
+ros2 run tf2_ros tf2_echo lio_world lio_base_link
 ```
 
 必须确认：
 
-- `/LIO/clouds_lidar` 已在 `world` 中，不被再次变换；
-- `/LIO/odom_vehicle` 是 `world -> base_link`；
-- TF 树中没有第二个节点同时发布 `world -> base_link`；
+- `/LIO/clouds_lidar` 已在 `lio_world` 数值坐标中，不被再次几何变换；
+- `/LIO/odom_vehicle` 是 `lio_world -> lio_base_link`；
+- LIO 只发布 `lio_*` TF，机器狗开机自带服务继续独占 `map -> base_link`；
 - 静止时无 NaN、时间倒退和明显跳变；
 - 手推/遥控短距离移动时，坐标方向与 RViz/地图一致；
 - 如果使用 relocation，冷启动重复三次都能回到同一地图坐标。
@@ -745,7 +884,7 @@ mapping profile：
 source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh
 
 ros2 launch lio start_ros2.launch.py \
-  config_path:=root_config_m20_navigation.yaml \
+  config_path:=root_config_m20.yaml \
   use_rviz:=false 2>&1 | tee \
   /home/m20/robodog_nav_system/deployment_records/${RELEASE_TAG}/lio_mapping.log
 ```
@@ -760,19 +899,54 @@ find "$LIO_PCD_DIR" -maxdepth 1 -type f -name '*_scans.pcd' \
   -printf '%TY-%Tm-%Td %TH:%TM:%TS %s %p\n' | sort
 ```
 
-选择刚生成且非 `ikdtree` 的文件，保留原件并建立稳定导航名：
+选择刚生成且非 `ikdtree` 的文件并记录真实文件名与哈希，不复制或重命名：
 
 ```bash
 MAPPING_PCD=/home/m20/robodog_nav_system/src/Elevator-LIO/PCD/<时间戳>_scans.pcd
 test -s "$MAPPING_PCD"
-cp --preserve=timestamps "$MAPPING_PCD" \
-  /home/m20/robodog_nav_system/src/Elevator-LIO/PCD/m20_pao_f1_scans.pcd
-sha256sum "$MAPPING_PCD" \
-  /home/m20/robodog_nav_system/src/Elevator-LIO/PCD/m20_pao_f1_scans.pcd
+sha256sum "$MAPPING_PCD"
 ```
 
-尖括号路径必须替换为上一条 `find` 的实际结果。随后停掉 mapping 进程，使用只加载地图、
-不继续积累的 relocation profile 冷启动三次：
+尖括号路径必须替换为上一条 `find` 的实际结果。然后编辑：
+
+```bash
+nano /home/m20/robodog_nav_system/src/Elevator-LIO/yaml/runtime/relocation.yaml
+```
+
+只把 `relocation.pcd_load_name` 替换为 `MAPPING_PCD` 的文件名部分，例如：
+
+```yaml
+relocation:
+  relocation_enable: true
+  pcd_load_name: "20260813-153000_scans.pcd"
+```
+
+ROS 2 下 LIO 从 `install/<release>/share/lio/yaml/` 读取 YAML，因此生产环境修改源码
+YAML 后必须重新安装 `lio` 包。这一步不需改 C++，但不能省略：
+
+```bash
+cd /home/m20/robodog_nav_system
+source /opt/ros/foxy/setup.bash
+export RELEASE_TAG=20260813_r1
+
+colcon --log-base "log/$RELEASE_TAG/lio_relocation_config" build \
+  --build-base "build/$RELEASE_TAG/lio" \
+  --install-base "install/$RELEASE_TAG" \
+  --packages-select lio \
+  --cmake-args \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DLIO_WITH_LIVOX=OFF \
+    -DLIO_BUILD_SIM=OFF \
+    -DLIO_BUILD_RVIZ_PLUGIN=OFF
+
+source "/home/m20/robodog_nav_system/install/$RELEASE_TAG/setup.bash"
+grep -n 'pcd_load_name' \
+  "/home/m20/robodog_nav_system/install/$RELEASE_TAG/share/lio/yaml/runtime/relocation.yaml"
+```
+
+`grep` 必须显示刚填入的真实文件名。PCD 本体仍从编译时的
+`PACKAGE_ROOT_DIR/PCD/` 加载，所以无需复制或重命名 PCD。随后停掉 mapping 进程，
+使用只加载地图、不继续积累的 relocation profile 冷启动三次：
 
 ```bash
 ros2 launch lio start_ros2.launch.py \
@@ -781,7 +955,7 @@ ros2 launch lio start_ros2.launch.py \
 ```
 
 每次必须看到 `Load Points Numble` 大于零，机器人均从地面标记附近启动，并按 10.2 节检查
-漂移和 `world -> base_link`。Elevator-LIO 的 relocation 仅支持原点附近启动；不满足时
+漂移和 `lio_world -> lio_base_link`。Elevator-LIO 的 relocation 仅支持原点附近启动；不满足时
 不能用手工改初始位姿掩盖。
 
 ### 10.4 将 LIO 地图导入 SCAN 静态 PCD
@@ -789,10 +963,15 @@ ros2 launch lio start_ros2.launch.py \
 Elevator-LIO 保存 binary PCD 且可能带 normal/curvature 字段。先转 ASCII 到临时文件：
 
 ```bash
+cd /home/m20/robodog_nav_system
+source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh
+MAPPING_PCD=/home/m20/robodog_nav_system/src/Elevator-LIO/PCD/<实际时间戳>_scans.pcd
+test -s "$MAPPING_PCD"
+
 mkdir -p /home/m20/robodog_nav_system/deployment_records/${RELEASE_TAG}/map_import
 
 pcl_convert_pcd_ascii_binary \
-  /home/m20/robodog_nav_system/src/Elevator-LIO/PCD/m20_pao_f1_scans.pcd \
+  "$MAPPING_PCD" \
   /home/m20/robodog_nav_system/deployment_records/${RELEASE_TAG}/map_import/f1_lio_ascii.pcd \
   0 8
 ```
@@ -821,8 +1000,30 @@ ros2 run m20_warehouse_inspection m20_import_site_pcd \
 ```
 
 工具默认拒绝覆盖已存在资产。若地图重建，使用新 release/目录；`--force` 只允许在已备份
-且记录理由时使用。导入完成后重新构建 `m20_warehouse_inspection`，并把 PCD、JSON、site
-YAML 和原 LIO PCD 同步回开发机作为版本真值。
+且记录理由时使用。导入完成后必须把新资产安装到当前 release，hardware launch
+只读 install space，不会直接读取刚修改的源码目录：
+
+```bash
+cd /home/m20/robodog_nav_system
+source /opt/ros/foxy/setup.bash
+source "install/${RELEASE_TAG}/setup.bash"
+
+colcon --log-base "log/${RELEASE_TAG}/site_assets" build \
+  --build-base "build/${RELEASE_TAG}/project" \
+  --install-base "install/${RELEASE_TAG}" \
+  --packages-select m20_warehouse_inspection \
+  --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+source "install/${RELEASE_TAG}/setup.bash"
+SITE_ROOT="$(ros2 pkg prefix m20_warehouse_inspection)/share/m20_warehouse_inspection"
+SITE_CONFIG="$SITE_ROOT/config/sites/m20_pao_warehouse.yaml"
+test -s "$SITE_CONFIG"
+test -s "$SITE_ROOT/maps/sites/m20_pao/F1/static_map.pcd"
+test -s "$SITE_ROOT/maps/sites/m20_pao/F1/static_map.json"
+```
+
+上述 `test` 全部成功后，把 PCD、JSON、site YAML 和原 LIO PCD 同步回开发机
+作为版本真值，并在 `deployment_records/${RELEASE_TAG}` 记录 SHA-256。
 
 不要一边 mapping 改写地图，一边把同一地图当作导航静态障碍真值。导入工具不清理动态
 人员/车辆，也不验证墙体是否完整；清理和 RViz 人工叠加仍是必做验收。
@@ -832,6 +1033,7 @@ YAML 和原 LIO PCD 同步回开发机作为版本真值。
 ### 11.1 校验 site YAML 和真实资产
 
 ```bash
+source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh
 SITE_ROOT="$(ros2 pkg prefix m20_warehouse_inspection)/share/m20_warehouse_inspection"
 SITE_CONFIG="$SITE_ROOT/config/sites/m20_pao_warehouse.yaml"
 
@@ -849,6 +1051,10 @@ ros2 run m20_warehouse_inspection m20_validate_config \
 如果 LIO 已由另一个终端运行：
 
 ```bash
+source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh
+SITE_ROOT="$(ros2 pkg prefix m20_warehouse_inspection)/share/m20_warehouse_inspection"
+SITE_CONFIG="$SITE_ROOT/config/sites/m20_pao_warehouse.yaml"
+
 ros2 launch m20_warehouse_inspection \
   inspection_mission_hardware.launch.py \
   system_config:="$SITE_CONFIG" \
@@ -867,11 +1073,15 @@ ros2 launch m20_warehouse_inspection \
 的 enable 应被拒绝。检查：
 
 ```bash
-ros2 topic echo /m20/locomotion/backend_status --once
-ros2 topic echo /m20/locomotion/backend_fault --once
-ros2 topic echo /m20/localization/body_pose --once
-ros2 topic echo /m20/map/state --once
-ros2 topic echo /m20/control/safety_state --once
+timeout 3s ros2 topic echo /m20/locomotion/backend_status \
+  --qos-reliability reliable --qos-durability transient_local
+timeout 3s ros2 topic echo /m20/locomotion/backend_fault \
+  --qos-reliability reliable --qos-durability transient_local
+timeout 3s ros2 topic echo /m20/localization/body_pose --no-arr
+timeout 3s ros2 topic echo /m20/map/state \
+  --qos-reliability reliable --qos-durability transient_local
+timeout 3s ros2 topic echo /m20/control/safety_state \
+  --qos-reliability reliable --qos-durability transient_local
 ```
 
 再执行一次故意的拒绝测试：
@@ -915,7 +1125,8 @@ ros2 service call /m20/hardware/enable_motion \
 高于软件软急停，不能由本程序触发或释放。启动运动后端前先观察而不 enable：
 
 ```bash
-ros2 topic echo /m20/locomotion/backend_status
+ros2 topic echo /m20/locomotion/backend_status \
+  --qos-reliability reliable --qos-durability transient_local
 ```
 
 `basic_server` 状态 JSON 必须包含 `hard_estop_known=true`、`hard_estop=false`。看不到 HES
@@ -923,7 +1134,8 @@ ros2 topic echo /m20/locomotion/backend_status
 
 ```bash
 ros2 topic type /HES_STATUS
-timeout 5s ros2 topic echo /HES_STATUS --once
+timeout 5s ros2 topic echo /HES_STATUS \
+  --qos-reliability reliable --qos-durability transient_local
 ```
 
 消息类型应为 `drdds/msg/StdMsgInt32`，未触发时 `value: 0`，触发时 `value: 1`。目标机
@@ -934,6 +1146,10 @@ timeout 5s ros2 topic echo /HES_STATUS --once
 停止 G5 的完整系统，再执行：
 
 ```bash
+source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh
+SITE_ROOT="$(ros2 pkg prefix m20_warehouse_inspection)/share/m20_warehouse_inspection"
+SITE_CONFIG="$SITE_ROOT/config/sites/m20_pao_warehouse.yaml"
+
 ros2 launch m20_warehouse_inspection \
   inspection_mission_hardware.launch.py \
   system_config:="$SITE_CONFIG" \
@@ -954,9 +1170,11 @@ ros2 launch m20_warehouse_inspection \
 ros2 service call /m20/hardware/enable_motion \
   std_srvs/srv/SetBool "{data: true}"
 
-ros2 topic echo /m20/locomotion/backend_status --once
-ros2 topic echo /m20/locomotion/backend_ready --once
-ros2 topic echo /m20/locomotion/measured_twist --once
+timeout 3s ros2 topic echo /m20/locomotion/backend_status \
+  --qos-reliability reliable --qos-durability transient_local
+timeout 3s ros2 topic echo /m20/locomotion/backend_ready \
+  --qos-reliability reliable --qos-durability transient_local
+timeout 3s ros2 topic echo /m20/locomotion/measured_twist --no-arr
 ```
 
 `basic_server` 会推进控制使用模式、站立/RL 状态和 `0x3002` 步态。只有 status 显示
@@ -984,12 +1202,34 @@ ros2 topic pub --once \
 软件急停测试必须在支撑架阶段完成：
 
 ```bash
-ros2 topic pub --once /m20/control/e_stop \
+ros2 topic pub --once \
+  --qos-reliability reliable \
+  --qos-durability transient_local \
+  /m20/control/e_stop \
   std_msgs/msg/Bool "{data: true}"
 ```
 
-确认立即零速和 AOS 软急停。解除软急停应按厂商规定操作，不能只发布 `false` 就假设状态
-已经恢复。
+必须确认立即零速，且 AOS 进入软急停。上述 QoS 参数不得省略：运动后端为
+急停订阅者使用 `RELIABLE/TRANSIENT_LOCAL`，默认 volatile 的一次性 CLI 发布者可能无法
+与其匹配。
+
+解除软急停时，先按厂商/AOS 规定完成状态恢复和人工安全检查，再清除项目本地
+闭锁：
+
+```bash
+ros2 topic pub --once \
+  --qos-reliability reliable \
+  --qos-durability transient_local \
+  /m20/control/e_stop \
+  std_msgs/msg/Bool "{data: false}"
+
+ros2 service call /m20/hardware/enable_motion \
+  std_srvs/srv/SetBool "{data: false}"
+```
+
+发布 `false` 只清除项目内部的软急停位，不等于解除 AOS 软急停。如 backend status
+仍显示 `motion_state=2`或 `M20_SOFT_ESTOP_LATCHED`，保持 disable，停止 hardware launch，
+按厂商流程复位 AOS 后从 G5 只读联调重新开始；不得循环发布 `false`或循环 enable。
 
 随后只在支撑架上测试物理急停：保护员触发红色尾部旋钮，确认关节失去动力、backend
 fault 为 `M20_HARD_ESTOP_ASSERTED` 且 enable 被拒绝。按官方手册人工释放后，机器人仍应
@@ -999,7 +1239,8 @@ fault 为 `M20_HARD_ESTOP_ASSERTED` 且 enable 被拒绝。按官方手册人工
 ros2 service call /m20/hardware/enable_motion \
   std_srvs/srv/SetBool "{data: false}"
 
-ros2 topic echo /m20/locomotion/backend_status --once
+timeout 3s ros2 topic echo /m20/locomotion/backend_status \
+  --qos-reliability reliable --qos-durability transient_local
 
 ros2 service call /m20/hardware/enable_motion \
   std_srvs/srv/SetBool "{data: true}"
@@ -1049,10 +1290,14 @@ G6 通过标准：状态机正确、正负方向正确、命令超时停车、di
 等待 backend ready，不能因为上一轮已经 enable 就假设状态延续。
 
 ```bash
-ros2 topic echo /m20/map/active_floor --once
-ros2 topic echo /m20/map/ready --once
-ros2 topic echo /m20/locomotion/backend_ready --once
-ros2 topic echo /m20/control/safety_state --once
+timeout 3s ros2 topic echo /m20/map/active_floor \
+  --qos-reliability reliable --qos-durability transient_local
+timeout 3s ros2 topic echo /m20/map/ready \
+  --qos-reliability reliable --qos-durability transient_local
+timeout 3s ros2 topic echo /m20/locomotion/backend_ready \
+  --qos-reliability reliable --qos-durability transient_local
+timeout 3s ros2 topic echo /m20/control/safety_state \
+  --qos-reliability reliable --qos-durability transient_local
 ```
 
 active floor 必须是 F1，map ready 和 backend ready 必须为 true，安全状态无 hold。第一轮
@@ -1074,10 +1319,11 @@ RViz `2D Goal Pose` 下发，成功并完全停车后再发下一个。
 ### 14.3 同步记录 rosbag
 
 ```bash
-mkdir -p /home/m20/robodog_nav_system/deployment_records/20260811_r1
+source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh
+mkdir -p "/home/m20/robodog_nav_system/deployment_records/${RELEASE_TAG}"
 
 ros2 bag record \
-  -o /home/m20/robodog_nav_system/deployment_records/20260811_r1/f1_navigation \
+  -o "/home/m20/robodog_nav_system/deployment_records/${RELEASE_TAG}/f1_navigation" \
   /m20/localization/body_pose \
   /LIO/odom_vehicle \
   /LIO/odom_imu \
@@ -1109,7 +1355,7 @@ ros2 bag record \
 - 跟踪方向合理，没有持续切向、横摆或轨迹两侧来回振荡；
 - 停车位置、yaw 误差不超过 site profile 设定容差；
 - `/m20/locomotion/backend_fault` 为空；
-- LIO 无失锁、NaN、时间跳变或 `world -> base_link` 冲突；
+- LIO 无失锁、NaN、时间跳变；`lio_*` TF 不与厂家 `map -> base_link` 冲突；
 - 没有持续 `The robot is inside an obstacle`、A-star 死循环或永久 collision hold；
 - 未激活 F2，未发生 generation 切换；
 - disable 和物理急停在最后复验有效；
@@ -1153,6 +1399,10 @@ ros2 run m20_warehouse_inspection m20_start_inspection \
 满足开发指南要求、Fast DDS 和 domain 一致，再用：
 
 ```bash
+source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh
+SITE_ROOT="$(ros2 pkg prefix m20_warehouse_inspection)/share/m20_warehouse_inspection"
+SITE_CONFIG="$SITE_ROOT/config/sites/m20_pao_warehouse.yaml"
+
 ros2 launch m20_warehouse_inspection \
   inspection_mission_hardware.launch.py \
   system_config:="$SITE_CONFIG" \
@@ -1281,7 +1531,7 @@ Wants=network-online.target
 Type=simple
 User=m20
 WorkingDirectory=/home/m20/robodog_nav_system
-ExecStart=/bin/bash -lc 'source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh; exec ros2 launch m20_warehouse_inspection inspection_mission_hardware.launch.py system_config:=/home/m20/robodog_nav_system/install/20260811_r1/m20_warehouse_inspection/share/m20_warehouse_inspection/config/sites/m20_pao_warehouse.yaml use_rviz:=false factory_transport:=basic_server command_ownership_confirmed:=false auto_enable_motion:=false'
+ExecStart=/bin/bash -lc 'source /home/m20/robodog_nav_system/deploy/m20_pao_foxy_env.sh; SITE_ROOT="$(ros2 pkg prefix m20_warehouse_inspection)/share/m20_warehouse_inspection"; exec ros2 launch m20_warehouse_inspection inspection_mission_hardware.launch.py system_config:="${SITE_ROOT}/config/sites/m20_pao_warehouse.yaml" use_rviz:=false factory_transport:=basic_server command_ownership_confirmed:=false auto_enable_motion:=false'
 Restart=on-failure
 RestartSec=3
 
@@ -1315,7 +1565,8 @@ F1 通过后，多层部署还缺少：
 - M20-pao 背部主机真实 IP、用户名和网卡；
 - AOS/basic_server IP、端口、固件版本；
 - `ROS_DOMAIN_ID` 和 direct ROS 实际 QoS；
-- 已验证 RoboSense 驱动的包名、launch 命令和版本；
+- 再次确认当前 RoboSense 驱动仍为 `rslidar_sdk` v1.5.20，命令仍为
+  `ros2 launch rslidar_sdk start.py`，且 `ENABLE_TRANSFORM=ON`；
 - 前后雷达、IMU 的准确外参与时间同步方式；
 - F1/F2 地图原点、启动位姿、地图版本和资产 SHA；
 - 机载 planner、自动充电和遥控控制权的停止/接管流程；

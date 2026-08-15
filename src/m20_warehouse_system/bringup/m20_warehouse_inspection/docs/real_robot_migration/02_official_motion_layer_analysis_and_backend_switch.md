@@ -28,9 +28,9 @@
 官方完整开发指南优先推荐的 `basic_server`；direct ROS 适合背部 Foxy 主机运行本项目的
 自定义导航算法：
 
-1. `src/drdds-背部主机当前版` 是已经部署过的 v1.2.0 ABI 真值。活动包 `src/drdds`
-   已逐消息对齐：`MetaType` 使用 `builtin_interfaces/Time stamp`，`MotionInfoValue`
-   的 state/gait 为扁平标量，`StdMsgInt32` 字段为 `value`；旧手册截图只作语义参考。
+1. 背部主机当前消息源码 `src/deep-robotics-msg` 已同步；其 ROS 包名仍为 `drdds`
+   1.1.0。Humble/Foxy 统一使用该包，旧 `src/drdds` 和旧背部基准均隔离；direct 后端已
+   按新版嵌套 `motion_state.state/gait_state.gait` 完成 ABI 适配和源码预检。
 2. SDK 的低层关节、IMU、电池接口已合并进同一包，旧 vendored 同名包被可逆隔离；重新
    构建 SDK 和 MuJoCo 后端通过。
 3. `basic_server` 的 APDU、JSON、端口、状态和心跳在手册中有完整定义，便于

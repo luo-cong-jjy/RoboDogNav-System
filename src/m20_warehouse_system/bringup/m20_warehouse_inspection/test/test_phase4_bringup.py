@@ -47,7 +47,10 @@ def test_phase4_launch_composes_phase3_and_mission_executor() -> None:
     assert 'collision_grid_route_enabled' not in launch
     assert 'clearance_m20.yaml' in launch
     assert 'scan_m20_physical_planner.yaml' not in launch
-    assert 'planner_config' not in launch
+    assert 'scan_m20_velocity_planner.yaml' in launch
+    assert 'scan_m20_velocity_controller.yaml' in launch
+    assert "'planner_config': planner_config" in launch
+    assert "'controller_config': controller_config" in launch
 
 
 def test_dense_profile_has_an_independent_named_launch_entry() -> None:

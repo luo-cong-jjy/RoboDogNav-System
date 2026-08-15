@@ -31,8 +31,8 @@ def test_hardware_launch_replaces_only_data_and_execution_backends():
     assert "'execution_profile': 'm20_safe'" in text
     assert "'use_local_sensing': 'false'" in text
     assert "default_value='/m20/localization/body_pose'" in text
-    assert "default_value='/LIO/clouds_lidar'" in text
-    assert "default_value='/LIO/odom_imu'" in text
+    assert "default_value='/m20/localization/cloud'" in text
+    assert "default_value='/m20/localization/sensor_pose'" in text
     assert "default_value='/LIO/odom_vehicle'" in text
     assert 'm20_factory_agile_flat_capabilities.yaml' in text
     assert "'velocity_feedback_source': 'twist'" in text
@@ -61,16 +61,16 @@ def test_hardware_motion_cannot_start_by_default():
 def test_hardware_lio_profile_uses_the_navigation_frame_contract():
     root = SOURCE_ROOT / 'Elevator-LIO' / 'yaml'
     root_config = (
-        root / 'root_config_m20_navigation.yaml'
+        root / 'root_config_m20.yaml'
     ).read_text(encoding='utf-8')
     sensor_config = (
-        root / 'sensors' / 'robosense_m20_navigation.yaml'
+        root / 'sensors' / 'robosense_m20.yaml'
     ).read_text(encoding='utf-8')
 
-    assert 'sensors/robosense_m20_navigation.yaml' in root_config
-    assert 'world_frame_name: "world"' in sensor_config
-    assert 'body_frame_name: "base_link"' in sensor_config
-    assert 'lidar_frame_name: "base_link"' in sensor_config
+    assert 'sensors/robosense_m20.yaml' in root_config
+    assert 'world_frame_name: "lio_world"' in sensor_config
+    assert 'body_frame_name: "lio_base_link"' in sensor_config
+    assert 'lidar_frame_name: "lio_base_link"' in sensor_config
     assert '"/rslidar_points_front"' in sensor_config
     assert '"/rslidar_points_rear"' in sensor_config
 
@@ -99,5 +99,7 @@ def test_direct_ros_transport_is_selectable_with_guarded_high_level_drdds():
     )
     assert 'StdMsgInt32' in direct_node
     assert "'hard_estop_topic', '/HES_STATUS'" in direct_node
+    assert 'reliability=ReliabilityPolicy.RELIABLE' in direct_node
+    assert 'self._hard_estop_callback,\n            latched_qos' in direct_node
     assert "'command_ownership_confirmed', False" in direct_node
     assert "'auto_enable_motion', False" in direct_node

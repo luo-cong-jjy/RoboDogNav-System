@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import json
+import signal
 from typing import Optional, Tuple
 
 from drdds.msg import Gait, MotionInfo, MotionState, NavCmd, StdMsgInt32
@@ -29,6 +30,7 @@ from std_srvs.srv import SetBool
 
 from .basic_server_protocol import apply_vendor_velocity_envelope
 from .direct_ros_policy import (
+    decode_motion_info,
     DirectMotionStatus,
     SOFT_ESTOP,
     select_direct_transition,
@@ -132,7 +134,7 @@ class DirectRosBackend(Node):
         )
         feedback_qos = QoSProfile(
             depth=20,
-            reliability=ReliabilityPolicy.BEST_EFFORT,
+            reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.VOLATILE,
         )
         latched_qos = QoSProfile(
@@ -175,7 +177,7 @@ class DirectRosBackend(Node):
             StdMsgInt32,
             str(self.get_parameter('hard_estop_topic').value),
             self._hard_estop_callback,
-            feedback_qos,
+            latched_qos,
         )
         self.create_subscription(
             Twist,
@@ -221,14 +223,7 @@ class DirectRosBackend(Node):
         self._last_command_time = self._now()
 
     def _motion_info_callback(self, message: MotionInfo) -> None:
-        data = message.data
-        self._status = DirectMotionStatus(
-            state=int(data.state),
-            gait=int(data.gait),
-            linear_x=float(data.vel_x),
-            linear_y=float(data.vel_y),
-            angular_z=float(data.vel_yaw),
-        )
+        self._status = decode_motion_info(message.data)
         self._last_info_time = self._now()
         measured = TwistStamped()
         measured.header.stamp = self.get_clock().now().to_msg()
@@ -475,12 +470,23 @@ def main(args=None) -> None:
     """Run the M20 direct ROS factory motion backend."""
     rclpy.init(args=args)
     node = DirectRosBackend()
+    stop_requested = False
+
+    def request_stop(_signum, _frame) -> None:
+        """Defer shutdown until zero commands have been published."""
+        nonlocal stop_requested
+        stop_requested = True
+
+    signal.signal(signal.SIGINT, request_stop)
+    signal.signal(signal.SIGTERM, request_stop)
     try:
-        rclpy.spin(node)
+        while rclpy.ok() and not stop_requested:
+            rclpy.spin_once(node, timeout_sec=0.1)
     except KeyboardInterrupt:
         pass
     finally:
-        node.stop()
+        if rclpy.ok():
+            node.stop()
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

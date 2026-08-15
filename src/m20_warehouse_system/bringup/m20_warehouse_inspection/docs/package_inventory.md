@@ -26,7 +26,7 @@ launch、验收工具和开发文档；一次 `--packages-up-to m20_warehouse_in
 | `m20_mujoco_backend` | `simulation/`；官方 SDK/ONNX 与 MuJoCo 动力学后端 |
 | `m20_scan_planner` | `navigation/`；适配后的 SCAN 节点、B 样条控制与 reset |
 | `m20_scan_navigation` | `navigation/`；typed 导航网关、点云链路与 SCAN bringup |
-| `drdds` | 唯一启用的 M20 DrDDS 消息/服务模式，兼容高层运动与低层 SDK |
+| `drdds` | 源码目录 `deep-robotics-msg`；仿真与实机共用的厂家公开消息/服务 ABI |
 
 ## 十一个第三方构建依赖包
 
@@ -43,10 +43,20 @@ launch、验收工具和开发文档；一次 `--packages-up-to m20_warehouse_in
 `src/Elevator-LIO`），负责双 RoboSense + `/IMU` 的连续定位、去畸变世界系点云和
 电梯状态估计。仿真闭包不依赖它，避免把 PCL/雷达驱动和 MuJoCo 回归强行绑定。
 
-工作区顶层 `src/drdds` 是唯一启用的完整接口包，合并 SDK 低层关节/IMU/电池类型
-和完整开发指南给出的 `NavCmd/MotionInfo/MotionState/Gait`。SDK 随附的旧同名副本由其
-自身 `COLCON_IGNORE` 隔离。实机可用 `factory_transport` 在 `basic_server` 与
-`direct_ros` 间选择，且同一时刻只能启用一个。
+仿真没有一个单包一对一平替 `lio`：它不在线建图，而由 `m20_generate_maps` 离线生成
+测试 PCD；`m20_mujoco_backend`（或纯 RViz 的 `m20_warehouse_sim`）提供真值位姿，SCAN
+的 `local_sensing_node` 用静态 PCD 和真值位姿生成虚拟实时点云。实机由 `lio` 完成真实
+mapping，并在 relocation 时同时提供位姿和实时点云，因此这些仿真实现不参与 hardware
+launch；每层静态 PCD 的 `m20_flat_map_server` 与 SCAN 核心规划包仍需保留。
+
+当前源码发布脚本仍生成统一仿真/实机闭包，所以仿真包会随 source-only release 到达目标
+机但不运行。若要求源码也不上传，必须先正式拆分 hardware-only bringup/manifest 并完成
+Foxy 回归，不能现场手工删除。建图与已有地图定位的包内操作说明见
+`src/Elevator-LIO/Virdy-m20-pro-建图定位启动.md`。
+
+开发机和 Foxy release 都只启用 `src/deep-robotics-msg`（ROS 包名 `drdds`）。历史
+`src/drdds` 与 SDK 随附同名副本均由 `COLCON_IGNORE` 隔离。实机可用 `factory_transport` 在
+`basic_server` 与 `direct_ros` 间选择，且同一时刻只能启用一个。
 
 `drdds` 不是纯实机包：MuJoCo + 官方 SDK/ONNX profile 也使用低层关节和
 IMU 接口。因此它作为仿真/实机共享的工作区级依赖，保持与顶层系统目录

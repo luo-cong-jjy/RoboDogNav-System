@@ -98,34 +98,31 @@ for package_path in "${package_paths[@]}"; do
   fi
 done
 
-canonical_drdds_source="${source_root}/drdds"
-if [[ ! -f "${canonical_drdds_source}/package.xml" ]]; then
-  echo "Missing canonical DrDDS package: ${canonical_drdds_source}" >&2
+deployed_message_source="${source_root}/deep-robotics-msg"
+if [[ ! -f "${deployed_message_source}/package.xml" ]]; then
+  echo "Missing deployed message source: ${deployed_message_source}" >&2
   exit 4
 fi
-backpack_drdds_source="${source_root}/drdds-背部主机当前版"
-if [[ ! -f "${backpack_drdds_source}/package.xml" ]]; then
-  echo "Missing backpack DrDDS audit baseline: ${backpack_drdds_source}" >&2
+if ! grep -q '<name>drdds</name>' "${deployed_message_source}/package.xml"; then
+  echo "deep-robotics-msg must declare ROS package drdds before release" >&2
   exit 4
 fi
-if [[ ! -f "${backpack_drdds_source}/COLCON_IGNORE" ]]; then
-  echo "Backpack DrDDS audit baseline must contain COLCON_IGNORE" >&2
+if ! grep -q '<version>1.1.0</version>' "${deployed_message_source}/package.xml"; then
+  echo "deep-robotics-msg must match the validated 1.1.0 ABI baseline" >&2
   exit 4
 fi
 
 mkdir -p "${target_workspace}/src"
+# Both Humble simulation and Foxy hardware use this exact public message
+# package. The historical top-level src/drdds copy is ignored in source.
 rsync -a \
+  --exclude '.git/' \
   --exclude '__pycache__/' \
   --exclude '.pytest_cache/' \
   --exclude '*.pyc' \
-  "${canonical_drdds_source}/" \
-  "${target_workspace}/src/drdds/"
-rsync -a \
-  --exclude '__pycache__/' \
-  --exclude '.pytest_cache/' \
-  --exclude '*.pyc' \
-  "${backpack_drdds_source}/" \
-  "${target_workspace}/src/drdds-背部主机当前版/"
+  --exclude 'COLCON_IGNORE' \
+  "${deployed_message_source}/" \
+  "${target_workspace}/src/deep-robotics-msg/"
 rsync -a \
   --exclude '__pycache__/' \
   --exclude '.pytest_cache/' \

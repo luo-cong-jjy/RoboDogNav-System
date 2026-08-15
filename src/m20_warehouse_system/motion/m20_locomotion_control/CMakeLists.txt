@@ -17,6 +17,7 @@ install(
     scripts/m20_direct_ros_backend
     scripts/m20_locomotion_manager
     scripts/m20_navigation_adapter
+    scripts/m20_trajectory_progress_tracker
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -52,6 +53,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_direct_ros_policy
     test/test_direct_ros_policy.py
+  )
+  ament_add_pytest_test(
+    test_trajectory_progress
+    test/test_trajectory_progress.py
   )
 endif()
 

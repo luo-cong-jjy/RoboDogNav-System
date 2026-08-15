@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 
 IDLE = 0
@@ -46,6 +46,23 @@ class DirectMotionStatus:
             and abs(self.linear_y) < 0.03
             and abs(self.angular_z) < 0.05
         )
+
+
+def decode_motion_info(data: Any) -> DirectMotionStatus:
+    """
+    Decode the public deep-robotics-msg 1.1 MotionInfoValue ABI.
+
+    The current vendor interface nests state and gait in their corresponding
+    value messages. Keeping this conversion in the transport boundary avoids
+    leaking DrDDS layout details into the common locomotion state machine.
+    """
+    return DirectMotionStatus(
+        state=int(data.motion_state.state),
+        gait=int(data.gait_state.gait),
+        linear_x=float(data.vel_x),
+        linear_y=float(data.vel_y),
+        angular_z=float(data.vel_yaw),
+    )
 
 
 @dataclass(frozen=True)
