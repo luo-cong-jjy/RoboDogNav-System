@@ -1,79 +1,88 @@
-m20_navigation_adapter:
+m20_navigation_adapter:          # 导航适配器节点（SCAN Twist -> 候选指令）
   ros__parameters:
-    input_topic: /m20/navigation/cmd_vel_raw
-    output_topic: /m20/navigation/cmd_vel_candidate
-    mode_topic: /m20/navigation/candidate_mode
-    command_timeout_sec: 0.30
+    input_topic: /m20/navigation/cmd_vel_raw          # 上游原始 Twist 指令话题
+    output_topic: /m20/navigation/cmd_vel_candidate   # 输出候选指令（供碰撞防护审核）
+    mode_topic: /m20/navigation/candidate_mode        # 候选模式话题
+    command_timeout_sec: 0.30                         # 指令超时（超过则停车）[s]
     # All body, command, rolling-turn and drift values are injected from the
     # selected versioned M20 capability profile by the parent launch.
     # Inner velocity feedback is staged off until the same MuJoCo navigation
     # task has passed open-loop/closed-loop A/B acceptance. It consumes the
     # base_link twist from Odometry and corrects this pre-safety candidate, so
     # every corrected output remains subject to the collision guard.
-    velocity_feedback_enabled: false
-    velocity_feedback_source: odometry
-    velocity_feedback_odometry_topic: /m20/sim/body_pose
-    velocity_feedback_twist_topic: /m20/locomotion/measured_twist
-    velocity_feedback_expected_child_frame: base_link
-    velocity_feedback_execution_hold_topic: /m20/control/execution_hold
-    velocity_feedback_state_topic: /m20/navigation/velocity_feedback_state
-    velocity_feedback_timeout_sec: 0.15
+    # （机身/指令/滚动转弯/漂移等值均由父 launch 从版本化能力配置注入；
+    #   内部速度反馈在 MuJoCo 导航任务通过开环/闭环 A/B 验收前保持关闭；
+    #   反馈使用 Odometry 的 base_link twist 修正该安全前候选，
+    #   所有修正输出仍受碰撞防护约束）
+    velocity_feedback_enabled: false                  # 速度反馈总开关（暂关）
+    velocity_feedback_source: odometry                # 反馈源：里程计
+    velocity_feedback_odometry_topic: /m20/sim/body_pose  # 里程计话题
+    velocity_feedback_twist_topic: /m20/locomotion/measured_twist  # 实测 twist 话题
+    velocity_feedback_expected_child_frame: base_link # 期望子坐标系
+    velocity_feedback_execution_hold_topic: /m20/control/execution_hold  # 执行保持话题
+    velocity_feedback_state_topic: /m20/navigation/velocity_feedback_state  # 反馈状态话题
+    velocity_feedback_timeout_sec: 0.15               # 反馈超时 [s]
     # The current MuJoCo A/B showed improved straight-line accuracy but extra
     # turn overshoot. Reset and bypass PI during coordinated/lateral maneuvers.
-    velocity_feedback_cruise_only: true
-    velocity_feedback_max_abs_yaw_reference: 0.08
-    velocity_feedback_linear_kp: 0.30
-    velocity_feedback_linear_ki: 0.08
-    velocity_feedback_yaw_kp: 0.20
-    velocity_feedback_yaw_ki: 0.05
-    velocity_feedback_linear_error_deadband: 0.03
-    velocity_feedback_yaw_error_deadband: 0.04
-    velocity_feedback_linear_integral_limit: 0.20
-    velocity_feedback_yaw_integral_limit: 0.25
-    velocity_feedback_linear_correction_limit: 0.10
-    velocity_feedback_yaw_correction_limit: 0.12
+    # （当前 MuJoCo A/B 显示直线精度改善但转弯过冲增加；协调/侧向机动时
+    #   重置并旁路 PI）
+    velocity_feedback_cruise_only: true               # 仅巡航时启用反馈
+    velocity_feedback_max_abs_yaw_reference: 0.08     # 反馈最大偏航参考 [rad/s]
+    velocity_feedback_linear_kp: 0.30                 # 线速度 P 增益
+    velocity_feedback_linear_ki: 0.08                 # 线速度 I 增益
+    velocity_feedback_yaw_kp: 0.20                    # 偏航 P 增益
+    velocity_feedback_yaw_ki: 0.05                    # 偏航 I 增益
+    velocity_feedback_linear_error_deadband: 0.03     # 线误差死区
+    velocity_feedback_yaw_error_deadband: 0.04        # 偏航误差死区
+    velocity_feedback_linear_integral_limit: 0.20     # 线积分限幅
+    velocity_feedback_yaw_integral_limit: 0.25        # 偏航积分限幅
+    velocity_feedback_linear_correction_limit: 0.10   # 线修正限幅
+    velocity_feedback_yaw_correction_limit: 0.12      # 偏航修正限幅
 
-m20_trajectory_progress_tracker:
+m20_trajectory_progress_tracker:  # 轨迹进度跟踪器（按 B 样条空间进度前视跟踪）
   ros__parameters:
-    trajectory_topic: /planning/bspline
-    odometry_topic: /m20/sim/body_pose
-    execution_hold_topic: /m20/control/execution_hold
-    output_topic: /m20/navigation/cmd_vel_candidate
-    mode_topic: /m20/navigation/candidate_mode
-    state_topic: /m20/navigation/progress_tracker_state
-    control_rate_hz: 50.0
-    odometry_timeout_sec: 0.25
-    spline_sample_period_sec: 0.02
+    trajectory_topic: /planning/bspline              # 规划 B 样条轨迹话题
+    odometry_topic: /m20/sim/body_pose               # 里程计话题
+    execution_hold_topic: /m20/control/execution_hold  # 执行保持话题
+    output_topic: /m20/navigation/cmd_vel_candidate  # 输出候选指令
+    mode_topic: /m20/navigation/candidate_mode       # 候选模式话题
+    state_topic: /m20/navigation/progress_tracker_state  # 跟踪状态话题
+    control_rate_hz: 50.0                            # 控制频率 [Hz]
+    odometry_timeout_sec: 0.25                       # 里程计超时 [s]
+    spline_sample_period_sec: 0.02                   # 样条采样周期 [s]
     # Preserve SCAN's native spatial preview: 0.75 m/s * 0.8 s = 0.60 m.
-    lookahead_m: 0.60
-    yaw_gain: 1.50
-    finish_distance_m: 0.15
-    terminal_speed_threshold_mps: 0.10
-    terminal_slowdown_distance_m: 0.80
-    terminal_min_speed_mps: 0.10
+    # （保留 SCAN 原生空间前视：0.75 m/s × 0.8 s = 0.60 m）
+    lookahead_m: 0.60                                # 前视距离 [m]
+    yaw_gain: 1.50                                   # 偏航增益
+    finish_distance_m: 0.15                          # 完成判定距离 [m]
+    terminal_speed_threshold_mps: 0.10               # 末端速度阈值 [m/s]
+    terminal_slowdown_distance_m: 0.80               # 末端减速距离 [m]
+    terminal_min_speed_mps: 0.10                     # 末端最小速度 [m/s]
 
-m20_locomotion_manager:
+m20_locomotion_manager:          # 运动管理节点（安全 Twist -> 后端指令）
   ros__parameters:
-    input_topic: /m20/control/cmd_vel_safe
-    output_topic: /m20/locomotion/cmd_vel_sdk
-    mode_topic: /m20/locomotion/mode
+    input_topic: /m20/control/cmd_vel_safe           # 安全 Twist 输入
+    output_topic: /m20/locomotion/cmd_vel_sdk        # 输出给 SDK 的指令
+    mode_topic: /m20/locomotion/mode                 # 运动模式话题
     # Canonical backend health contract. Simulation launches override these
     # with the MuJoCo-specific source topics.
-    backend_ready_topic: /m20/locomotion/backend_ready
-    backend_fault_topic: /m20/locomotion/backend_fault
-    safety_state_topic: /m20/control/safety_state
-    require_backend_ready: false
+    # （后端健康契约；仿真 launch 会用 MuJoCo 特有话题覆盖）
+    backend_ready_topic: /m20/locomotion/backend_ready  # 后端就绪话题
+    backend_fault_topic: /m20/locomotion/backend_fault  # 后端故障话题
+    safety_state_topic: /m20/control/safety_state       # 安全状态话题
+    require_backend_ready: false                        # 是否要求后端就绪
     # Autonomous commands were already adapted before collision prediction.
     # Keep this final backend gate from applying the transformation twice.
-    rolling_navigation_enabled: false
-    allow_manual_lateral: true
-    command_timeout_sec: 0.30
+    # （自主指令在碰撞预测前已适配；最终后端门控避免二次变换）
+    rolling_navigation_enabled: false                   # 滚动导航开关（关闭）
+    allow_manual_lateral: true                          # 允许手动侧向
+    command_timeout_sec: 0.30                           # 指令超时 [s]
 
-m20_cmd_vel_interface:
+m20_cmd_vel_interface:           # cmd_vel 接口（SDK 部署侧）
   ros__parameters:
-    cmd_vel_topic: /m20/locomotion/cmd_vel_sdk
-    auto_start: true
-    standup_delay_sec: 3.3
-    cmd_timeout_sec: 0.5
-    control_rate_hz: 50.0
-    debug_print: false
+    cmd_vel_topic: /m20/locomotion/cmd_vel_sdk      # 指令话题
+    auto_start: true                                 # 自动启动
+    standup_delay_sec: 3.3                           # 站立延迟 [s]
+    cmd_timeout_sec: 0.5                             # 指令超时 [s]
+    control_rate_hz: 50.0                            # 控制频率 [Hz]
+    debug_print: false                               # 调试打印

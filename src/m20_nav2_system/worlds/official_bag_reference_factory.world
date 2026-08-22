@@ -1,0 +1,269 @@
+<?xml version="1.0"?>
+<!-- ============================================================
+     文件：official_bag_reference_factory.world
+     用途：M20 导航测试用「官方 bag 参考工厂」Gazebo 世界场景。
+           - 提供一块 18m × 14m 的工厂地面与四面围墙（北/南/西/东），
+             并布置两堵分区隔墙、两个工作单元方块（workcell block）、
+             两根立柱与一组三级台阶（stair_step_1~3）；
+           - 包含三个动态障碍物（dynamic_worker / dynamic_cart /
+             dynamic_barrel），由 libm20_sinusoidal_obstacle_plugin
+             驱动沿正弦轨迹往复运动，用于测试 Nav2 的动态避障；
+           - 无 <physics> 显式配置（使用 Gazebo 默认物理参数），
+             场景以静态家具 + 动态障碍物为主，供官方数据包
+             （bag）回放与导航功能对照参考。
+     ============================================================ -->
+<sdf version="1.6">
+  <world name="official_bag_reference_factory">
+    <!-- ==================== 太阳光源 ==================== -->
+    <!-- 引入 Gazebo 标准模型库中的太阳（环境光 + 方向光），保证场景亮度。 -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <!-- ==================== ground：地面 ==================== -->
+    <!-- 静态地面：18m × 14m × 0.05m 的薄长方体，中心下沉 -0.025m
+         使顶面恰好位于 z=0 平面，供机器人行走。 -->
+    <model name="ground">
+      <static>true</static>
+      <link name="ground_link">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>18 14 0.05</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>18 14 0.05</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.55 0.56 0.56 1</ambient>
+            <diffuse>0.55 0.56 0.56 1</diffuse>
+          </material>
+        </visual>
+      </link>
+      <pose>0 0 -0.025 0 0 0</pose>
+    </model>
+
+    <!-- ==================== north_wall：北侧围墙 ==================== -->
+    <!-- 静态墙体：位于 y=6.1m 处，尺寸 18m × 0.25m × 1.5m，作为场地北边界。 -->
+    <model name="north_wall">
+      <static>true</static>
+      <pose>0 6.1 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>18 0.25 1.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>18 0.25 1.5</size></box></geometry><material><ambient>0.70 0.72 0.74 1</ambient><diffuse>0.70 0.72 0.74 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== south_wall：南侧围墙 ==================== -->
+    <!-- 静态墙体：位于 y=-6.1m 处，作为场地南边界。 -->
+    <model name="south_wall">
+      <static>true</static>
+      <pose>0 -6.1 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>18 0.25 1.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>18 0.25 1.5</size></box></geometry><material><ambient>0.70 0.72 0.74 1</ambient><diffuse>0.70 0.72 0.74 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== west_wall：西侧围墙 ==================== -->
+    <!-- 静态墙体：位于 x=-8.9m 处，尺寸 0.25m × 12m × 1.5m，作为场地西边界。 -->
+    <model name="west_wall">
+      <static>true</static>
+      <pose>-8.9 0 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.25 12 1.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.25 12 1.5</size></box></geometry><material><ambient>0.70 0.72 0.74 1</ambient><diffuse>0.70 0.72 0.74 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== east_wall：东侧围墙 ==================== -->
+    <!-- 静态墙体：位于 x=8.9m 处，作为场地东边界。 -->
+    <model name="east_wall">
+      <static>true</static>
+      <pose>8.9 0 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.25 12 1.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.25 12 1.5</size></box></geometry><material><ambient>0.70 0.72 0.74 1</ambient><diffuse>0.70 0.72 0.74 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== left_partition：左侧分区隔墙 ==================== -->
+    <!-- 静态隔墙：位于 (-3.5, 1.4)，尺寸 0.25m × 6.2m × 1.5m，
+         将场地西半区分成上下两块工作区。 -->
+    <model name="left_partition">
+      <static>true</static>
+      <pose>-3.5 1.4 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.25 6.2 1.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.25 6.2 1.5</size></box></geometry><material><ambient>0.78 0.78 0.74 1</ambient><diffuse>0.78 0.78 0.74 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== right_partition：右侧分区隔墙 ==================== -->
+    <!-- 静态隔墙：位于 (3.7, -1.2)，尺寸 0.25m × 5.8m × 1.5m，
+         将场地东半区分成上下两块工作区。 -->
+    <model name="right_partition">
+      <static>true</static>
+      <pose>3.7 -1.2 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.25 5.8 1.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.25 5.8 1.5</size></box></geometry><material><ambient>0.78 0.78 0.74 1</ambient><diffuse>0.78 0.78 0.74 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== workcell_block_a：工作单元方块 A ==================== -->
+    <!-- 静态障碍物：位于 (-6.0, 3.4)，尺寸 1.6m × 1.1m × 0.9m，
+         模拟车间工作台/设备块。 -->
+    <model name="workcell_block_a">
+      <static>true</static>
+      <pose>-6.0 3.4 0.45 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.6 1.1 0.9</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.6 1.1 0.9</size></box></geometry><material><ambient>0.35 0.48 0.62 1</ambient><diffuse>0.35 0.48 0.62 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== workcell_block_b：工作单元方块 B ==================== -->
+    <!-- 静态障碍物：位于 (5.7, -3.0)（带 0.2rad 偏航），
+         尺寸 1.9m × 1.0m × 0.9m，模拟另一台设备块。 -->
+    <model name="workcell_block_b">
+      <static>true</static>
+      <pose>5.7 -3.0 0.45 0 0 0.2</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.9 1.0 0.9</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.9 1.0 0.9</size></box></geometry><material><ambient>0.42 0.52 0.43 1</ambient><diffuse>0.42 0.52 0.43 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== pillar_1：立柱 1 ==================== -->
+    <!-- 静态圆柱柱：位于 (-0.6, 3.5)，半径 0.22m、高 1.5m，
+         模拟车间支撑柱（雷达/相机均可见的圆柱障碍）。 -->
+    <model name="pillar_1">
+      <static>true</static>
+      <pose>-0.6 3.5 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><cylinder><radius>0.22</radius><length>1.5</length></cylinder></geometry></collision>
+        <visual name="visual"><geometry><cylinder><radius>0.22</radius><length>1.5</length></cylinder></geometry><material><ambient>0.50 0.50 0.50 1</ambient><diffuse>0.50 0.50 0.50 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== pillar_2：立柱 2 ==================== -->
+    <!-- 静态圆柱柱：位于 (1.8, -3.7)，参数与 pillar_1 相同。 -->
+    <model name="pillar_2">
+      <static>true</static>
+      <pose>1.8 -3.7 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><cylinder><radius>0.22</radius><length>1.5</length></cylinder></geometry></collision>
+        <visual name="visual"><geometry><cylinder><radius>0.22</radius><length>1.5</length></cylinder></geometry><material><ambient>0.50 0.50 0.50 1</ambient><diffuse>0.50 0.50 0.50 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== stair_step_1：台阶第 1 级 ==================== -->
+    <!-- 静态台阶：位于 (-6.2, -3.4)，尺寸 1.6m × 0.35m × 0.08m，
+         作为三级台阶的最底层（高度 0.08m）。 -->
+    <model name="stair_step_1">
+      <static>true</static>
+      <pose>-6.2 -3.4 0.04 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.6 0.35 0.08</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.6 0.35 0.08</size></box></geometry><material><ambient>0.62 0.58 0.50 1</ambient><diffuse>0.62 0.58 0.50 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== stair_step_2：台阶第 2 级 ==================== -->
+    <!-- 静态台阶：位于 (-6.2, -3.75)，尺寸 1.6m × 0.35m × 0.16m，
+         高度 0.16m（第二级）。 -->
+    <model name="stair_step_2">
+      <static>true</static>
+      <pose>-6.2 -3.75 0.08 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.6 0.35 0.16</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.6 0.35 0.16</size></box></geometry><material><ambient>0.62 0.58 0.50 1</ambient><diffuse>0.62 0.58 0.50 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== stair_step_3：台阶第 3 级 ==================== -->
+    <!-- 静态台阶：位于 (-6.2, -4.1)，尺寸 1.6m × 0.35m × 0.24m，
+         高度 0.24m（第三级，最高）。 -->
+    <model name="stair_step_3">
+      <static>true</static>
+      <pose>-6.2 -4.1 0.12 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.6 0.35 0.24</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.6 0.35 0.24</size></box></geometry><material><ambient>0.62 0.58 0.50 1</ambient><diffuse>0.62 0.58 0.50 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ==================== dynamic_worker：动态工人（圆柱） ==================== -->
+    <!-- 非静态模型（<static>false</static>）：橙色圆柱（半径 0.23m、高 1.1m），
+         关闭重力（<gravity>false</gravity>），由正弦运动插件
+         libm20_sinusoidal_obstacle_plugin 驱动沿 y 轴做振幅 1.1m、
+         周期 12s 的往复运动，模拟走动中的工人，考验动态避障。 -->
+    <model name="dynamic_worker">
+      <static>false</static>
+      <pose>2.4 0.2 0.55 0 0 0</pose>
+      <link name="link">
+        <gravity>false</gravity>
+        <collision name="collision"><geometry><cylinder><radius>0.23</radius><length>1.1</length></cylinder></geometry></collision>
+        <visual name="visual"><geometry><cylinder><radius>0.23</radius><length>1.1</length></cylinder></geometry><material><ambient>0.95 0.65 0.18 1</ambient><diffuse>0.95 0.65 0.18 1</diffuse></material></visual>
+      </link>
+      <!-- 正弦运动插件：沿 y 轴振幅 1.1m、周期 12s、初相 0，30Hz 更新。 -->
+      <plugin name="sinusoidal_motion" filename="libm20_sinusoidal_obstacle_plugin.so">
+        <axis>y</axis>
+        <amplitude>1.1</amplitude>
+        <period>12.0</period>
+        <phase>0.0</phase>
+        <update_rate>30.0</update_rate>
+      </plugin>
+    </model>
+
+    <!-- ==================== dynamic_cart：动态推车（长方体） ==================== -->
+    <!-- 非静态模型：蓝色长方体（0.75m × 0.55m × 0.70m），关闭重力，
+         由正弦运动插件沿 x 轴做振幅 0.9m、周期 16s（初相 1.57）的
+         往复运动，模拟移动中的物料车。 -->
+    <model name="dynamic_cart">
+      <static>false</static>
+      <pose>5.0 -1.2 0.35 0 0 0</pose>
+      <link name="link">
+        <gravity>false</gravity>
+        <collision name="collision"><geometry><box><size>0.75 0.55 0.70</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.75 0.55 0.70</size></box></geometry><material><ambient>0.25 0.55 0.85 1</ambient><diffuse>0.25 0.55 0.85 1</diffuse></material></visual>
+      </link>
+      <!-- 正弦运动插件：沿 x 轴振幅 0.9m、周期 16s、初相 1.57。 -->
+      <plugin name="sinusoidal_motion" filename="libm20_sinusoidal_obstacle_plugin.so">
+        <axis>x</axis>
+        <amplitude>0.9</amplitude>
+        <period>16.0</period>
+        <phase>1.57</phase>
+        <update_rate>30.0</update_rate>
+      </plugin>
+    </model>
+
+    <!-- ==================== dynamic_barrel：动态油桶（圆柱） ==================== -->
+    <!-- 非静态模型：红色圆柱（半径 0.25m、高 0.9m），关闭重力，
+         由正弦运动插件沿 y 轴做振幅 0.7m、周期 14s（初相 3.14）的
+         往复运动，模拟滚动/移动中的油桶障碍。 -->
+    <model name="dynamic_barrel">
+      <static>false</static>
+      <pose>-1.4 -2.4 0.45 0 0 0</pose>
+      <link name="link">
+        <gravity>false</gravity>
+        <collision name="collision"><geometry><cylinder><radius>0.25</radius><length>0.9</length></cylinder></geometry></collision>
+        <visual name="visual"><geometry><cylinder><radius>0.25</radius><length>0.9</length></cylinder></geometry><material><ambient>0.75 0.22 0.20 1</ambient><diffuse>0.75 0.22 0.20 1</diffuse></material></visual>
+      </link>
+      <!-- 正弦运动插件：沿 y 轴振幅 0.7m、周期 14s、初相 3.14。 -->
+      <plugin name="sinusoidal_motion" filename="libm20_sinusoidal_obstacle_plugin.so">
+        <axis>y</axis>
+        <amplitude>0.7</amplitude>
+        <period>14.0</period>
+        <phase>3.14</phase>
+        <update_rate>30.0</update_rate>
+      </plugin>
+    </model>
+  </world>
+</sdf>

@@ -1,0 +1,344 @@
+<?xml version="1.0"?>
+<!-- ============================================================
+     文件：factory_environment_v2.world
+     用途：M20 导航测试用「工厂环境 v2」Gazebo 世界场景。
+           - 26m × 26m 地面 + 四面围墙，内部布置 5 排工作台
+             （desk_row_1~5，间距 4m）构成东西向巡检走廊；
+           - 灯光使用内置方向光（避免在线拉取模型库）；
+           - 与 v1 不同：v2 只保留 5 个「扫描代理」圆柱
+             （worker_1~5_scan_proxy，libm20_waypoint_obstacle_plugin
+             驱动，摩擦置 0），**移除了 Gazebo actor 视觉动画**，
+             保证 Gazebo 中看到的障碍与 /scan 完全一致；
+           - 动态工人轨迹按「禁区规避」设计（详见下方大段注释）：
+             X 限制在 3~17、Y 取 3/5/9/13/19，避开所有巡检目标点
+             与设备行中心。
+     ============================================================ -->
+<sdf version="1.6">
+  <world name="factory_environment">
+    <!-- Direct Light to prevent online fetching -->
+    <!-- ==================== sun：方向光 ==================== -->
+    <!-- 内置方向光：从 (-0.5, 0.1, -0.9) 方向照射，开阴影，
+         衰减范围 1000m，避免依赖在线 sun 模型。 -->
+    <light name="sun" type="directional">
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground -->
+    <!-- ==================== ground：地面 ==================== -->
+    <!-- 静态地面：26m × 26m × 0.05m，整体位于 (10, 10) 中心，
+         使场地有效范围约为 x/y ∈ [0, 20]（与巡检点坐标对齐）。 -->
+    <model name="ground">
+      <static>true</static>
+      <link name="ground_link">
+        <collision name="collision">
+          <geometry><box><size>26 26 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>26 26 0.05</size></box></geometry>
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.6 0.6 0.6 1</diffuse>
+          </material>
+        </visual>
+      </link>
+      <pose>10 10 -0.025 0 0 0</pose>
+    </model>
+
+    <!-- Walls -->
+    <!-- ==================== 四面围墙 ==================== -->
+    <!-- 北墙（y=22）、南墙（y=-2）、西墙（x=-2）、东墙（x=22）：
+         均为 24m 长 × 0.25m 厚 × 3.0m 高的静态墙体，围成
+         [0,20]×[0,20] 的有效导航区域。 -->
+    <model name="north_wall">
+      <static>true</static>
+      <pose>10 22 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>24 0.25 3.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>24 0.25 3.0</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="south_wall">
+      <static>true</static>
+      <pose>10 -2 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>24 0.25 3.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>24 0.25 3.0</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="west_wall">
+      <static>true</static>
+      <pose>-2 10 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.25 24 3.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.25 24 3.0</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="east_wall">
+      <static>true</static>
+      <pose>22 10 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.25 24 3.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.25 24 3.0</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- 5 Rows of Desks/Machines with 4m spacing -->
+    <!-- ==================== 5 排工作台（desk_row_1~5） ==================== -->
+    <!-- 静态设备排：每排 16m × 1.2m × 1.2m，位于 x=10 沿 y 方向
+         每 4m 一排（y=18/14/10/6/2），将场地分割成
+         y=4/8/12/16/20 五条东西向巡检通道。 -->
+    <model name="desk_row_1">
+      <static>true</static>
+      <pose>10 18 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="desk_row_2">
+      <static>true</static>
+      <pose>10 14 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="desk_row_3">
+      <static>true</static>
+      <pose>10 10 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="desk_row_4">
+      <static>true</static>
+      <pose>10 6 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="desk_row_5">
+      <static>true</static>
+      <pose>10 2 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!--
+    ============================================================
+    轨迹规划 v2 — 基于完整巡检点列表的禁区规避
+    ============================================================
+    禁区点（动态障碍物活动区域不允许覆盖）：
+      (0,0)   (10,0)  (20,0)
+      (20,4)  (10,4)  (0,4)
+      (0,8)   (10,8)  (20,8)
+      (20,12) (10,12) (0,12)
+      (0,16)  (10,16) (20,16)
+      (20,20) (10,20) (0,20)
+      (0,0) 返回
+
+    禁区规律：X=0, X=10, X=20 三列，Y=0,4,8,12,16,20 六行，共18个点
+
+    Worker 分配策略：
+      保持原始人行通道的 Y 值，不进入 desk/machine 行中心：
+        desk/machine 行中心为 Y=2,6,10,14,18，动态人避开这些行。
+      所有动态障碍物 X 范围限制在 3~17，避开 X=0 和 X=20
+      两侧目标点列；Y 值不等于巡检行 Y=0,4,8,12,16,20。
+
+      代理碰撞半径 0.20m；当前动态人中心轨迹到最近巡检点至少 1.0m，
+      因此活动区域不会覆盖 factory_inspection_midpoints.yaml 中的
+      目标点和必经点，同时不再钻进方形设备块。
+
+      worker_1: Y=3  东西巡逻  X: 3~17
+      worker_2: Y=9  东西巡逻  X: 17~3
+      worker_3: Y=19 东西巡逻  X: 3~17
+      worker_4: Y=5  东西巡逻  X: 17~3
+      worker_5: Y=13 东西巡逻  X: 3~17
+    ============================================================
+    -->
+
+    <!-- ==================== SCAN PROXIES ==================== -->
+    <!-- ==================== 扫描代理（动态障碍物） ==================== -->
+    <!-- 5 个红色半透明圆柱代理（碰撞半径 0.20m、高 1.5m），
+         关闭重力、摩擦置 0（surface 段），由
+         libm20_waypoint_obstacle_plugin 沿各自轨迹东西向往复，
+         是 /scan 与 Nav2 costmap 看到的唯一移动障碍。 -->
+
+    <!--
+      Worker 1: Y=3 东西巡逻 X:3→17
+      保持原始通道，避开 Y=2 设备行与 Y=4 巡检点行。
+    -->
+    <!-- worker_1_scan_proxy：Y=3 通道东西巡逻（x=3↔17，14s 走 14m + 1.5s 转向）。 -->
+    <model name="worker_1_scan_proxy">
+      <static>false</static>
+      <pose>3 3 0.75 0 0 0</pose>
+      <link name="body">
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.20</radius><length>1.5</length></cylinder></geometry>
+          <surface>
+            <contact><collide_without_contact>false</collide_without_contact></contact>
+            <friction><ode><mu>0.0</mu><mu2>0.0</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.18</radius><length>1.5</length></cylinder></geometry>
+          <material><ambient>0.9 0.1 0.1 0.25</ambient><diffuse>0.9 0.1 0.1 0.25</diffuse></material>
+          <transparency>0.75</transparency>
+        </visual>
+      </link>
+      <!-- 路点运动插件：x=3↔17 往复（每程 14s + 1.5s 转向）。 -->
+      <plugin name="waypoint_motion" filename="libm20_waypoint_obstacle_plugin.so">
+        <loop>true</loop>
+        <!-- time x y z roll pitch yaw -->
+        <trajectory>0 3 3 0.75 0 0 0;14 17 3 0.75 0 0 0;15.5 17 3 0.75 0 0 3.14159;29.5 3 3 0.75 0 0 3.14159;31 3 3 0.75 0 0 6.28318</trajectory>
+      </plugin>
+    </model>
+
+    <!--
+      Worker 2: Y=9 东西巡逻 X:17→3
+      保持原始通道，避开 Y=8 巡检点行与 Y=10 设备行。
+    -->
+    <!-- worker_2_scan_proxy：Y=9 通道东西巡逻（x=17↔3，反向）。 -->
+    <model name="worker_2_scan_proxy">
+      <static>false</static>
+      <pose>17 9 0.75 0 0 3.14159</pose>
+      <link name="body">
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.20</radius><length>1.5</length></cylinder></geometry>
+          <surface>
+            <contact><collide_without_contact>false</collide_without_contact></contact>
+            <friction><ode><mu>0.0</mu><mu2>0.0</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.18</radius><length>1.5</length></cylinder></geometry>
+          <material><ambient>0.9 0.1 0.1 0.25</ambient><diffuse>0.9 0.1 0.1 0.25</diffuse></material>
+          <transparency>0.75</transparency>
+        </visual>
+      </link>
+      <!-- 路点运动插件：x=17↔3 往复（每程 14s + 1.5s 转向）。 -->
+      <plugin name="waypoint_motion" filename="libm20_waypoint_obstacle_plugin.so">
+        <loop>true</loop>
+        <trajectory>0 17 9 0.75 0 0 3.14159;14 3 9 0.75 0 0 3.14159;15.5 3 9 0.75 0 0 6.28318;29.5 17 9 0.75 0 0 6.28318;31 17 9 0.75 0 0 9.42477</trajectory>
+      </plugin>
+    </model>
+
+    <!--
+      Worker 3: Y=19 东西巡逻 X:3→17
+      保持原始通道，避开 Y=18 设备行与 Y=20 巡检点行。
+    -->
+    <!-- worker_3_scan_proxy：Y=19 通道东西巡逻（x=3↔17）。 -->
+    <model name="worker_3_scan_proxy">
+      <static>false</static>
+      <pose>3 19 0.75 0 0 0</pose>
+      <link name="body">
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.20</radius><length>1.5</length></cylinder></geometry>
+          <surface>
+            <contact><collide_without_contact>false</collide_without_contact></contact>
+            <friction><ode><mu>0.0</mu><mu2>0.0</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.18</radius><length>1.5</length></cylinder></geometry>
+          <material><ambient>0.9 0.1 0.1 0.25</ambient><diffuse>0.9 0.1 0.1 0.25</diffuse></material>
+          <transparency>0.75</transparency>
+        </visual>
+      </link>
+      <!-- 路点运动插件：x=3↔17 往复（每程 14s + 1.5s 转向）。 -->
+      <plugin name="waypoint_motion" filename="libm20_waypoint_obstacle_plugin.so">
+        <loop>true</loop>
+        <trajectory>0 3 19 0.75 0 0 0;14 17 19 0.75 0 0 0;15.5 17 19 0.75 0 0 3.14159;29.5 3 19 0.75 0 0 3.14159;31 3 19 0.75 0 0 6.28318</trajectory>
+      </plugin>
+    </model>
+
+    <!--
+      Worker 4: Y=5 东西巡逻 X:17→3
+      保留原矩形路线的下侧通道，去掉穿过设备行的竖向段。
+    -->
+    <!-- worker_4_scan_proxy：Y=5 通道东西巡逻（x=17↔3，反向）。 -->
+    <model name="worker_4_scan_proxy">
+      <static>false</static>
+      <pose>17 5 0.75 0 0 3.14159</pose>
+      <link name="body">
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.20</radius><length>1.5</length></cylinder></geometry>
+          <surface>
+            <contact><collide_without_contact>false</collide_without_contact></contact>
+            <friction><ode><mu>0.0</mu><mu2>0.0</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.18</radius><length>1.5</length></cylinder></geometry>
+          <material><ambient>0.9 0.1 0.1 0.25</ambient><diffuse>0.9 0.1 0.1 0.25</diffuse></material>
+          <transparency>0.75</transparency>
+        </visual>
+      </link>
+      <!-- 路点运动插件：x=17↔3 往复（每程 14s + 1.5s 转向）。 -->
+      <plugin name="waypoint_motion" filename="libm20_waypoint_obstacle_plugin.so">
+        <loop>true</loop>
+        <trajectory>0 17 5 0.75 0 0 3.14159;14 3 5 0.75 0 0 3.14159;15.5 3 5 0.75 0 0 6.28318;29.5 17 5 0.75 0 0 6.28318;31 17 5 0.75 0 0 9.42477</trajectory>
+      </plugin>
+    </model>
+
+    <!--
+      Worker 5: Y=13 东西巡逻 X:3→17
+      保留原矩形路线的下侧通道，去掉穿过设备行的竖向段。
+    -->
+    <!-- worker_5_scan_proxy：Y=13 通道东西巡逻（x=3↔17）。 -->
+    <model name="worker_5_scan_proxy">
+      <static>false</static>
+      <pose>3 13 0.75 0 0 0</pose>
+      <link name="body">
+        <gravity>false</gravity>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.20</radius><length>1.5</length></cylinder></geometry>
+          <surface>
+            <contact><collide_without_contact>false</collide_without_contact></contact>
+            <friction><ode><mu>0.0</mu><mu2>0.0</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.18</radius><length>1.5</length></cylinder></geometry>
+          <material><ambient>0.9 0.1 0.1 0.25</ambient><diffuse>0.9 0.1 0.1 0.25</diffuse></material>
+          <transparency>0.75</transparency>
+        </visual>
+      </link>
+      <!-- 路点运动插件：x=3↔17 往复（每程 14s + 1.5s 转向）。 -->
+      <plugin name="waypoint_motion" filename="libm20_waypoint_obstacle_plugin.so">
+        <loop>true</loop>
+        <trajectory>0 3 13 0.75 0 0 0;14 17 13 0.75 0 0 0;15.5 17 13 0.75 0 0 3.14159;29.5 3 13 0.75 0 0 3.14159;31 3 13 0.75 0 0 6.28318</trajectory>
+      </plugin>
+    </model>
+
+    <!--
+      Dynamic human actors were removed intentionally.
+      Gazebo actors use a separate animation script timeline and can drift away
+      from the lidar-visible scan proxies. Keep only the cylindrical proxies so
+      what Gazebo shows is exactly what Nav2/SLAM sees in /scan.
+    -->
+    <!-- 说明：v2 版本刻意移除了动态人物的 Gazebo actor 视觉动画，
+         因为 actor 使用独立的动画时间线，容易与激光可见的扫描代理
+         发生漂移不一致；只保留圆柱代理，保证 Gazebo 所见即
+         Nav2/SLAM 在 /scan 中所见。 -->
+
+  </world>
+</sdf>

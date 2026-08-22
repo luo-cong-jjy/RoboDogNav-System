@@ -1,0 +1,42 @@
+# =============================================================================
+# nav2_costmap_from_bag.yaml
+# 所属模块：Nav2 局部代价地图（单 costmap 节点，用于 bag 回放/离线验证）
+# 用途：单独启动一个 costmap 节点，从 bag 中回放的 /scan 激光数据构建局部
+#       代价地图（odom 系滚动窗口），用于离线验证激光->代价地图流程。
+# =============================================================================
+costmap:                           # costmap 节点名
+  costmap:                         # costmap 双层命名空间固定层级
+    ros__parameters:
+      use_sim_time: true           # 是否使用仿真时间；true = 回放 bag（读 /clock）
+      update_frequency: 5.0        # 代价地图更新频率（Hz）
+      publish_frequency: 2.0       # 可视化发布频率（Hz）
+      global_frame: odom           # 局部地图坐标系（跟随机器人）
+      robot_base_frame: base_link  # 机器人本体坐标系
+      transform_tolerance: 0.5     # TF 变换容差（秒）
+      rolling_window: true         # 滚动窗口模式（地图跟随机器人移动）
+      width: 8                     # 窗口宽度（米）
+      height: 8                    # 窗口高度（米）
+      resolution: 0.05             # 分辨率（米/格）
+      robot_radius: 0.28           # 机器人圆形足迹半径（米）
+      always_send_full_costmap: true  # 始终发送完整代价地图（便于可视化）
+      plugins: [obstacle_layer, inflation_layer]  # 图层：动态障碍 + 膨胀
+
+      obstacle_layer:              # 障碍物层：激光标记/清除障碍
+        plugin: nav2_costmap_2d::ObstacleLayer
+        enabled: true              # 图层启用
+        observation_sources: scan  # 观测来源（对应下方 scan 配置块）
+        scan:
+          topic: /scan             # 激光扫描话题（来自 bag 回放）
+          data_type: LaserScan     # 观测数据类型
+          marking: true            # 标记障碍
+          clearing: true           # 清除障碍（射线清空）
+          obstacle_min_range: 0.2  # 障碍标记最小距离（米）
+          obstacle_max_range: 6.0  # 障碍标记最大距离（米）
+          raytrace_min_range: 0.2  # 射线清除最小距离（米）
+          raytrace_max_range: 8.0  # 射线清除最大距离（米）
+          max_obstacle_height: 1.5 # 障碍物最大高度（米），高于此忽略
+
+      inflation_layer:             # 膨胀层
+        plugin: nav2_costmap_2d::InflationLayer
+        inflation_radius: 0.55     # 膨胀半径（米）
+        cost_scaling_factor: 4.0   # 代价衰减系数（越大衰减越快）

@@ -1,17 +1,27 @@
+# =============================================================================
+# scan_vendor_controller.yaml —— SCAN 上游原厂控制器参数（基准档）
+# 所属模块：m20_scan_navigation / config（closed_loop_controller 控制器节点）
+# 用途：完整复刻 SCAN-Planner 上游 controllers.yaml 的闭环控制器参数，作为
+#       "厂商基准"。另含 M20 的执行保持（execution_hold）集成参数。
+# 注意：/** 是 ROS2 通配节点名。
+# =============================================================================
 /**:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: false      # 是否使用仿真时间；false = 真机/实时
 
     # Exact closed-loop values from the vendored SCAN-Planner scene.
-    time_forward: 0.8
-    heading_error_threshold: 0.8
-    kp_pos: 0.8
-    kp_yaw: 1.5
-    max_vx: 0.75
-    max_vy: 0.35
-    max_vyaw: 1.0
-    finish_dist: 0.15
-    execution_hold_topic: /m20/control/execution_hold
+    # （与引入的 SCAN-Planner 场景的闭环参数完全一致。）
+    time_forward: 0.8              # 轨迹前向投影时间（秒）
+    heading_error_threshold: 0.8   # 航向误差阈值（弧度）
+    kp_pos: 0.8                    # 位置 P 增益
+    kp_yaw: 1.5                    # 航向 P 增益
+    max_vx: 0.75                   # 最大纵向速度（m/s）
+    max_vy: 0.35                   # 最大横向速度（m/s）
+    max_vyaw: 1.0                  # 最大偏航角速度（rad/s）
+    finish_dist: 0.15              # 到达判定距离（米）
+    execution_hold_topic: /m20/control/execution_hold  # 外部执行保持话题（M20 安全集成）
     # Standalone/default SCAN preserves upstream trajectory-clock semantics.
     # The optional m20_safe integration profile overrides this to true.
-    require_external_execution_hold: false
+    # （独立/默认 SCAN 保持上游的轨迹时钟语义；可选的 m20_safe 集成档会
+    #   把它覆盖为 true。）
+    require_external_execution_hold: false  # 是否要求外部执行保持（默认不要求）

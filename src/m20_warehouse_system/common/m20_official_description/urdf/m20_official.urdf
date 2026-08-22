@@ -2,7 +2,15 @@
 <!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
      Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<!-- =============================================================================
+     m20_official.urdf — Deep Robotics M20 官方模型（ROS 侧封装版）
+     结构: base_link(底盘) + 4 条腿 × (hipx髋横滚 / hipy髋俯仰 / knee膝 / wheel轮) = 17 link, 16 joint
+     说明: 本文件由官方模型封装而来，仅将 mesh 路径改写为 package://m20_official_description/meshes/，
+           并移除了 MuJoCo 专用编译元素（详见 SOURCE_MODEL.json 的 wrapper_changes）。
+     关节命名: fl=左前 fr=右前 hl=左后 hr=右后; hipx 绕 X 轴(横滚) / hipy 绕 Y 轴(俯仰) / knee 膝 / wheel 轮
+     ============================================================================= -->
 <robot name="M20">
+    <!-- ===== 底盘 base_link ===== -->
     <link name="base_link">
         <inertial>
             <origin xyz="0.00355105878308153 0.0016507579200937 -0.00346462146571654" rpy="0 0 0"/>
@@ -37,6 +45,7 @@
             </geometry>
         </collision>
     </link>
+    <!-- ===== 左前腿：髋关节横滚 hipx ===== -->
     <link name="fl_hipx">
         <inertial>
             <origin xyz="-0.0111893129496933 0.00891693461032669 0.000405665689861192" rpy="0 0 0"/>
@@ -66,6 +75,7 @@
         <axis xyz="-1 0 0"/>
         <limit lower="-0.611" upper="0.436" effort="76.4" velocity="22.4"/>
     </joint>
+    <!-- ===== 左前腿：髋关节俯仰 hipy ===== -->
     <link name="fl_hipy">
         <inertial>
             <origin xyz="-0.00199374763010413 0.0984389609045802 -0.130663565833427" rpy="0 0 0"/>
@@ -101,6 +111,7 @@
         <axis xyz="0 -1 0"/>
         <limit lower="-2.583" upper="2.286" effort="76.4" velocity="22.4"/>
     </joint>
+    <!-- ===== 左前腿：膝关节 knee ===== -->
     <link name="fl_knee">
         <inertial>
             <origin xyz="0.00341916513259743 0.0026912421076368 -0.181265498605881" rpy="0 0 0"/>
@@ -136,6 +147,7 @@
         <axis xyz="0 -1 0"/>
         <limit lower="-2.792" upper="2.809" effort="76.4" velocity="22.4"/>
     </joint>
+    <!-- ===== 左前腿：轮子 wheel ===== -->
     <link name="fl_wheel">
         <inertial>
             <origin xyz="-3.11398454355682E-07 0.000279001520740008 5.70329233673394E-07" rpy="0 0 0"/>
@@ -165,6 +177,7 @@
         <axis xyz="0 -1 0"/>
         <limit effort="21.6" velocity="79.3"/>
     </joint>
+    <!-- ===== 右前腿：fr_hipx / fr_hipy / fr_knee / fr_wheel（与左前对称） ===== -->
     <link name="fr_hipx">
         <inertial>
             <origin xyz="-0.0110900940309543 -0.0087503473771439 0.000521421017057358" rpy="0 0 0"/>
@@ -293,6 +306,7 @@
         <axis xyz="0 -1 0"/>
         <limit effort="21.6" velocity="79.3"/>
     </joint>
+    <!-- ===== 左后腿：hl_hipx / hl_hipy / hl_knee / hl_wheel（与左前对称，位于 -X 侧） ===== -->
     <link name="hl_hipx">
         <inertial>
             <origin xyz="0.0110900940233134 0.00875014035040743 0.000524883746291591" rpy="0 0 0"/>
@@ -421,6 +435,7 @@
         <axis xyz="0 -1 0"/>
         <limit effort="21.6" velocity="79.3"/>
     </joint>
+    <!-- ===== 右后腿：hr_hipx / hr_hipy / hr_knee / hr_wheel（与右前对称，位于 -X 侧） ===== -->
     <link name="hr_hipx">
         <inertial>
             <origin xyz="0.0110901558226165 -0.00875011717083631 0.000524936954718227" rpy="0 0 0"/>

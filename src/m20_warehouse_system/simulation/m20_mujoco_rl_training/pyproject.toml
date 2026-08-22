@@ -1,12 +1,27 @@
+# ======================================================================
+# pyproject.toml —— m20-mujoco-rl-training 包的 Python 构建配置（中文注释版）
+# 作用：声明构建系统（setuptools）、包元数据与运行依赖；
+#       支持 pip install -e . 安装 m20_mujoco_rl 包
+# 说明：本文件只新增中文注释，未改动任何原始配置
+# ======================================================================
+
+# 构建系统配置：使用 setuptools（>=61）作为构建后端
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
+# 项目元数据
 [project]
+# 包名（发布到 PyPI 的名称）
 name = "m20-mujoco-rl-training"
+# 版本号
 version = "0.1.0"
+# 项目描述：Deep Robotics M20 的 MuJoCo 强化学习训练脚手架
 description = "MuJoCo reinforcement learning training scaffold for Deep Robotics M20."
+# 最低 Python 版本要求
 requires-python = ">=3.10"
+# 运行依赖：NumPy（数值计算）、MuJoCo（物理仿真）、PyTorch（深度学习）、
+#           ONNX（模型导出）、tqdm（进度条）
 dependencies = [
   "numpy>=1.21",
   "mujoco>=3.0",
@@ -15,6 +30,6 @@ dependencies = [
   "tqdm>=4.64",
 ]
 
+# setuptools 包发现配置：只包含 m20_mujoco_rl 前缀的包
 [tool.setuptools.packages.find]
 include = ["m20_mujoco_rl*"]
-

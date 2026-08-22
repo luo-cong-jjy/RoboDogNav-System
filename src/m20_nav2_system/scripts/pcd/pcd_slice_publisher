@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+# =============================================================================
+# pcd_slice_publisher
+# 所属模块：m20_nav2_system / scripts/pcd（点云地图工具链）
+# 职责：把二进制 PCD 点云文件按高度/距离裁剪（切片）后，以固定频率发布为
+#       PointCloud2 话题。用于在无真实雷达的环境（仿真/离线）中模拟 3D 雷达，
+#       供 rslidar_pointcloud_to_scan 等下游节点转换为 2D 激光。
+# 参数（ROS2 参数）：
+#   pcd_path     PCD 文件路径
+#   topic        发布话题（默认 /LIDAR/POINTS，与 profiles.yaml 契约一致）
+#   frame_id     发布坐标系（默认 lidar_link）
+#   publish_hz   发布频率（Hz）
+#   min_height/max_height  高度裁剪范围（米）
+#   range_min/range_max    水平距离裁剪范围（米）
+#   max_points   单帧最大点数（0 = 不限制）
+# =============================================================================
+
+from pathlib import Path        # 跨平台路径处理
+
+import numpy as np              # 数值计算（点云数组处理）
+import rclpy                    # ROS2 Python 客户端库
+from rclpy.node import Node     # ROS2 节点基类
+from sensor_msgs.msg import PointCloud2   # 点云消息类型
+from sensor_msgs_py import point_cloud2   # 点云消息构造/解析工具
+from std_msgs.msg import Header           # 标准消息头（时间戳+frame_id）
+
+
+class PcdSlicePublisher(Node):
+    """PCD 切片点云发布节点。"""
+
+    def __init__(self):
+        super().__init__("pcd_slice_publisher")
+        # 声明参数：PCD 文件路径
+        self.declare_parameter("pcd_path", "")
+        # 声明参数：发布话题（默认 /LIDAR/POINTS）
+        self.declare_parameter("topic", "/LIDAR/POINTS")
+        # 声明参数：发布坐标系
+        self.declare_parameter("frame_id", "lidar_link")
+        # 声明参数：发布频率
+        self.declare_parameter("publish_hz", 1.0)
+        # 声明参数：高度裁剪下限（米）
+        self.declare_parameter("min_height", -0.30)
+        # 声明参数：高度裁剪上限（米）
+        self.declare_parameter("max_height", 0.30)
+        # 声明参数：水平距离裁剪下限（米）
+        self.declare_parameter("range_min", 0.20)
+        # 声明参数：水平距离裁剪上限（米）
+        self.declare_parameter("range_max", 30.0)
+        # 声明参数：单帧最大点数上限
+        self.declare_parameter("max_points", 80000)
+
+        topic = self.get_parameter("topic").get_parameter_value().string_value
+        publish_hz = self.get_parameter("publish_hz").get_parameter_value().double_value
+        if publish_hz <= 0.0:
+            raise ValueError("publish_hz must be positive")   # 频率必须为正
+
+        # 创建发布器（队列深度 10）
+        self.publisher = self.create_publisher(PointCloud2, topic, 10)
+        self.points = self.load_points()      # 启动时一次性加载并切片点云
+        self.get_logger().info(
+            f"publishing {len(self.points)} sliced PCD points on {topic}"
+        )
+        # 创建周期定时器，按 publish_hz 触发发布
+        self.create_timer(1.0 / publish_hz, self.publish_cloud)
+
+    def load_points(self):
+        """加载 PCD 文件并做高度/距离裁剪，返回 float32 的 (N,3) 数组。"""
+        pcd_path = Path(self.get_parameter("pcd_path").get_parameter_value().string_value)
+        if not pcd_path.exists():
+            raise FileNotFoundError(str(pcd_path))    # 文件不存在直接报错
+
+        # 读取 PCD 头部与数据起始偏移
+        header, data_offset = self.read_header(pcd_path)
+        fields = header["FIELDS"]                     # 字段名列表（x y z ...）
+        sizes = [int(value) for value in header["SIZE"]]     # 各字段字节数
+        counts = [int(value) for value in header["COUNT"]]   # 各字段元素数
+        points_count = int(header["POINTS"][0])       # 点总数
+        data_type = header["DATA"][0]                 # 数据编码：ascii/binary/binary_compressed
+        if data_type != "binary":
+            raise ValueError(f"only binary PCD is supported, got DATA {data_type}")
+
+        # 计算每个字段在单点结构中的字节偏移
+        offsets = {}
+        point_step = 0
+        for name, size, count in zip(fields, sizes, counts):
+            offsets[name] = point_step
+            point_step += size * count                # 累加得到下个字段偏移
+
+        # 必须包含 x/y/z 三个坐标字段
+        for required in ("x", "y", "z"):
+            if required not in offsets:
+                raise ValueError(f"PCD missing required field: {required}")
+
+        # 用 memmap 映射文件数据，避免一次性读入大文件（省内存）
+        raw = np.memmap(
+            pcd_path,
+            dtype=np.uint8,
+            mode="r",
+            offset=data_offset,
+            shape=(points_count, point_step),
+        )
+        # 取各坐标字段的 4 字节并解释为小端 float32
+        x = raw[:, offsets["x"]: offsets["x"] + 4].copy().view("<f4").reshape(-1)
+        y = raw[:, offsets["y"]: offsets["y"] + 4].copy().view("<f4").reshape(-1)
+        z = raw[:, offsets["z"]: offsets["z"] + 4].copy().view("<f4").reshape(-1)
+        xyz = np.column_stack((x, y, z))              # 组合成 (N,3)
+
+        # 读取裁剪参数
+        min_height = self.get_parameter("min_height").get_parameter_value().double_value
+        max_height = self.get_parameter("max_height").get_parameter_value().double_value
+        range_min = self.get_parameter("range_min").get_parameter_value().double_value
+        range_max = self.get_parameter("range_max").get_parameter_value().double_value
+        max_points = self.get_parameter("max_points").get_parameter_value().integer_value
+
+        # 水平距离 = sqrt(x^2 + y^2)（以雷达 z 轴为法向的平面距离）
+        ranges = np.hypot(xyz[:, 0], xyz[:, 1])
+        # 裁剪掩码：坐标有限 + 高度在 [min,max] + 距离在 [min,max]
+        mask = (
+            np.isfinite(xyz).all(axis=1)
+            & (xyz[:, 2] >= min_height)
+            & (xyz[:, 2] <= max_height)
+            & (ranges >= range_min)
+            & (ranges <= range_max)
+        )
+        xyz = xyz[mask]
+        if len(xyz) == 0:
+            raise ValueError("PCD slice is empty; adjust height/range parameters")
+
+        # 若超过 max_points，用等间隔采样降采样
+        if max_points > 0 and len(xyz) > max_points:
+            indices = np.linspace(0, len(xyz) - 1, max_points, dtype=np.int64)
+            xyz = xyz[indices]
+
+        self.get_logger().info(
+            "loaded PCD slice from %s: points=%d z=[%.2f, %.2f] range=[%.2f, %.2f]"
+            % (pcd_path, len(xyz), min_height, max_height, range_min, range_max)
+        )
+        return xyz.astype(np.float32)
+
+    @staticmethod
+    def read_header(path):
+        """逐行解析 PCD 头部，返回 (字段字典, 数据区起始字节偏移)。"""
+        header = {}
+        with path.open("rb") as file_obj:
+            while True:
+                line = file_obj.readline()
+                if not line:
+                    raise ValueError("PCD header ended before DATA line")
+                text = line.decode("ascii", errors="replace").strip()
+                if not text or text.startswith("#"):
+                    continue            # 跳过空行与注释行
+                parts = text.split()
+                header[parts[0]] = parts[1:]   # 键为字段名，值为剩余 token
+                if parts[0] == "DATA":
+                    # DATA 行之后就是二进制数据区，记录当前位置作为偏移
+                    return header, file_obj.tell()
+
+    def publish_cloud(self):
+        """定时器回调：把切片点云构造成 PointCloud2 消息发布。"""
+        frame_id = self.get_parameter("frame_id").get_parameter_value().string_value
+        msg = point_cloud2.create_cloud_xyz32(    # 构造 xyz32 类型点云消息
+            header=self.make_header(frame_id),
+            points=self.points,
+        )
+        self.publisher.publish(msg)
+
+    def make_header(self, frame_id):
+        """构造消息头：当前时间 + 指定 frame_id。"""
+        header = Header()
+        header.stamp = self.get_clock().now().to_msg()   # 当前仿真/系统时间
+        header.frame_id = frame_id
+        return header
+
+
+def main():
+    """主入口：初始化节点并进入事件循环。"""
+    rclpy.init()                     # 初始化 ROS2 客户端库
+    node = PcdSlicePublisher()       # 创建节点
+    try:
+        rclpy.spin(node)             # 阻塞式旋转：驱动定时器回调
+    except KeyboardInterrupt:
+        pass                         # Ctrl+C 正常退出
+    finally:
+        node.destroy_node()          # 清理节点
+        if rclpy.ok():
+            rclpy.shutdown()         # 关闭 rclpy
+
+
+if __name__ == "__main__":
+    main()

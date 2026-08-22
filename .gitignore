@@ -21,3 +21,6 @@ datasets/
 src/m20_lidar_to_scan/maps/office4f/t100ipro_2026-07-10-15-20-18filtermap.pcd
 src/m20_lidar_to_scan/maps/office4f/t100ipro_2026-07-14-11-56-57.pcd
 src/m20_lidar_to_scan/maps/office4f/full_cloud1.pcd
+
+# Large local PCD datasets
+src/m20_nav2_system/maps/pcd/raw/*.pcd

@@ -1,21 +1,28 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>m20_warehouse_interfaces</name>
-  <version>0.6.0</version>
+  <name>m20_warehouse_interfaces</name>        <!-- 包名：仓库多楼层巡检系统的类型化 ROS2 接口 -->
+  <version>0.6.0</version>                     <!-- 版本号 -->
   <description>Typed ROS 2 interfaces for the M20 flat multi-floor inspection system.</description>
+  <!-- 描述：为 M20 平面多楼层巡检系统提供类型化的 ROS2 消息/服务/动作接口 -->
 
-  <maintainer email="maintainer@example.com">M20 Warehouse Team</maintainer>
-  <license>Apache-2.0</license>
+  <maintainer email="maintainer@example.com">M20 Warehouse Team</maintainer>  <!-- 维护者 -->
+  <license>Apache-2.0</license>                <!-- 开源许可 -->
 
+  <!-- 构建工具依赖 -->
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- 构建期依赖：ROSIDL 接口代码生成器 -->
   <build_depend>rosidl_default_generators</build_depend>
+  <!-- 运行期依赖：ROSIDL 运行时 -->
   <exec_depend>rosidl_default_runtime</exec_depend>
+  <!-- 通用依赖（构建+运行）：几何消息（PoseStamped 等） -->
   <depend>geometry_msgs</depend>
+  <!-- 通用依赖：标准消息（Header 等） -->
   <depend>std_msgs</depend>
 
+  <!-- 声明为 ROSIDL 接口包（其生成的消息可被其他包引用） -->
   <member_of_group>rosidl_interface_packages</member_of_group>
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_cmake</build_type>  <!-- 构建类型 -->
   </export>
 </package>

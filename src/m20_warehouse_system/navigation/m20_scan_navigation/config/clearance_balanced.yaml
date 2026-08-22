@@ -1,12 +1,21 @@
-scan_planner_node:
+# =============================================================================
+# clearance_balanced.yaml —— "平衡"净空档参数
+# 所属模块：m20_scan_navigation / config
+# 用途：给 scan_planner_node（SCAN 规划器）与 m20_collision_guard（在线碰撞
+#       守卫）提供净空参数。本档是"默认仓库档"：标称直线净空 0.80 米，
+#       在通过性（窄通道）与安全性（余量）之间取平衡。
+# 注：clearance.py 的 ClearanceProfile 会读取本文件中的这些键。
+# =============================================================================
+scan_planner_node:            # SCAN 规划器节点参数段
   ros__parameters:
     # Default warehouse profile: 0.80 m preferred straight clearance.
-    grid_map.double_cylinder_radius: 0.25
-    grid_map.double_cylinder_offset: 0.18
-    optimization.dist0: 0.15
+    # （默认仓库档：首选直线净空 0.80 米。）
+    grid_map.double_cylinder_radius: 0.25   # 双圆柱碰撞模型半径（米）
+    grid_map.double_cylinder_offset: 0.18   # 双圆柱轴向偏移（米）
+    optimization.dist0: 0.15                # 优化器软净空（米）：0.25+0.15 -> 单侧 0.40m
 
-m20_collision_guard:
+m20_collision_guard:          # 在线碰撞守卫节点参数段
   ros__parameters:
-    footprint_radius: 0.25
-    footprint_offset: 0.18
-    safety_margin: 0.05
+    footprint_radius: 0.25    # 守卫足迹半径（米）：硬停包络的基础半径
+    footprint_offset: 0.18    # 守卫足迹轴向偏移（米）
+    safety_margin: 0.05       # 安全余量（米）：额外加在足迹外

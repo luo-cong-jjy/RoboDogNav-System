@@ -1,0 +1,17 @@
+# =============================================================================
+# profiles.yaml
+# 所属模块：Nav2 统一配置（话题/坐标系契约）
+# 用途：作为"唯一权威"的话题名与坐标系定义，供各 launch 文件与脚本引用，
+#       避免话题名/坐标系在各处硬编码不一致。
+# 注意：这些是顶层键值（无节点名/ros__parameters 包裹），加载时按普通
+#       key-value 使用，请勿修改话题名与坐标系名。
+# =============================================================================
+# Authoritative topic contract for the unified Nav2 profiles.
+# （统一 Nav2 配置文件的权威话题契约）
+input_pointcloud: /LIDAR/POINTS   # 3D 雷达原始点云话题（PointCloud2，背部雷达）
+scan: /scan                       # 转换后的 2D 激光扫描话题（LaserScan，供 Nav2 使用）
+nav_cmd_vel: /cmd_vel             # 导航速度指令话题（Twist，发给底盘）
+frame_base: base_link             # 机器人本体坐标系
+frame_lidar: lidar_link           # 激光雷达坐标系
+frame_odom: odom                  # 里程计坐标系
+frame_map: map                    # 地图/全局坐标系

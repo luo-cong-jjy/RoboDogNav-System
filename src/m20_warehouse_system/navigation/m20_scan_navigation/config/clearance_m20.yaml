@@ -1,20 +1,34 @@
-scan_planner_node:
+# =============================================================================
+# clearance_m20.yaml —— "M20 几何适配"净空档参数
+# 所属模块：m20_scan_navigation / config
+# 用途：在不改动 SCAN 算法前提下做 M20 机身几何适配。上游 0.25/0.18 的双
+#       圆柱约 0.86 x 0.50 米，而 M20 实测包络为 0.82 x 0.51 米；把 0.03 米
+#       从软净空挪进硬半径后，硬轴向包络为 0.92 x 0.56 米，同时保留 0.45 米
+#       的单侧标称带。
+# =============================================================================
+scan_planner_node:            # SCAN 规划器节点参数段
   ros__parameters:
     # M20 geometry adaptation layered on the unchanged SCAN algorithm.
     # The upstream 0.25/0.18 double circle spans about 0.86 x 0.50 m,
     # whereas the validated M20 envelope is 0.82 x 0.51 m. Moving 0.03 m
     # from soft clearance into the hard radius gives a 0.92 x 0.56 m hard
     # axial envelope while retaining the 0.45 m nominal one-sided band.
-    grid_map.double_cylinder_radius: 0.28
-    grid_map.double_cylinder_offset: 0.18
-    optimization.dist0: 0.17
+    # （在未改动的 SCAN 算法上做 M20 几何适配：上游 0.25/0.18 双圆约
+    #   0.86 x 0.50 米，M20 实测包络为 0.82 x 0.51 米；把 0.03 米从软净空
+    #   移入硬半径，得到 0.92 x 0.56 米硬轴向包络，同时保留 0.45 米标称
+    #   单侧净空带。）
+    grid_map.double_cylinder_radius: 0.28   # 双圆柱半径（米）：加大到 0.28 覆盖 M20 宽度
+    grid_map.double_cylinder_offset: 0.18   # 双圆柱轴向偏移（米）
+    optimization.dist0: 0.17                # 优化器软净空（米）：0.28+0.17 -> 单侧 0.45m
 
-m20_collision_guard:
+m20_collision_guard:          # 在线碰撞守卫节点参数段
   ros__parameters:
     # m20_safe remains at the previously validated 0.30 m effective radius.
     # scan_native does not start this guard, but sharing the same physical
     # radius avoids a geometry discontinuity when profiles are switched.
-    footprint_radius: 0.28
-    footprint_offset: 0.18
-    safety_margin: 0.02
-    lookahead_sec: 0.70
+    # （m20_safe 保持此前验证过的 0.30 米有效半径。scan_native 档不启动该
+    #   守卫，但共享同一物理半径可避免切换档位时出现几何跳变。）
+    footprint_radius: 0.28    # 守卫足迹半径（米）
+    footprint_offset: 0.18    # 守卫足迹轴向偏移（米）
+    safety_margin: 0.02       # 安全余量（米）：0.28+0.02 -> 有效硬停半径 0.30m
+    lookahead_sec: 0.70       # 守卫前瞻时间（秒）：预测碰撞的时间窗

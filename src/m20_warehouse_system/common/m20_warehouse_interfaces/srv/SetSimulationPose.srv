@@ -1,9 +1,12 @@
 # Teleport only the RViz kinematic simulation backend; a hardware backend must reject it.
-float64 x
-float64 y
-float64 yaw
-string floor_id
-uint64 generation
+# 服务用途：仅在"RViz 运动学仿真后端"中瞬移机器人位姿；硬件后端必须拒绝该请求
+# --- 请求部分 ---
+float64 x            # 目标 X 坐标 [m]
+float64 y            # 目标 Y 坐标 [m]
+float64 yaw          # 目标航向角 [rad]
+string floor_id      # 目标楼层 ID
+uint64 generation    # 目标楼层地图代数
 ---
-bool success
-string message
+# --- 响应部分 ---
+bool success         # 是否瞬移成功
+string message       # 附加说明/错误信息（硬件后端应返回拒绝原因）

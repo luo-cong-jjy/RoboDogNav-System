@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+# =============================================================================
+# pcd_to_occupancy_grid
+# 所属模块：m20_nav2_system / scripts/pcd（点云地图工具链）
+# 职责：把二进制 PCD 点云地图投影为 Nav2 兼容的 2D 占据栅格地图
+#       （输出 .pgm 灰度图 + .yaml 描述文件），供 map_server 加载。
+# 流程：读取 PCD -> 高度/距离裁剪 -> 栅格化统计每格点数 -> 占据判定 ->
+#       膨胀（按半径）-> 写 PGM/YAML。
+# 说明：ROS 地图原点在左下角，而 PGM 第 0 行是图片顶部，输出前做 flipud。
+# 用法示例：
+#   pcd_to_occupancy_grid --pcd maps/pcd/raw/xxx.pcd --output maps/pcd/grids/out.yaml
+# =============================================================================
+
+import argparse        # 命令行参数解析
+import math            # 数学函数（ceil 计算地图尺寸）
+from datetime import datetime   # 生成时间戳文件名
+from pathlib import Path        # 跨平台路径处理
+
+import numpy as np     # 数值计算（点云/栅格数组处理）
+
+
+def read_pcd_xyz(path):
+    """读取二进制 PCD 的 x/y/z 三列坐标，返回 (x, y, z) 数组。"""
+    header, data_offset = read_pcd_header(path)   # 解析头部并定位数据区
+    fields = header["FIELDS"]                     # 字段名列表
+    sizes = [int(value) for value in header["SIZE"]]     # 各字段字节数
+    counts = [int(value) for value in header["COUNT"]]   # 各字段元素数
+    points_count = int(header["POINTS"][0])       # 点总数
+    data_type = header["DATA"][0]                 # 数据编码
+    if data_type != "binary":
+        raise ValueError(f"only binary PCD is supported, got DATA {data_type}")
+
+    # 计算各字段字节偏移
+    offsets = {}
+    point_step = 0
+    for name, size, count in zip(fields, sizes, counts):
+        offsets[name] = point_step
+        point_step += size * count
+
+    # 必须包含 x/y/z
+    for required in ("x", "y", "z"):
+        if required not in offsets:
+            raise ValueError(f"PCD missing required field: {required}")
+
+    # memmap 映射数据区（省内存，适合大点云）
+    raw = np.memmap(
+        path,
+        dtype=np.uint8,
+        mode="r",
+        offset=data_offset,
+        shape=(points_count, point_step),
+    )
+    # 每个坐标字段 4 字节小端 float32
+    x = raw[:, offsets["x"]: offsets["x"] + 4].copy().view("<f4").reshape(-1)
+    y = raw[:, offsets["y"]: offsets["y"] + 4].copy().view("<f4").reshape(-1)
+    z = raw[:, offsets["z"]: offsets["z"] + 4].copy().view("<f4").reshape(-1)
+    return x, y, z
+
+
+def read_pcd_header(path):
+    """逐行解析 PCD 头部，返回 (字段字典, 数据区起始偏移)。"""
+    header = {}
+    with path.open("rb") as file_obj:
+        while True:
+            line = file_obj.readline()
+            if not line:
+                raise ValueError("PCD header ended before DATA line")
+            text = line.decode("ascii", errors="replace").strip()
+            if not text or text.startswith("#"):
+                continue            # 跳过空行与注释行
+            parts = text.split()
+            header[parts[0]] = parts[1:]
+            if parts[0] == "DATA":
+                # DATA 行之后即二进制数据
+                return header, file_obj.tell()
+
+
+def dilate(mask, radius_cells):
+    """对二值掩码做圆形膨胀（按格数），用于把占据栅格向外扩张。"""
+    if radius_cells <= 0:
+        return mask                # 半径非正则原样返回
+
+    height, width = mask.shape
+    result = mask.copy()
+    # 遍历半径窗口内的每个偏移 (dy, dx)
+    for dy in range(-radius_cells, radius_cells + 1):
+        for dx in range(-radius_cells, radius_cells + 1):
+            # 圆形膨胀：只取圆内偏移（欧氏距离 <= 半径）
+            if dx * dx + dy * dy > radius_cells * radius_cells:
+                continue
+            # 源/目标切片的边界裁剪（处理图像边缘）
+            src_y0 = max(0, -dy)
+            src_y1 = min(height, height - dy)
+            src_x0 = max(0, -dx)
+            src_x1 = min(width, width - dx)
+            dst_y0 = max(0, dy)
+            dst_y1 = min(height, height + dy)
+            dst_x0 = max(0, dx)
+            dst_x1 = min(width, width + dx)
+            # 把源切片或运算到目标切片（膨胀）
+            result[dst_y0:dst_y1, dst_x0:dst_x1] |= mask[src_y0:src_y1, src_x0:src_x1]
+    return result
+
+
+def write_pgm(path, image):
+    """写二进制 PGM（P5）灰度图。"""
+    with path.open("wb") as file_obj:
+        file_obj.write(f"P5\n{image.shape[1]} {image.shape[0]}\n255\n".encode("ascii"))
+        file_obj.write(image.astype(np.uint8).tobytes())   # 像素数据
+
+
+def write_yaml(path, image_path, resolution, origin, occupied_thresh, free_thresh):
+    """写 Nav2 地图 YAML 描述文件。"""
+    text = (
+        f"image: {image_path.name}\n"            # PGM 文件名（相对本 YAML）
+        "mode: trinary\n"                        # 三值地图模式（free/occupied/unknown）
+        f"resolution: {resolution:.6f}\n"        # 分辨率（米/格）
+        f"origin: [{origin[0]:.6f}, {origin[1]:.6f}, 0.000000]\n"  # 左下角世界坐标 [x, y, yaw]
+        "negate: 0\n"                            # 灰度极性：0 = 正常（不反转）
+        f"occupied_thresh: {occupied_thresh:.2f}\n"  # 占用阈值
+        f"free_thresh: {free_thresh:.2f}\n"          # 空闲阈值
+    )
+    path.write_text(text, encoding="utf-8")
+
+
+def build_grid(args):
+    """主流程：读 PCD -> 裁剪 -> 栅格化 -> 膨胀 -> 输出 PGM/YAML。"""
+    pcd_path = Path(args.pcd).expanduser().resolve()          # 输入 PCD 绝对路径
+    output_yaml = Path(args.output).expanduser().resolve()    # 输出 YAML 绝对路径
+    output_yaml.parent.mkdir(parents=True, exist_ok=True)     # 自动创建输出目录
+    output_pgm = output_yaml.with_suffix(".pgm")              # PGM 与 YAML 同名
+
+    x, y, z = read_pcd_xyz(pcd_path)                          # 读点云
+    # 裁剪掩码：坐标有限 + 高度在 [min_height, max_height]
+    finite = np.isfinite(x) & np.isfinite(y) & np.isfinite(z)
+    height_mask = (z >= args.min_height) & (z <= args.max_height)
+    if args.range_max > 0.0:
+        # 水平距离裁剪（range_max<=0 表示不做距离过滤）
+        ranges = np.hypot(x, y)
+        range_mask = (ranges >= args.range_min) & (ranges <= args.range_max)
+    else:
+        range_mask = np.ones_like(finite)
+
+    mask = finite & height_mask & range_mask
+    if not np.any(mask):
+        raise ValueError("PCD slice is empty; adjust height/range parameters")
+
+    sx = x[mask]     # 裁剪后的点（用于栅格化）
+    sy = y[mask]
+
+    # 地图边界：点云包围盒外扩 padding
+    min_x = float(np.min(sx)) - args.padding
+    max_x = float(np.max(sx)) + args.padding
+    min_y = float(np.min(sy)) - args.padding
+    max_y = float(np.max(sy)) + args.padding
+
+    # 计算栅格尺寸（格数 = 范围/分辨率 向上取整 + 1）
+    width = int(math.ceil((max_x - min_x) / args.resolution)) + 1
+    height = int(math.ceil((max_y - min_y) / args.resolution)) + 1
+    if width <= 0 or height <= 0:
+        raise ValueError("invalid map dimensions")
+
+    # 点 -> 栅格列/行（相对于左下原点）
+    cols = np.floor((sx - min_x) / args.resolution).astype(np.int64)
+    rows = np.floor((sy - min_y) / args.resolution).astype(np.int64)
+    valid = (cols >= 0) & (cols < width) & (rows >= 0) & (rows < height)
+    cols = cols[valid]
+    rows = rows[valid]
+
+    # 统计每个栅格内的点数（bincount 加速）
+    counts = np.zeros((height, width), dtype=np.uint16)
+    np.add.at(counts, (rows, cols), 1)
+    # 点数达到阈值才判定为占据（过滤孤立噪点）
+    occupied = counts >= args.min_points_per_cell
+
+    # 按膨胀半径（米）换算成格数并做圆形膨胀，扩大障碍轮廓
+    inflate_cells = int(math.ceil(args.inflate_radius / args.resolution))
+    occupied = dilate(occupied, inflate_cells)
+
+    # 灰度约定：254 = 空闲，0 = 占据，205 = 未知
+    free_value = 254
+    occupied_value = 0
+    unknown_value = 205
+    # 背景用空闲或未知（由 --unknown-as-free 决定）
+    image = np.full((height, width), free_value if args.unknown_as_free else unknown_value, dtype=np.uint8)
+    image[occupied] = occupied_value      # 占据格置 0
+
+    # ROS map origin is bottom-left, while PGM row 0 is top-left.
+    # （ROS 地图原点在左下角，而 PGM 第 0 行是顶部，因此垂直翻转）
+    image_for_pgm = np.flipud(image)
+    write_pgm(output_pgm, image_for_pgm)  # 写 PGM
+    write_yaml(                           # 写 YAML（附带翻转后仍正确的左下角原点）
+        output_yaml,
+        output_pgm,
+        args.resolution,
+        (min_x, min_y),
+        args.occupied_thresh,
+        args.free_thresh,
+    )
+
+    # 打印结果摘要
+    occupied_cells = int(np.count_nonzero(occupied))
+    total_cells = int(width * height)
+    print(f"pcd: {pcd_path}")
+    print(f"slice points: {len(sx)}")
+    print(f"map: {width} x {height} cells, resolution={args.resolution:.3f} m")
+    print(f"origin: [{min_x:.3f}, {min_y:.3f}, 0.000]")
+    print(f"occupied cells: {occupied_cells}/{total_cells} ({occupied_cells / total_cells * 100.0:.2f}%)")
+    print(f"written: {output_yaml}")
+    print(f"written: {output_pgm}")
+
+
+def parse_args():
+    """解析命令行参数。"""
+    parser = argparse.ArgumentParser(
+        description="Project a binary PCD map into a Nav2-compatible 2D occupancy grid."
+    )
+    # 默认 PCD 路径：包目录下的 maps/pcd/raw/ 示例文件
+    package_root = Path(__file__).resolve().parents[2]
+    default_pcd = package_root / "maps" / "pcd" / "raw" / "t100ipro_2026-07-14-11-56-57.pcd"
+    parser.add_argument(
+        "--pcd", default=str(default_pcd),
+        help=f"Input binary PCD file (default: {default_pcd}).",
+    )
+    parser.add_argument(
+        "--output", default=None,
+        help="Output YAML path; PGM uses the same stem. If omitted, a timestamped name is generated.",
+    )
+    parser.add_argument("--resolution", type=float, default=0.20, help="Map resolution in meters/cell.")
+    parser.add_argument("--min-height", type=float, default=-0.10)   # 高度裁剪下限
+    parser.add_argument("--max-height", type=float, default=0.30)    # 高度裁剪上限
+    parser.add_argument("--range-min", type=float, default=0.20)     # 距离裁剪下限
+    parser.add_argument("--range-max", type=float, default=0.0, help="0 disables range filtering.")  # 距离裁剪上限（0=不过滤）
+    parser.add_argument("--padding", type=float, default=1.0)        # 地图外扩边距（米）
+    parser.add_argument("--inflate-radius", type=float, default=0.30)  # 障碍膨胀半径（米）
+    parser.add_argument("--min-points-per-cell", type=int, default=2)  # 每格最少点数（占据判定）
+    parser.add_argument("--unknown-as-free", action="store_true", default=True)  # 未知区域按空闲处理
+    parser.add_argument("--occupied-thresh", type=float, default=0.65)  # YAML 占用阈值
+    parser.add_argument("--free-thresh", type=float, default=0.25)      # YAML 空闲阈值
+    args = parser.parse_args()
+    if args.output is None:
+        # 未指定输出路径时，按参数生成带时间戳的文件名
+        def token(value):
+            # 负数转 m 前缀（如 -0.1 -> m0.1），正数转 p 前缀
+            return f"m{abs(value):g}" if value < 0 else f"p{value:g}"
+
+        range_max_token = "inf" if args.range_max == 0.0 else token(args.range_max)
+
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # 文件名编码关键参数，便于识别：z高度、r距离、res分辨率
+        stem = (
+            f"pcd_grid_{stamp}"
+            f"_z{token(args.min_height)}_{token(args.max_height)}"
+            f"_r{token(args.range_min)}_{range_max_token}"
+            f"_res{args.resolution:g}"
+        )
+        args.output = str(package_root / "maps" / "pcd" / "grids" / f"{stem}.yaml")
+    return args
+
+
+def main():
+    """主入口。"""
+    build_grid(parse_args())
+
+
+if __name__ == "__main__":
+    main()

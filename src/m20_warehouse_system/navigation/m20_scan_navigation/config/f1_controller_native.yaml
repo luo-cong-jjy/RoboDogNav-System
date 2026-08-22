@@ -1,17 +1,27 @@
+# =============================================================================
+# f1_controller_native.yaml —— F1 场景"原生 SCAN"档的控制器参数
+# 所属模块：m20_scan_navigation / config（closed_loop_controller 控制器节点）
+# 用途：原生 SCAN 模式的闭环轨迹跟踪控制器参数，数值与上游 SCAN-Planner 的
+#       controllers.yaml 一致；系统的安全监督与 RViz 运动学后端保留各自的
+#       M20 限速。
+# 注意：/** 是 ROS2 通配节点名。
+# =============================================================================
 /**:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: false      # 是否使用仿真时间；false = 真机/实时
 
     # Native SCAN execution profile. The values match the upstream
     # plan_manage/config/controllers.yaml closed-loop controller. The system
     # safety supervisor and RViz kinematic backend retain their own M20 limits.
-    time_forward: 0.8
-    heading_error_threshold: 0.8
-    kp_pos: 0.8
-    kp_yaw: 1.5
-    max_vx: 0.75
-    max_vy: 0.35
-    max_vyaw: 1.0
-    finish_dist: 0.15
-    forward_only: false
-    max_forward_lateral_speed: 0.35
+    # （原生 SCAN 执行档：数值与上游 controllers.yaml 闭环控制器一致；
+    #   系统安全监督器与 RViz 运动学后端保留各自的 M20 限速。）
+    time_forward: 0.8              # 轨迹前向投影时间（秒）：跟踪该时间点对应的参考点
+    heading_error_threshold: 0.8   # 航向误差阈值（弧度）：超过则优先转向修正航向
+    kp_pos: 0.8                    # 位置 P 增益：速度指令与位置误差的比例
+    kp_yaw: 1.5                    # 航向 P 增益：角速度指令与航向误差的比例
+    max_vx: 0.75                   # 最大纵向速度（m/s）
+    max_vy: 0.35                   # 最大横向速度（m/s）
+    max_vyaw: 1.0                  # 最大偏航角速度（rad/s）
+    finish_dist: 0.15              # 到达判定距离（米）：距终点小于该值认为完成
+    forward_only: false            # 是否只允许前进（false = 允许后退/双向）
+    max_forward_lateral_speed: 0.35  # 前进时的最大横向速度（m/s）

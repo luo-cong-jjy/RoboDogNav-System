@@ -1,70 +1,81 @@
+# =============================================================================
+# scan_vendor_planner.yaml —— SCAN 上游原厂规划器参数（基准档）
+# 所属模块：m20_scan_navigation / config
+# 用途：完整复刻 SCAN-Planner 上游的 planner.yaml 参数，作为"厂商基准"。
+#       算法、几何、地图与优化器数值刻意与
+#       third_party/SCAN-Planner/plan_manage/config/planner.yaml 保持一致，
+#       供一致性回归测试（test_navigation_contract.py）对照。
+# 注意：/** 是 ROS2 通配节点名。
+# =============================================================================
 /**:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: false      # 是否使用仿真时间；false = 真机/实时
 
     # SCAN-Planner vendor profile.
     # Algorithm, geometry, map and optimizer values intentionally match
     # third_party/SCAN-Planner/plan_manage/config/planner.yaml.
-    fsm.navi_mode: 1
-    fsm.thresh_replan: 1.0
-    fsm.thresh_no_replan: 0.1
-    fsm.planning_horizon: 7.5
-    fsm.emergency_time: 1.0
-    fsm.fail_safe: true
-    fsm.max_replan_fail_count: 1000
+    # （SCAN-Planner 厂商档：算法/几何/地图/优化器数值刻意与上游 planner.yaml
+    #   完全一致，确保"厂商等价"。）
+    fsm.navi_mode: 1                 # 导航模式：1 = 目标点导航
+    fsm.thresh_replan: 1.0           # 重规划触发阈值（米）
+    fsm.thresh_no_replan: 0.1        # 不重规划阈值（米）
+    fsm.planning_horizon: 7.5        # 规划视野（秒/米）
+    fsm.emergency_time: 1.0          # 紧急停车时间（秒）
+    fsm.fail_safe: true              # 失效保护开关
+    fsm.max_replan_fail_count: 1000  # 连续重规划失败上限
 
-    grid_map.resolution: 0.05
-    grid_map.sliding_map_size_x: 10.0
-    grid_map.sliding_map_size_y: 10.0
-    grid_map.sliding_map_size_z: 5.0
-    grid_map.local_update_range_x: 5.0
-    grid_map.local_update_range_y: 5.0
-    grid_map.local_update_range_z: 2.5
-    grid_map.map_sliding_en: true
-    grid_map.map_sliding_thresh: 0.2
-    grid_map.double_cylinder_radius: 0.25
-    grid_map.double_cylinder_offset: 0.18
-    grid_map.body_height: 0.4
-    grid_map.obstacles_inflation_z_up: 0.1
-    grid_map.obstacles_inflation_z_down: 0.4
-    grid_map.frame_id: world
-    grid_map.sliding_map_frame_id: sliding_map
-    grid_map.ground_height: 0.0
-    grid_map.sensor_type: lidar
-    grid_map.cloud_is_world: true
-    grid_map.need_extrinsic: false
+    grid_map.resolution: 0.05        # 栅格分辨率（米/格）
+    grid_map.sliding_map_size_x: 10.0  # 滑动地图 x 尺寸（米）
+    grid_map.sliding_map_size_y: 10.0  # 滑动地图 y 尺寸（米）
+    grid_map.sliding_map_size_z: 5.0   # 滑动地图 z 尺寸（米）
+    grid_map.local_update_range_x: 5.0 # 局部更新范围 x（米）
+    grid_map.local_update_range_y: 5.0 # 局部更新范围 y（米）
+    grid_map.local_update_range_z: 2.5 # 局部更新范围 z（米）
+    grid_map.map_sliding_en: true     # 地图滑动开关
+    grid_map.map_sliding_thresh: 0.2  # 地图滑动阈值（米）
+    grid_map.double_cylinder_radius: 0.25  # 双圆柱半径（米）
+    grid_map.double_cylinder_offset: 0.18  # 双圆柱轴向偏移（米）
+    grid_map.body_height: 0.4         # 机身高度（米）
+    grid_map.obstacles_inflation_z_up: 0.1   # 障碍 z 向上膨胀（米）
+    grid_map.obstacles_inflation_z_down: 0.4 # 障碍 z 向下膨胀（米）
+    grid_map.frame_id: world          # 全局坐标系
+    grid_map.sliding_map_frame_id: sliding_map  # 滑动地图坐标系（厂商名）
+    grid_map.ground_height: 0.0       # 地面高度（米）
+    grid_map.sensor_type: lidar       # 传感器类型
+    grid_map.cloud_is_world: true     # 点云是否世界系
+    grid_map.need_extrinsic: false    # 是否需要外参
 
-    grid_map.cx: 321.04638671875
-    grid_map.cy: 243.44969177246094
-    grid_map.fx: 387.229248046875
-    grid_map.fy: 387.229248046875
-    grid_map.depth_filter_maxdist: 3.0
-    grid_map.depth_filter_mindist: 0.3
-    grid_map.depth_filter_margin: 1
-    grid_map.k_depth_scaling_factor: 1000.0
-    grid_map.skip_pixel: 2
+    grid_map.cx: 321.04638671875      # 深度相机内参：主点 x（兼容上游）
+    grid_map.cy: 243.44969177246094   # 深度相机内参：主点 y
+    grid_map.fx: 387.229248046875     # 深度相机内参：x 焦距
+    grid_map.fy: 387.229248046875     # 深度相机内参：y 焦距
+    grid_map.depth_filter_maxdist: 3.0    # 深度过滤最大距离（米）
+    grid_map.depth_filter_mindist: 0.3    # 深度过滤最小距离（米）
+    grid_map.depth_filter_margin: 1       # 深度过滤边界（像素）
+    grid_map.k_depth_scaling_factor: 1000.0  # 深度缩放因子
+    grid_map.skip_pixel: 2            # 深度降采样步长
 
-    grid_map.p_hit: 0.85
-    grid_map.p_miss: 0.30
-    grid_map.p_min: 0.12
-    grid_map.p_max: 0.98
-    grid_map.p_occ: 0.80
-    grid_map.max_ray_length: 5.0
-    grid_map.vis_height: 0.3
-    grid_map.show_occ_time: false
+    grid_map.p_hit: 0.85              # 击中概率更新值
+    grid_map.p_miss: 0.30             # 空闲概率更新值
+    grid_map.p_min: 0.12              # 概率下限
+    grid_map.p_max: 0.98              # 概率上限
+    grid_map.p_occ: 0.80              # 占据判定阈值
+    grid_map.max_ray_length: 5.0      # 射线最大长度（米）
+    grid_map.vis_height: 0.3          # 可视化切片高度（米）
+    grid_map.show_occ_time: false     # 是否显示占据时间
 
-    manager.max_vel: 0.75
-    manager.max_acc: 0.5
-    manager.max_jerk: 4.0
-    manager.control_points_distance: 0.2
-    manager.feasibility_tolerance: 0.5
-    manager.planning_horizon: 7.5
+    manager.max_vel: 0.75             # 最大速度（m/s）
+    manager.max_acc: 0.5              # 最大加速度（m/s^2）
+    manager.max_jerk: 4.0             # 最大加加速度（m/s^3）
+    manager.control_points_distance: 0.2   # 控制点间距（米）
+    manager.feasibility_tolerance: 0.5     # 可行性容差（米）
+    manager.planning_horizon: 7.5     # 规划视野
 
-    optimization.lambda_smooth: 1.0
-    optimization.lambda_collision: 1.0
-    optimization.lambda_feasibility: 0.1
-    optimization.lambda_fitness: 1.0
-    optimization.dist0: 0.2
-    optimization.max_vel: 0.75
-    optimization.max_acc: 0.5
-    optimization.order: 3
+    optimization.lambda_smooth: 1.0       # 平滑代价权重
+    optimization.lambda_collision: 1.0    # 碰撞代价权重
+    optimization.lambda_feasibility: 0.1  # 可行性代价权重
+    optimization.lambda_fitness: 1.0      # 目标贴合度权重
+    optimization.dist0: 0.2               # 软净空距离（米）
+    optimization.max_vel: 0.75            # 优化最大速度（m/s）
+    optimization.max_acc: 0.5             # 优化最大加速度（m/s^2）
+    optimization.order: 3                 # B 样条阶数

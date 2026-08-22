@@ -1,52 +1,67 @@
+# =============================================================================
+# scan_vendor_local_sensing.yaml —— 局部感知（仿真雷达渲染）厂商参数
+# 所属模块：m20_scan_navigation / config（local_sensing_node / pcl_render_node）
+# 用途：为 SCAN 提供局部感知点云。数值镜像自 SCAN-Planner 的 simulator.yaml；
+#       仅"机身位姿输入"与"地图重载开关"是 M20/多楼层的集成接缝。
+# 注意：/** 是 ROS2 通配节点名。
+# =============================================================================
 /**:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: false      # 是否使用仿真时间；false = 真机/实时
 
     # Values below mirror SCAN-Planner's simulator.yaml. Only the body-pose
     # input and map-reload switch are integration seams for M20/multi-floor.
-    quadrotor_name: quad_0
-    sensor_type: lidar
-    body_pose_topic: /m20/sim/body_pose
-    map.resolution: 0.1
-    map.x_size: 100.0
-    map.y_size: 40.0
-    map.z_size: 5.0
-    sensing_horizon: 40.0
-    sensing_rate: 10.0
-    estimation_rate: 10.0
+    # （以下数值镜像自 SCAN-Planner 的 simulator.yaml；仅机身位姿输入与
+    #   地图重载开关是 M20/多楼层集成的接缝。）
+    quadrotor_name: quad_0              # 感知对象名称（沿用上游命名）
+    sensor_type: lidar                  # 传感器类型：激光雷达
+    body_pose_topic: /m20/sim/body_pose # 机身位姿/里程计输入话题（M20 集成接缝）
+    map.resolution: 0.1                 # 全局地图分辨率（米/格）
+    map.x_size: 100.0                   # 全局地图 x 尺寸（米）
+    map.y_size: 40.0                    # 全局地图 y 尺寸（米）
+    map.z_size: 5.0                     # 全局地图 z 尺寸（米）
+    sensing_horizon: 40.0               # 感知视野距离（米）
+    sensing_rate: 10.0                  # 感知发布频率（Hz）
+    estimation_rate: 10.0               # 状态估计频率（Hz）
     # CPU RViz simulation profile: 0.5 degree keeps 360-degree/40 m sensing
     # while reducing the native polar grid from about 882k to 141k cells.
-    polar_resolution: 0.5
-    yaw_fov: 360.0
-    vertical_fov: 90.0
-    min_raylength: 1.0
-    downsample_res: 0.1
-    lidar_pitch: 45.0
-    is_360lidar: 1
-    use_minicf_pattern: 1
+    # （CPU RViz 仿真档：0.5 度角分辨率在保持 360°/40m 感知的同时，把原生
+    #   极坐标栅格从约 88.2 万格降到 14.1 万格。）
+    polar_resolution: 0.5               # 极坐标栅格角分辨率（度）
+    yaw_fov: 360.0                      # 偏航视场角（度）= 全周
+    vertical_fov: 90.0                  # 俯仰视场角（度）
+    min_raylength: 1.0                  # 最小射线长度（米）
+    downsample_res: 0.1                 # 点云降采样分辨率（米）
+    lidar_pitch: 45.0                   # 雷达安装俯仰角（度）
+    is_360lidar: 1                      # 是否 360 度雷达
+    use_minicf_pattern: 1               # 是否使用 miniCF 点云模式
     # The generated warehouse PCD already samples every obstacle surface at
     # 0.10 m. Re-interpolating every plane ray is redundant and can delay one
     # CPU frame for tens of seconds; nearest-ray occlusion remains unchanged.
-    plane_interline: 0
-    use_avia_pattern: 0
-    use_vlp32_pattern: 0
-    use_os64_pattern: 0
-    use_os128_pattern: 0
-    cam_width: 640
-    cam_height: 480
-    cam_fx: 387.229248046875
-    cam_fy: 387.229248046875
-    cam_cx: 321.04638671875
-    cam_cy: 243.44969177246094
-    dynamic.enable: 0
-    dynamic.object_size: 0.0
-    dynamic.object_count: 0
-    dynamic.mode: 0
-    dynamic.velocity: 0.0
-    collision_check.enable: 0
-    collision_check.range: 0.3
-    allow_global_map_updates: true
+    # （生成的仓库 PCD 已按 0.10 米采样每个障碍表面；对每条平面射线重新插值
+    #   是冗余的，且可能使单帧延迟数十秒；最近射线遮挡逻辑保持不变。）
+    plane_interline: 0                  # 平面射线插值开关（0 = 关闭）
+    use_avia_pattern: 0                 # 是否用 Avia 雷达模式
+    use_vlp32_pattern: 0                # 是否用 VLP-32 雷达模式
+    use_os64_pattern: 0                 # 是否用 OS-64 雷达模式
+    use_os128_pattern: 0                # 是否用 OS-128 雷达模式
+    cam_width: 640                      # 相机图像宽度（像素，兼容上游）
+    cam_height: 480                     # 相机图像高度（像素）
+    cam_fx: 387.229248046875            # 相机内参：x 焦距
+    cam_fy: 387.229248046875            # 相机内参：y 焦距
+    cam_cx: 321.04638671875             # 相机内参：主点 x
+    cam_cy: 243.44969177246094          # 相机内参：主点 y
+    dynamic.enable: 0                   # 动态物体开关（0 = 关闭）
+    dynamic.object_size: 0.0            # 动态物体尺寸（米）
+    dynamic.object_count: 0             # 动态物体数量
+    dynamic.mode: 0                     # 动态物体模式
+    dynamic.velocity: 0.0               # 动态物体速度（m/s）
+    collision_check.enable: 0           # 碰撞检查开关（仿真用）
+    collision_check.range: 0.3          # 碰撞检查范围（米）
+    allow_global_map_updates: true      # 是否允许全局地图更新（多楼层重载接缝）
     # The local CycloneDDS simulation profile is loopback-only. Reliable
     # delivery prevents silent loss of native clouds during a floor reload;
     # the vendor default remains best-effort when this parameter is omitted.
-    reliable_cloud_transport: true
+    # （本地 CycloneDDS 仿真档仅回环。可靠传输防止楼层重载期间原生点云被
+    #   静默丢失；省略该参数时恢复厂商默认的 best-effort。）
+    reliable_cloud_transport: true      # 点云是否使用可靠传输

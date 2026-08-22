@@ -1,0 +1,209 @@
+<?xml version="1.0"?>
+<!-- ============================================================
+     文件：m20_nav_proxy.urdf
+     用途：M20「导航质点代理」URDF 模型。
+           - 不包含 M20 真实腿部/轮式动力学，仅用一个绿色圆柱
+             （base_link）代表机器人在二维平面上的占位与碰撞轮廓；
+           - 用于快速验证 Nav2 / SLAM / 避障逻辑：运动由
+             gazebo_ros_planar_move 插件驱动（订阅 /cmd_vel，
+             按平面速度模型发布 /odom 与 TF），无轮子/关节控制；
+           - 顶部同样挂载 3D 雷达（lidar_link），发布硬件风格点云
+             话题 /LIDAR/POINTS（PointCloud2）。
+     ============================================================ -->
+<robot name="m20_nav_proxy">
+  <!-- 导航质点代理：只用于验证 Nav2/SLAM/避障，不代表 M20 动力学。 -->
+
+  <!-- ==================== base_footprint：地面投影原点 ==================== -->
+  <!-- 无质量/无外观的坐标系原点，通常位于地面投影处，供 odom/地图坐标系对齐。 -->
+  <link name="base_footprint"/>
+
+  <!-- base_footprint_to_base_link：固定连接（fixed 类型），
+       将 base_footprint（地面）与 base_link（机身）相连，
+       抬高 0.08m 作为机身中心的离地高度。 -->
+  <joint name="base_footprint_to_base_link" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0.08" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ==================== base_link：导航代理机身（绿色圆柱） ==================== -->
+  <link name="base_link">
+    <!-- 惯性参数：代理质量 8.0 kg（仅用于占位与碰撞，不代表真实质量） -->
+    <inertial>
+      <mass value="8.0"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.08" ixy="0.0" ixz="0.0" iyy="0.08" iyz="0.0" izz="0.10"/>
+    </inertial>
+    <!-- 外观：绿色圆柱（半径 0.14m，高 0.08m），便于在 Gazebo/RViz 中识别 -->
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.14" length="0.08"/>
+      </geometry>
+      <material name="proxy_green">
+        <color rgba="0.10 0.42 0.32 1.0"/>
+      </material>
+    </visual>
+    <!-- 碰撞模型：与外观相同的圆柱，作为 Nav2 costmap 的机器人轮廓 -->
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.14" length="0.08"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ==================== lidar_mount_link：雷达安装座（支架） ==================== -->
+  <link name="lidar_mount_link">
+    <inertial>
+      <mass value="0.1"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.025" length="0.08"/>
+      </geometry>
+      <material name="mount_dark">
+        <color rgba="0.06 0.06 0.06 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.025" length="0.08"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- base_link_to_lidar_mount：固定连接 base_link 与雷达安装座（fixed 类型），
+       安装于机身前上方（x=0.08m，z=0.08m）。 -->
+  <joint name="base_link_to_lidar_mount" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_mount_link"/>
+    <origin xyz="0.08 0 0.08" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ==================== lidar_link：3D 雷达本体（rslidar 风格） ==================== -->
+  <link name="lidar_link">
+    <inertial>
+      <mass value="0.3"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+    </inertial>
+    <!-- 外观 1：雷达机身（深色圆柱） -->
+    <visual name="lidar_body">
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.060" length="0.075"/>
+      </geometry>
+      <material name="lidar_black">
+        <color rgba="0.02 0.02 0.025 1.0"/>
+      </material>
+    </visual>
+    <!-- 外观 2：雷达窗口（蓝色小方块，模拟激光出射窗口） -->
+    <visual name="lidar_window">
+      <origin xyz="0.030 0 0.004"/>
+      <geometry>
+        <box size="0.010 0.105 0.030"/>
+      </geometry>
+      <material name="lidar_window_blue">
+        <color rgba="0.05 0.25 0.70 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.060" length="0.075"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- base_link_to_lidar：固定连接 base_link 与雷达本体（fixed 类型），
+       雷达位于机身顶部 z=0.14m 处（扫描平面高度）。 -->
+  <joint name="base_link_to_lidar" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+    <origin xyz="0.08 0 0.14" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ==================== gazebo：外观材质段 ==================== -->
+  <gazebo reference="base_link">
+    <material>Gazebo/Green</material>
+  </gazebo>
+
+  <gazebo reference="lidar_mount_link">
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <!-- ==================== gazebo：3D 雷达传感器段 ==================== -->
+  <!-- 为 lidar_link 附加射线传感器：m20_rslidar_points（ray 类型）。
+       水平 360°（1800 线）、垂直 ±15°（16 线），量程 0.2~30m，
+       带高斯噪声（均值 0，标准差 0.01）。
+       通过 libgazebo_ros_ray_sensor.so 输出 sensor_msgs/PointCloud2，
+       话题重映射为 /LIDAR/POINTS，坐标系为 lidar_link。 -->
+  <gazebo reference="lidar_link">
+    <material>Gazebo/Black</material>
+    <sensor name="m20_rslidar_points" type="ray">
+      <always_on>true</always_on>
+      <visualize>false</visualize>
+      <update_rate>10</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>1800</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159265</min_angle>
+            <max_angle>3.14159265</max_angle>
+          </horizontal>
+          <vertical>
+            <samples>16</samples>
+            <resolution>1</resolution>
+            <min_angle>-0.26179939</min_angle>
+            <max_angle>0.26179939</max_angle>
+          </vertical>
+        </scan>
+        <range>
+          <min>0.20</min>
+          <max>30.0</max>
+          <resolution>0.02</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>
+        </noise>
+      </ray>
+      <plugin name="m20_rslidar_points_plugin" filename="libgazebo_ros_ray_sensor.so">
+        <ros>
+          <remapping>~/out:=/LIDAR/POINTS</remapping>
+        </ros>
+        <output_type>sensor_msgs/PointCloud2</output_type>
+        <frame_name>lidar_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ==================== gazebo：平面运动插件 ==================== -->
+  <!-- m20_proxy_planar_move：使用 gazebo_ros_planar_move 插件，
+       订阅 /cmd_vel（Twist），按平面运动模型（忽略惯性/轮式动力学）
+       直接驱动代理位移；以 30Hz 发布 /odom 里程计与
+       odom→base_link 的 TF，并带协方差用于 EKF 等滤波。 -->
+  <gazebo>
+    <plugin name="m20_proxy_planar_move" filename="libgazebo_ros_planar_move.so">
+      <ros>
+        <namespace>/</namespace>
+      </ros>
+      <update_rate>100</update_rate>
+      <publish_rate>30</publish_rate>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_link</robot_base_frame>
+      <covariance_x>0.0001</covariance_x>
+      <covariance_y>0.0001</covariance_y>
+      <covariance_yaw>0.01</covariance_yaw>
+    </plugin>
+  </gazebo>
+</robot>

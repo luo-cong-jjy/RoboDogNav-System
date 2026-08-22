@@ -1,0 +1,87 @@
+#!/usr/bin/python3
+# =============================================================================
+# m20_standing_joint_state_publisher
+# 所属模块：m20_nav2_system / scripts
+# 职责：以固定频率发布 M20 四足机器人的"默认站立姿态"关节状态（JointState），
+#       用于 RViz 中官方外观模型的正确显示（默认所有关节角为 0 = 标准站姿）。
+# 注意：本节点只发布姿态，不驱动真实电机；真实底盘运行时请用实际关节反馈。
+# 参数（ROS2 参数）：
+#   output_topic    发布话题（默认 /joint_states）
+#   publish_rate_hz 发布频率（Hz，默认 20）
+# =============================================================================
+
+import rclpy                  # ROS2 Python 客户端库
+from rclpy.node import Node   # ROS2 节点基类
+from sensor_msgs.msg import JointState   # 关节状态消息
+
+
+# M20 全部 16 个关节名称：四条腿（fl/fr/hl/hr）x 四个关节（hipx/hipy/knee/wheel）
+JOINT_NAMES = [
+    "fl_hipx_joint",      # 左前腿髋部 x 轴（外摆）关节
+    "fl_hipy_joint",      # 左前腿髋部 y 轴（前后摆）关节
+    "fl_knee_joint",      # 左前腿膝关节
+    "fl_wheel_joint",     # 左前腿轮子关节
+    "fr_hipx_joint",      # 右前腿髋部 x 轴关节
+    "fr_hipy_joint",      # 右前腿髋部 y 轴关节
+    "fr_knee_joint",      # 右前腿膝关节
+    "fr_wheel_joint",     # 右前腿轮子关节
+    "hl_hipx_joint",      # 左后腿髋部 x 轴关节
+    "hl_hipy_joint",      # 左后腿髋部 y 轴关节
+    "hl_knee_joint",      # 左后腿膝关节
+    "hl_wheel_joint",     # 左后腿轮子关节
+    "hr_hipx_joint",      # 右后腿髋部 x 轴关节
+    "hr_hipy_joint",      # 右后腿髋部 y 轴关节
+    "hr_knee_joint",      # 右后腿膝关节
+    "hr_wheel_joint",     # 右后腿轮子关节
+]
+
+# 默认站立姿态：全部关节角 0（与关节顺序一一对应）
+DEFAULT_STANDING_POSITION = [
+    0.0, 0.0, 0.0, 0.0,     # 左前腿 4 关节
+    0.0, 0.0, 0.0, 0.0,     # 右前腿 4 关节
+    0.0, 0.0, 0.0, 0.0,     # 左后腿 4 关节
+    0.0, 0.0, 0.0, 0.0,     # 右后腿 4 关节
+]
+
+
+class M20StandingJointStatePublisher(Node):
+    """M20 默认站立姿态关节状态发布节点。"""
+
+    def __init__(self):
+        super().__init__("m20_standing_joint_state_publisher")
+        # 输出话题参数（默认 /joint_states）
+        self.output_topic = self.declare_parameter("output_topic", "/joint_states").value
+        # 发布频率参数（默认 20 Hz）
+        self.publish_rate_hz = float(self.declare_parameter("publish_rate_hz", 20.0).value)
+        self.publisher = self.create_publisher(JointState, self.output_topic, 10)
+        # 周期定时器：按发布频率触发 _publish
+        self.timer = self.create_timer(1.0 / self.publish_rate_hz, self._publish)
+        self.get_logger().info("发布 M20 默认站立关节状态，用于 RViz 官方外观显示。")
+
+    def _publish(self):
+        """定时器回调：构造并发布 JointState 消息。"""
+        msg = JointState()
+        msg.header.stamp = self.get_clock().now().to_msg()   # 当前时间戳
+        msg.name = JOINT_NAMES                               # 关节名列表
+        msg.position = list(DEFAULT_STANDING_POSITION)       # 站立姿态关节角
+        msg.velocity = [0.0] * len(JOINT_NAMES)              # 角速度全 0
+        msg.effort = [0.0] * len(JOINT_NAMES)                # 力矩全 0
+        self.publisher.publish(msg)
+
+
+def main():
+    """主入口：初始化节点并进入事件循环。"""
+    rclpy.init()                     # 初始化 ROS2 客户端库
+    node = M20StandingJointStatePublisher()   # 创建节点
+    try:
+        rclpy.spin(node)             # 阻塞式旋转：驱动定时器回调
+    except KeyboardInterrupt:
+        pass                         # Ctrl+C 正常退出
+    finally:
+        node.destroy_node()          # 清理节点
+        if rclpy.ok():
+            rclpy.shutdown()         # 关闭 rclpy
+
+
+if __name__ == "__main__":
+    main()

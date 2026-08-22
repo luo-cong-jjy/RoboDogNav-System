@@ -1,0 +1,30 @@
+# =============================================================================
+# rslidar_pointcloud_to_scan.yaml
+# 所属模块：rslidar_pointcloud_to_scan 节点（PointCloud2 -> LaserScan 转换）
+# 用途：把背部 3D 雷达点云按高度/距离裁剪成 2D 激光扫描数据 /scan，
+#       供 Nav2 的 AMCL 定位与 costmap 避障使用（3D 雷达降维为 2D 激光）。
+# 话题流：/LIDAR/POINTS (PointCloud2) -> 本节点 -> /scan (LaserScan)
+# =============================================================================
+rslidar_pointcloud_to_scan:        # 节点名，launch 文件按此名字加载参数
+  ros__parameters:                 # ROS2 参数命名空间固定层级
+    # 是否使用仿真时间（订阅 /clock 话题）。true = 仿真/回放 bag，false = 真机
+    use_sim_time: true
+
+    # 为空时不做 TF 变换，直接沿用点云消息自身 frame。
+    # 上真机接入 Nav2 时，如果已经有雷达坐标系到 base_link 的 TF，可以改成 base_link。
+    target_frame: ""               # 输出 LaserScan 的坐标系；空字符串 = 沿用点云原始 frame_id
+    transform_tolerance: 0.01      # TF 查找容差（秒），超过此时间的变换将被丢弃
+
+    # 背部 3D 雷达转 2D 激光的核心参数：只取一定高度范围内的点。
+    # 这个范围需要按雷达安装高度、俯仰角、地面点噪声继续实测调整。
+    min_height: -0.30              # 保留点的最低高度（米），过滤地面以下的杂点
+    max_height: 0.30               # 保留点的最高高度（米），过滤天花板等高处点
+
+    angle_min: -3.141592653589793  # 扫描起始角（弧度）= -180°（全周扫描）
+    angle_max: 3.141592653589793   # 扫描结束角（弧度）= +180°，与 angle_min 构成 360° 覆盖
+    angle_increment: 0.0034906585  # 相邻两束激光的角度增量（弧度）≈ 0.2°（1800 线）
+    scan_time: 0.10                # 一次完整扫描的周期（秒），即 10 Hz 发布
+
+    range_min: 0.20                # 有效测距最小值（米），滤除机身上/近处的无效杂点
+    range_max: 30.0                # 有效测距最大值（米），超过此距离的测量视为无效
+    use_inf: true                  # 无有效测量处用 inf 填充（true）而不是 0，便于下游判空

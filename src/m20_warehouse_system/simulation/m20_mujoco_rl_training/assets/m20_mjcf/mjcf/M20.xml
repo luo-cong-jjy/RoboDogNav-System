@@ -1,14 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- ======================================================================
+     M20.xml —— Deep Robotics M20 机器人 MuJoCo 模型（中文注释版）
+     结构：base_link（底盘，浮动基座 freejoint）+ 4 条腿 ×
+           （hipx 髋横滚 / hipy 髋俯仰 / knee 膝 / wheel 轮）+
+           16 个电机执行器 + 相邻刚体接触排除 + IMU/陀螺仪传感器
+     与官方 URDF 同源（官方 SolidWorks 模型），用 MuJoCo 语法描述，
+     底盘浮空、轮腿关节由 motor 驱动，供 RL 训练/评估/回放使用。
+     说明：本文件只新增中文注释，未改动任何原始内容
+     ====================================================================== -->
+<!-- 模型根节点：模型名 M20 -->
 <mujoco model="M20">
 
+    <!-- 默认类定义：视觉/碰撞几何与电机参数 -->
     <default>
+        <!-- 机器人整体默认类 -->
         <default class="robot">
+            <!-- 电机默认类：关节 + 执行器 -->
             <default class="motor">
                 <joint/>
                 <motor/>
             </default>
+            <!-- 视觉默认类：不参与碰撞（contype=0），显示分组 2 -->
             <default class="visual">
                 <geom material="default_material" contype="0" conaffinity="0" group="2"/>
             </default>
+            <!-- 碰撞默认类：参与碰撞（contype=1），3 维接触、密度 0、显示分组 1 -->
             <default class="collision">
                 <geom material="collision_material" condim="3" contype="1" conaffinity="1" solref="0.005 1"
                       friction="1 0.01 0.001" density="0" group="1"/>
@@ -17,68 +33,95 @@
         </default>
     </default>
 
+    <!-- 编译器选项：角度单位为弧度；mesh 目录为 ../meshes/ -->
     <compiler angle="radian" meshdir="../meshes/"/>
+    <!-- 编译器选项：自动限位（autolimits） -->
     <compiler autolimits="true"/>
 
+    <!-- 资源定义：材质 / 网格 / 纹理 -->
     <asset>
+        <!-- 视觉几何默认材质（灰色） -->
         <material name="default_material" rgba="0.7 0.7 0.7 1"/>
+        <!-- 碰撞几何材质（半透明蓝色） -->
         <material name="collision_material" rgba="0.0 0.4 0.8 0.2"/>
+        <!-- 机身 mesh：base_link -->
         <mesh name="base_link" file="base_link.STL"/>
+        <!-- 左前腿（fl）各部件 mesh -->
         <mesh name="fl_hipx" file="fl_hipx.STL"/>
         <mesh name="fl_hipy" file="fl_hipy.STL"/>
         <mesh name="fl_knee" file="fl_knee.STL"/>
         <mesh name="fl_wheel" file="fl_wheel.STL"/>
+        <!-- 右前腿（fr）各部件 mesh -->
         <mesh name="fr_hipx" file="fr_hipx.STL"/>
         <mesh name="fr_hipy" file="fr_hipy.STL"/>
         <mesh name="fr_knee" file="fr_knee.STL"/>
         <mesh name="fr_wheel" file="fr_wheel.STL"/>
+        <!-- 左后腿（hl）各部件 mesh -->
         <mesh name="hl_hipx" file="hl_hipx.STL"/>
         <mesh name="hl_hipy" file="hl_hipy.STL"/>
         <mesh name="hl_knee" file="hl_knee.STL"/>
         <mesh name="hl_wheel" file="hl_wheel.STL"/>
+        <!-- 右后腿（hr）各部件 mesh -->
         <mesh name="hr_hipx" file="hr_hipx.STL"/>
         <mesh name="hr_hipy" file="hr_hipy.STL"/>
         <mesh name="hr_knee" file="hr_knee.STL"/>
         <mesh name="hr_wheel" file="hr_wheel.STL"/>
+        <!-- 地面棋盘格纹理（512x512） -->
         <texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2"
                  width="512" height="512"/>
         <!--        <material name='geom' texture="texgeom" texuniform="true"/>-->
+        <!-- 地面材质：棋盘格纹理，带反射 -->
         <material name='MatPlane' reflectance='0.3' texture="texplane" texrepeat="1 1" texuniform="true"/>
     </asset>
 
+    <!-- 世界坐标系（场景根） -->
     <worldbody>
         <!-- 灯光 -->
+        <!-- 方向光：从 (-0.5, 0.5, 3) 向下照射 -->
         <light directional="true" pos="-0.5 0.5 3" dir="0 0 -1"/>
         <!--        <geom name="floor" pos="0 0 0" rgba="0.8 0.9 0.8 1" size="40 40 40" type="plane"/>-->
+        <!-- 地面：100x100 平面，棋盘格材质，参与碰撞 -->
         <geom name='floor' pos='0 0 0' size='100 100 .125' type='plane' material="MatPlane" condim='3'
               friction="1 0.01 0.01" group="0"/>
 
+        <!-- 机身（base_link）：浮动基座，位于 (0, 0, 1) -->
         <body name="base_link" pos="0 0. 1." quat="1 0 0 0" childclass="robot">
+            <!-- 浮动基座关节（自由 6DOF） -->
             <freejoint name="floating_base"/>
+            <!-- 机身惯量：质量 15.882 kg -->
             <inertial pos="0.00355105878308153 0.0016507579200937 -0.00346462146571654"
                       quat="1 0 0 0"
                       mass="15.882" diaginertia="0.087919 0.533522 0.563492"/>
 
+            <!-- IMU 安装位点（用于加速度计/陀螺仪） -->
             <site name="imu_site" pos="0.0632 -0.0268 0.0435" size="0.005" rgba="1 0 0 1"/>
+            <!-- 机身基准位点（用于姿态/位姿传感器） -->
             <site name="base_site" pos="0 0 0" quat="1 0 0 0"/>
 
+            <!-- 机身视觉网格 -->
             <geom type="mesh" mesh="base_link" class="visual"/>
+            <!-- 机身碰撞几何：中央箱体 + 左右两个圆柱 -->
             <geom size="0.375 0.045 0.07" type="box" class="collision"/>
             <geom size="0.07 0.375" pos="0 0.045 0" quat="0.707107 0 0.707107 0" type="cylinder" class="collision"/>
             <geom size="0.07 0.375" pos="0 -0.045 0" quat="0.707107 0 0.707107 0" type="cylinder" class="collision"/>
 
+            <!-- ============ 左前腿（fl）：hipx -> hipy -> knee -> wheel ============ -->
             <body name="fl_hipx" pos="0.3141 0.0685 0">
+                <!-- fl_hipx 惯量（质量 0.260 kg） -->
                 <inertial pos="-0.0111893 0.00891693 0.000405666" quat="0.581628 0.481707 0.465607 0.461387"
                           mass="0.259964"
                           diaginertia="0.000374402 0.000286289 0.000179309"/>
+                <!-- fl_hipx 关节：绕 x 轴横滚，范围 [-0.436, 0.611] rad，力矩限制 [-76.4, 76.4] -->
                 <joint name="fl_hipx_joint" pos="0 0 0" axis="-1 0 0" range="-0.436 0.611"
                        actuatorfrcrange="-76.4 76.4"/>
                 <geom type="mesh" mesh="fl_hipx" class="visual"/>
                 <geom size="0.048 0.07" pos="0 0.055 0" quat="0.707107 0.707107 0 0" type="cylinder" class="collision"/>
                 <body name="fl_hipy">
+                    <!-- fl_hipy 惯量（质量 2.618 kg） -->
                     <inertial pos="-0.00199375 0.098439 -0.130664" quat="0.6754 -0.0565887 0.0622156 0.73264"
                               mass="2.618"
                               diaginertia="0.0410181 0.0408067 0.00297328"/>
+                    <!-- fl_hipy 关节：绕 y 轴俯仰，范围 [-2.286, 2.583] rad -->
                     <joint name="fl_hipy_joint" pos="0 0 0" axis="0 -1 0" range="-2.286 2.583"
                            actuatorfrcrange="-76.4 76.4"/>
                     <geom type="mesh" mesh="fl_hipy" class="visual"/>
@@ -86,8 +129,10 @@
                     <geom size="0.05 0.045" pos="0 0.11 -0.25" quat="0.707107 0.707107 0 0" type="cylinder"
                           class="collision"/>
                     <body name="fl_knee" pos="0 0.0984 -0.25">
+                        <!-- fl_knee 惯量（质量 1.145 kg） -->
                         <inertial pos="0.00341917 0.00269124 -0.181265" quat="0.633405 -0.0508555 0.0475887 0.77068"
                                   mass="1.145" diaginertia="0.0121304 0.0117245 0.000948105"/>
+                        <!-- fl_knee 关节：绕 y 轴俯仰 -->
                         <joint name="fl_knee_joint" pos="0 0 0" axis="0 -1 0" range="-2.809 2.792"
                                actuatorfrcrange="-76.4 76.4"/>
                         <geom type="mesh" mesh="fl_knee" class="visual"/>
@@ -95,9 +140,11 @@
                         <geom size="0.04 0.05" pos="0 0.02 -0.25" quat="0.707107 0.707107 0 0" type="cylinder"
                               class="collision"/>
                         <body name="fl_wheel" pos="0 0.059676 -0.25">
+                            <!-- fl_wheel 惯量（质量 0.638 kg） -->
                             <inertial pos="-3.11398e-07 0.000279002 5.70329e-07" quat="0.707107 0 0 0.707107"
                                       mass="0.638"
                                       diaginertia="0.002853 0.001535 0.001535"/>
+                            <!-- fl_wheel 关节：绕 y 轴旋转（轮子驱动），力矩限制 [-21.6, 21.6] -->
                             <joint name="fl_wheel_joint" pos="0 0 0" axis="0 -1 0" actuatorfrcrange="-21.6 21.6"/>
                             <geom type="mesh" mesh="fl_wheel" class="visual"/>
                             <geom size="0.09 0.027" quat="0.707107 0.707107 0 0" type="cylinder" class="collision"/>
@@ -105,17 +152,22 @@
                     </body>
                 </body>
             </body>
+            <!-- ============ 右前腿（fr）：hipx -> hipy -> knee -> wheel ============ -->
             <body name="fr_hipx" pos="0.3141 -0.0685 0">
+                <!-- fr_hipx 惯量（质量 0.260 kg） -->
                 <inertial pos="-0.0110901 -0.00875035 0.000521421" quat="0.461387 0.465607 0.481707 0.581628"
                           mass="0.259964" diaginertia="0.000374402 0.000286289 0.000179309"/>
+                <!-- fr_hipx 关节：绕 x 轴横滚，范围 [-0.611, 0.436] rad（与左前镜像） -->
                 <joint name="fr_hipx_joint" pos="0 0 0" axis="-1 0 0" range="-0.611 0.436"
                        actuatorfrcrange="-76.4 76.4"/>
                 <geom type="mesh" mesh="fr_hipx" class="visual"/>
                 <geom size="0.048 0.07" pos="0 -0.055 0" quat="0.707107 0.707107 0 0" type="cylinder"
                       class="collision"/>
                 <body name="fr_hipy">
+                    <!-- fr_hipy 惯量（质量 2.618 kg） -->
                     <inertial pos="-0.00229992 -0.0989709 -0.130925" quat="0.6964 0.0586688 -0.0587886 0.712831"
                               mass="2.618" diaginertia="0.0407542 0.040538 0.00301281"/>
+                    <!-- fr_hipy 关节：绕 y 轴俯仰 -->
                     <joint name="fr_hipy_joint" pos="0 0 0" axis="0 -1 0" range="-2.286 2.583"
                            actuatorfrcrange="-76.4 76.4"/>
                     <geom type="mesh" mesh="fr_hipy" class="visual"/>
@@ -123,8 +175,10 @@
                     <geom size="0.05 0.045" pos="0 -0.11 -0.25" quat="0.707107 0.707107 0 0" type="cylinder"
                           class="collision"/>
                     <body name="fr_knee" pos="0 -0.0984 -0.25">
+                        <!-- fr_knee 惯量（质量 1.145 kg） -->
                         <inertial pos="0.00354945 -0.00247884 -0.180089" quat="0.769194 0.0472982 -0.0504711 0.635261"
                                   mass="1.145" diaginertia="0.0122564 0.0118448 0.000951718"/>
+                        <!-- fr_knee 关节：绕 y 轴俯仰 -->
                         <joint name="fr_knee_joint" pos="0 0 0" axis="0 -1 0" range="-2.809 2.792"
                                actuatorfrcrange="-76.4 76.4"/>
                         <geom type="mesh" mesh="fr_knee" class="visual"/>
@@ -132,9 +186,11 @@
                         <geom size="0.04 0.05" pos="0 -0.02 -0.25" quat="0.707107 0.707107 0 0" type="cylinder"
                               class="collision"/>
                         <body name="fr_wheel" pos="0 -0.059676 -0.25">
+                            <!-- fr_wheel 惯量（质量 0.638 kg） -->
                             <inertial pos="-6.47327e-07 -0.000279012 -4.6242e-08" quat="0.707107 0 0 0.707107"
                                       mass="0.638"
                                       diaginertia="0.002853 0.001535 0.001535"/>
+                            <!-- fr_wheel 关节：绕 y 轴旋转（轮子驱动） -->
                             <joint name="fr_wheel_joint" pos="0 0 0" axis="0 -1 0" actuatorfrcrange="-21.6 21.6"/>
                             <geom type="mesh" mesh="fr_wheel" class="visual"/>
                             <geom size="0.09 0.027" quat="0.707107 0.707107 0 0" type="cylinder" class="collision"/>
@@ -142,17 +198,22 @@
                     </body>
                 </body>
             </body>
+            <!-- ============ 左后腿（hl）：hipx -> hipy -> knee -> wheel ============ -->
             <body name="hl_hipx" pos="-0.3141 0.0685 0">
+                <!-- hl_hipx 惯量（质量 0.260 kg） -->
                 <inertial pos="0.0110901 0.00875014 0.000524884" quat="0.465607 0.461387 0.581628 0.481707"
                           mass="0.259964"
                           diaginertia="0.000374402 0.000286289 0.000179309"/>
+                <!-- hl_hipx 关节：绕 x 轴横滚，范围 [-0.436, 0.611] rad -->
                 <joint name="hl_hipx_joint" pos="0 0 0" axis="-1 0 0" range="-0.436 0.611"
                        actuatorfrcrange="-76.4 76.4"/>
                 <geom type="mesh" mesh="hl_hipx" class="visual"/>
                 <geom size="0.048 0.07" pos="0 0.055 0" quat="0.707107 0.707107 0 0" type="cylinder" class="collision"/>
                 <body name="hl_hipy">
+                    <!-- hl_hipy 惯量（质量 2.618 kg） -->
                     <inertial pos="0.00204343 0.0990227 -0.130697" quat="0.750359 -0.0628584 0.0546506 0.655761"
                               mass="2.618" diaginertia="0.0408376 0.0406211 0.00299727"/>
+                    <!-- hl_hipy 关节：绕 y 轴俯仰，范围 [-2.583, 2.286] rad（与右前镜像） -->
                     <joint name="hl_hipy_joint" pos="0 0 0" axis="0 -1 0" range="-2.583 2.286"
                            actuatorfrcrange="-76.4 76.4"/>
                     <geom type="mesh" mesh="hl_hipy" class="visual"/>
@@ -160,8 +221,10 @@
                     <geom size="0.05 0.045" pos="0 0.11 -0.25" quat="0.707107 0.707107 0 0" type="cylinder"
                           class="collision"/>
                     <body name="hl_knee" pos="0 0.0984 -0.25">
+                        <!-- hl_knee 惯量（质量 1.145 kg） -->
                         <inertial pos="-0.00354945 0.00247885 -0.180089" quat="0.769194 -0.0472982 0.0504711 0.635261"
                                   mass="1.145" diaginertia="0.0122564 0.0118448 0.000951718"/>
+                        <!-- hl_knee 关节：绕 y 轴俯仰，范围 [-2.792, 2.809] rad -->
                         <joint name="hl_knee_joint" pos="0 0 0" axis="0 -1 0" range="-2.792 2.809"
                                actuatorfrcrange="-76.4 76.4"/>
                         <geom type="mesh" mesh="hl_knee" class="visual"/>
@@ -169,9 +232,11 @@
                         <geom size="0.04 0.05" pos="0 0.02 -0.25" quat="0.707107 0.707107 0 0" type="cylinder"
                               class="collision"/>
                         <body name="hl_wheel" pos="0 0.059676 -0.25">
+                            <!-- hl_wheel 惯量（质量 0.638 kg） -->
                             <inertial pos="-6.07889e-07 0.000279009 2.1049e-07" quat="0.707107 0 0 0.707107"
                                       mass="0.638"
                                       diaginertia="0.002853 0.001535 0.001535"/>
+                            <!-- hl_wheel 关节：绕 y 轴旋转（轮子驱动） -->
                             <joint name="hl_wheel_joint" pos="0 0 0" axis="0 -1 0" actuatorfrcrange="-21.6 21.6"/>
                             <geom type="mesh" mesh="hl_wheel" class="visual"/>
                             <geom size="0.09 0.027" quat="0.707107 0.707107 0 0" type="cylinder" class="collision"/>
@@ -179,19 +244,24 @@
                     </body>
                 </body>
             </body>
+            <!-- ============ 右后腿（hr）：hipx -> hipy -> knee -> wheel ============ -->
             <body name="hr_hipx" pos="-0.3141 -0.0685 0">
+                <!-- hr_hipx 惯量（质量 0.260 kg） -->
                 <inertial pos="0.0110902 -0.00875012 0.000524937" quat="0.481707 0.581628 0.461387 0.465607"
                           mass="0.259964"
                           diaginertia="0.000374402 0.000286289 0.000179309"/>
+                <!-- hr_hipx 关节：绕 x 轴横滚，范围 [-0.611, 0.436] rad（与左后镜像） -->
                 <joint name="hr_hipx_joint" pos="0 0 0" axis="-1 0 0" range="-0.611 0.436"
                        actuatorfrcrange="-76.4 76.4"/>
                 <geom type="mesh" mesh="hr_hipx" class="visual"/>
                 <geom size="0.048 0.07" pos="0 -0.055 0" quat="0.707107 0.707107 0 0" type="cylinder"
                       class="collision"/>
                 <body name="hr_hipy">
+                    <!-- hr_hipy 惯量（质量 2.618 kg） -->
                     <inertial pos="0.001992 -0.0983704 -0.130561" quat="0.676694 0.0567616 -0.0621797 0.731435"
                               mass="2.618"
                               diaginertia="0.0410109 0.0408028 0.00297526"/>
+                    <!-- hr_hipy 关节：绕 y 轴俯仰，范围 [-2.583, 2.286] rad -->
                     <joint name="hr_hipy_joint" pos="0 0 0" axis="0 -1 0" range="-2.583 2.286"
                            actuatorfrcrange="-76.4 76.4"/>
                     <geom type="mesh" mesh="hr_hipy" class="visual"/>
@@ -199,8 +269,10 @@
                     <geom size="0.05 0.045" pos="0 -0.11 -0.25" quat="0.707107 0.707107 0 0" type="cylinder"
                           class="collision"/>
                     <body name="hr_knee" pos="0 -0.0984 -0.25">
+                        <!-- hr_knee 惯量（质量 1.145 kg） -->
                         <inertial pos="-0.00341053 -0.00270202 -0.181287" quat="0.63448 0.050937 -0.0475303 0.769793"
                                   mass="1.145" diaginertia="0.0121352 0.0117289 0.000948904"/>
+                        <!-- hr_knee 关节：绕 y 轴俯仰，范围 [-2.792, 2.809] rad -->
                         <joint name="hr_knee_joint" pos="0 0 0" axis="0 -1 0" range="-2.792 2.809"
                                actuatorfrcrange="-76.4 76.4"/>
                         <geom type="mesh" mesh="hr_knee" class="visual"/>
@@ -208,9 +280,11 @@
                         <geom size="0.04 0.05" pos="0 -0.02 -0.25" quat="0.707107 0.707107 0 0" type="cylinder"
                               class="collision"/>
                         <body name="hr_wheel" pos="0 -0.059676 -0.25">
+                            <!-- hr_wheel 惯量（质量 0.638 kg） -->
                             <inertial pos="6.09746e-07 -0.000279009 2.01314e-07" quat="0.707107 0 0 0.707107"
                                       mass="0.638"
                                       diaginertia="0.002853 0.001535 0.001535"/>
+                            <!-- hr_wheel 关节：绕 y 轴旋转（轮子驱动） -->
                             <joint name="hr_wheel_joint" pos="0 0 0" axis="0 -1 0" actuatorfrcrange="-21.6 21.6"/>
                             <geom type="mesh" mesh="hr_wheel" class="visual"/>
                             <geom size="0.09 0.027" quat="0.707107 0.707107 0 0" type="cylinder" class="collision"/>
@@ -221,41 +295,51 @@
         </body>
     </worldbody>
 
+    <!-- 执行器定义：16 个电机（每腿 hipx/hipy/knee 力矩 ±76.4，wheel ±21.6） -->
     <actuator>
+        <!-- 左前腿电机 -->
         <motor name="fl_hipx_joint" joint="fl_hipx_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="fl_hipy_joint" joint="fl_hipy_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="fl_knee_joint" joint="fl_knee_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="fl_wheel_joint" joint="fl_wheel_joint" ctrllimited="true" ctrlrange="-21.6 21.6" gear="1"/>
+        <!-- 右前腿电机 -->
         <motor name="fr_hipx_joint" joint="fr_hipx_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="fr_hipy_joint" joint="fr_hipy_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="fr_knee_joint" joint="fr_knee_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="fr_wheel_joint" joint="fr_wheel_joint" ctrllimited="true" ctrlrange="-21.6 21.6" gear="1"/>
+        <!-- 左后腿电机 -->
         <motor name="hl_hipx_joint" joint="hl_hipx_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="hl_hipy_joint" joint="hl_hipy_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="hl_knee_joint" joint="hl_knee_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="hl_wheel_joint" joint="hl_wheel_joint" ctrllimited="true" ctrlrange="-21.6 21.6" gear="1"/>
+        <!-- 右后腿电机 -->
         <motor name="hr_hipx_joint" joint="hr_hipx_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="hr_hipy_joint" joint="hr_hipy_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="hr_knee_joint" joint="hr_knee_joint" ctrllimited="true" ctrlrange="-76.4 76.4" gear="1"/>
         <motor name="hr_wheel_joint" joint="hr_wheel_joint" ctrllimited="true" ctrlrange="-21.6 21.6" gear="1"/>
     </actuator>
 
+    <!-- 接触排除：相邻刚体间不产生接触（避免自身碰撞噪声） -->
     <contact>
+        <!-- 左前腿链：base_link - fl_hipx - fl_hipy - fl_knee - fl_wheel -->
         <exclude body1="base_link" body2="fl_hipx"/>
         <exclude body1="fl_hipx" body2="fl_hipy"/>
         <exclude body1="fl_hipy" body2="fl_knee"/>
         <exclude body1="fl_knee" body2="fl_wheel"/>
 
+        <!-- 右前腿链 -->
         <exclude body1="base_link" body2="fr_hipx"/>
         <exclude body1="fr_hipx" body2="fr_hipy"/>
         <exclude body1="fr_hipy" body2="fr_knee"/>
         <exclude body1="fr_knee" body2="fr_wheel"/>
 
+        <!-- 左后腿链 -->
         <exclude body1="base_link" body2="hl_hipx"/>
         <exclude body1="hl_hipx" body2="hl_hipy"/>
         <exclude body1="hl_hipy" body2="hl_knee"/>
         <exclude body1="hl_knee" body2="hl_wheel"/>
 
+        <!-- 右后腿链 -->
         <exclude body1="base_link" body2="hr_hipx"/>
         <exclude body1="hr_hipx" body2="hr_hipy"/>
         <exclude body1="hr_hipy" body2="hr_knee"/>
@@ -263,13 +347,17 @@
 
     </contact>
 
+    <!-- 传感器定义：机身姿态 + IMU（加速度计/陀螺仪） -->
     <sensor>
         <!--        <framepos name="base_pos" objtype="site" objname="base_site"/>-->
+        <!-- 机身姿态四元数传感器（基准位点） -->
         <framequat name="base_quat" objtype="site" objname="base_site"/>
         <!--        <framelinvel name="base_linvel" objtype="site" objname="base_site"/>-->
         <!--        <frameangvel name="base_angvel" objtype="site" objname="base_site"/>-->
         <!--        <velocimeter name="base_vel" site="base_site"/>-->
+        <!-- IMU 加速度计（imu_site 处） -->
         <accelerometer site="imu_site"/>
+        <!-- IMU 陀螺仪（imu_site 处） -->
         <gyro site="imu_site"/>
 
     </sensor>

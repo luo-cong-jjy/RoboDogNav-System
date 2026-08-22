@@ -1,13 +1,21 @@
-scan_planner_node:
+# =============================================================================
+# clearance_tight.yaml —— "窄通道"净空档参数（仅测试用）
+# 所属模块：m20_scan_navigation / config
+# 用途：测试专用的窄通道档：首选直线净空 0.70 米。注意碰撞守卫的硬停包络
+#       永不降到 0.30 米以下（见下方注释）。
+# =============================================================================
+scan_planner_node:            # SCAN 规划器节点参数段
   ros__parameters:
     # Test-only narrow-aisle profile: 0.70 m preferred straight clearance.
-    grid_map.double_cylinder_radius: 0.25
-    grid_map.double_cylinder_offset: 0.18
-    optimization.dist0: 0.10
+    # （仅测试用窄通道档：首选直线净空 0.70 米。）
+    grid_map.double_cylinder_radius: 0.25   # 双圆柱碰撞模型半径（米）
+    grid_map.double_cylinder_offset: 0.18   # 双圆柱轴向偏移（米）
+    optimization.dist0: 0.10                # 优化器软净空（米）：收窄软净空以挤过窄通道
 
-m20_collision_guard:
+m20_collision_guard:          # 在线碰撞守卫节点参数段
   ros__parameters:
     # Never reduce the independent hard-stop envelope below 0.30 m.
-    footprint_radius: 0.25
-    footprint_offset: 0.18
-    safety_margin: 0.05
+    # （独立硬停包络永不低于 0.30 米。）
+    footprint_radius: 0.25    # 守卫足迹半径（米）
+    footprint_offset: 0.18    # 守卫足迹轴向偏移（米）
+    safety_margin: 0.05       # 安全余量（米）：0.25+0.05 -> 硬停半径 0.30m

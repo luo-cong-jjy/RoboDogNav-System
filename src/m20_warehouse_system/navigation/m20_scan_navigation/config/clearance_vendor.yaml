@@ -1,12 +1,19 @@
-scan_planner_node:
+# =============================================================================
+# clearance_vendor.yaml —— "厂商"净空档参数（上游 SCAN 默认行为）
+# 所属模块：m20_scan_navigation / config
+# 用途：严格复刻上游 SCAN-Planner 的净空行为（标称直线净空 0.90 米），
+#       作为与厂商行为对照的基准档。
+# =============================================================================
+scan_planner_node:            # SCAN 规划器节点参数段
   ros__parameters:
     # Exact upstream SCAN-Planner clearance behaviour.
-    grid_map.double_cylinder_radius: 0.25
-    grid_map.double_cylinder_offset: 0.18
-    optimization.dist0: 0.20
+    # （严格复刻上游 SCAN-Planner 的净空行为。）
+    grid_map.double_cylinder_radius: 0.25   # 双圆柱碰撞模型半径（米）
+    grid_map.double_cylinder_offset: 0.18   # 双圆柱轴向偏移（米）
+    optimization.dist0: 0.20                # 优化器软净空（米）：0.25+0.20 -> 单侧 0.45m
 
-m20_collision_guard:
+m20_collision_guard:          # 在线碰撞守卫节点参数段
   ros__parameters:
-    footprint_radius: 0.25
-    footprint_offset: 0.18
-    safety_margin: 0.05
+    footprint_radius: 0.25    # 守卫足迹半径（米）
+    footprint_offset: 0.18    # 守卫足迹轴向偏移（米）
+    safety_margin: 0.05       # 安全余量（米）

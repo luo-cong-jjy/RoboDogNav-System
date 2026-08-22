@@ -1,28 +1,42 @@
+# ============================================================================
+# 【文件职责】safety_scan_vendor.yaml —— 安全监督（SCAN 厂商适配版）参数配置
+# 本文件为安全监督节点（safety_supervisor_node.py）提供参数：
+#   - 安全门处理的候选指令与碰撞预测、最终后端一致（SCAN 适配后的
+#     滚动指令，而非 SCAN 适配前的全向指令）；
+#   - 100 Hz 高频发布；
+#   - 保留高限幅（slew 上限）的原因是 M20 导航适配器已在上游应用了
+#     经验证的加速度包络，此门无需二次限速。
+# ============================================================================
+
 m20_safety_supervisor:
   ros__parameters:
     # Safety gates the same rolling candidate used by collision prediction
     # and the final backend, not SCAN's pre-adaptation holonomic command.
-    navigation_topic: /m20/navigation/cmd_vel_candidate
-    manual_topic: /m20/control/cmd_vel_manual
-    safe_topic: /m20/control/cmd_vel_safe
-    e_stop_topic: /m20/control/e_stop
-    floor_hold_topic: /m20/control/floor_switch_hold
-    mission_hold_topic: /m20/control/mission_hold
-    collision_stop_topic: /m20/control/collision_stop
-    collision_recovery_available_topic: /m20/control/collision_recovery_available
-    collision_recovery_command_topic: /m20/control/collision_recovery_cmd
-    collision_recovery_timeout_sec: 0.15
-    collision_recovery_ramp_sec: 1.0
-    execution_hold_topic: /m20/control/execution_hold
-    map_ready_topic: /m20/map/ready
-    odom_topic: /m20/sim/body_pose
-    publish_rate_hz: 100.0
-    command_timeout_sec: 0.5
-    odom_timeout_sec: 0.5
+    # 【中文】安全门处理与碰撞预测、最终后端相同的滚动候选指令，
+    # 而非 SCAN 适配前的全向指令。
+    navigation_topic: /m20/navigation/cmd_vel_candidate   # 导航候选速度话题
+    manual_topic: /m20/control/cmd_vel_manual             # 手动控制速度话题
+    safe_topic: /m20/control/cmd_vel_safe                 # 安全指令输出话题
+    e_stop_topic: /m20/control/e_stop                     # 急停状态话题
+    floor_hold_topic: /m20/control/floor_switch_hold      # 楼层切换保持话题
+    mission_hold_topic: /m20/control/mission_hold         # 任务保持话题
+    collision_stop_topic: /m20/control/collision_stop     # 碰撞停止话题
+    collision_recovery_available_topic: /m20/control/collision_recovery_available  # 恢复可用标志话题
+    collision_recovery_command_topic: /m20/control/collision_recovery_cmd  # 恢复指令话题
+    collision_recovery_timeout_sec: 0.15    # 恢复指令新鲜时长（秒）
+    collision_recovery_ramp_sec: 1.0        # 恢复指令斜坡时长（秒）
+    execution_hold_topic: /m20/control/execution_hold    # 执行保持话题
+    map_ready_topic: /m20/map/ready                      # 地图就绪话题
+    odom_topic: /m20/sim/body_pose                       # 里程计话题
+    publish_rate_hz: 100.0       # 安全门发布频率（Hz，厂商适配版更高频）
+    command_timeout_sec: 0.5     # 指令超时（秒）
+    odom_timeout_sec: 0.5        # 里程计超时（秒）
 
     # Command limits are injected from the selected platform capability.
     # Keep this gate's high slew limits because the M20 navigation adapter
     # already applies its validated acceleration envelope upstream.
-    max_linear_accel: 50.0
-    max_angular_accel: 50.0
-    manual_priority: true
+    # 【中文】速度限幅由所选平台能力档案注入；本门保持高 slew 上限，
+    # 因为 M20 导航适配器已在上游应用了经验证的加速度包络。
+    max_linear_accel: 50.0     # 线加速度上限（m/s^2，故意放高，上游已限速）
+    max_angular_accel: 50.0    # 角加速度上限（rad/s^2，故意放高，上游已限速）
+    manual_priority: true      # 手动指令是否优先于导航指令

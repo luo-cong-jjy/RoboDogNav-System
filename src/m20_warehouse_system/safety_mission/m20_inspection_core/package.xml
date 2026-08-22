@@ -1,33 +1,48 @@
 <?xml version="1.0"?>
+<!-- ============================================================================
+  【文件职责】package.xml —— m20_inspection_core 包的 ROS2 包清单
+  本文件声明 m20_inspection_core（M20 仓库巡检安全与任务控制核心包）的
+  元信息与依赖关系：
+    - 构建工具依赖：ament_cmake / ament_cmake_python；
+    - 运行依赖：geometry_msgs / m20_warehouse_interfaces / nav_msgs /
+      python3-numpy / python3-yaml / rclpy / sensor_msgs / sensor_msgs_py /
+      std_msgs / visualization_msgs；
+    - 测试依赖：ament_cmake_pytest / ament_flake8 / ament_lint_auto /
+      ament_lint_common / ament_pep257 / python3-pytest。
+============================================================================ -->
 <package format="3">
-  <name>m20_inspection_core</name>
-  <version>0.7.0</version>
+  <name>m20_inspection_core</name>           <!-- 包名 -->
+  <version>0.7.0</version>                   <!-- 版本号 -->
+  <!-- 包描述：M20 仓库巡检的安全与任务控制核心 -->
   <description>Safety and mission-control core for M20 warehouse inspection.</description>
-  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
-  <license>Apache-2.0</license>
+  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>  <!-- 维护者 -->
+  <license>Apache-2.0</license>              <!-- 许可证：Apache 2.0 -->
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <!-- 构建工具依赖 -->
+  <buildtool_depend>ament_cmake</buildtool_depend>          <!-- ament_cmake 构建系统 -->
+  <buildtool_depend>ament_cmake_python</buildtool_depend>   <!-- Python 包安装支持 -->
 
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>m20_warehouse_interfaces</exec_depend>
-  <exec_depend>nav_msgs</exec_depend>
-  <exec_depend>python3-numpy</exec_depend>
-  <exec_depend>python3-yaml</exec_depend>
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>sensor_msgs_py</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>visualization_msgs</exec_depend>
+  <!-- 运行依赖（exec_depend） -->
+  <exec_depend>geometry_msgs</exec_depend>           <!-- 几何消息（Twist/PoseStamped） -->
+  <exec_depend>m20_warehouse_interfaces</exec_depend> <!-- 本仓库自定义接口（Action/消息/服务） -->
+  <exec_depend>nav_msgs</exec_depend>                <!-- 导航消息（Odometry/Path） -->
+  <exec_depend>python3-numpy</exec_depend>           <!-- NumPy：碰撞栅格运算 -->
+  <exec_depend>python3-yaml</exec_depend>            <!-- PyYAML：配置解析 -->
+  <exec_depend>rclpy</exec_depend>                   <!-- ROS2 Python 客户端库 -->
+  <exec_depend>sensor_msgs</exec_depend>             <!-- 传感器消息（PointCloud2/Image） -->
+  <exec_depend>sensor_msgs_py</exec_depend>          <!-- 点云读取工具（point_cloud2） -->
+  <exec_depend>std_msgs</exec_depend>                <!-- 标准消息（Bool/String） -->
+  <exec_depend>visualization_msgs</exec_depend>      <!-- 可视化消息（Marker） -->
 
-  <test_depend>ament_cmake_pytest</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <!-- 测试依赖（test_depend） -->
+  <test_depend>ament_cmake_pytest</test_depend>   <!-- pytest 测试框架 -->
+  <test_depend>ament_flake8</test_depend>         <!-- flake8 代码风格检查 -->
+  <test_depend>ament_lint_auto</test_depend>      <!-- 自动 lint 检查 -->
+  <test_depend>ament_lint_common</test_depend>    <!-- 通用 lint 规则集 -->
+  <test_depend>ament_pep257</test_depend>         <!-- docstring 风格检查 -->
+  <test_depend>python3-pytest</test_depend>       <!-- Python pytest 运行时 -->
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_cmake</build_type>   <!-- 构建类型：ament_cmake（Python 子包） -->
   </export>
 </package>

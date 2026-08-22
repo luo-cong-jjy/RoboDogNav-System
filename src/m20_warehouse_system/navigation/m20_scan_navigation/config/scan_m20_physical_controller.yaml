@@ -1,4 +1,10 @@
-closed_loop_controller:
+# =============================================================================
+# scan_m20_physical_controller.yaml —— M20 实体执行控制器覆盖档
+# 所属模块：m20_scan_navigation / config（closed_loop_controller 控制器节点）
+# 用途：M20 实体执行覆盖。SCAN 的规划与轨迹生成保持厂商等价，仅把物理路径
+#       跟踪改为"非完整约束"（非全向）方式：在需要大角度转向时先停平移。
+# =============================================================================
+closed_loop_controller:       # 闭环控制器节点参数段
   ros__parameters:
     # M20 execution override. SCAN planning and trajectory generation remain
     # vendor-equivalent; only physical path tracking is made non-holonomic.
@@ -7,7 +13,11 @@ closed_loop_controller:
     # replan asks the physical chassis to change heading by more than 31.5 deg.
     # Resume below about 11.5 deg; between 8.6 and 31.5 deg progressively
     # reduce translation so the body does not cut an obstacle corner.
-    heading_error_threshold: 0.55
-    heading_error_resume_threshold: 0.20
-    heading_slowdown_threshold: 0.15
-    heading_alignment_min_hold_sec: 0.40
+    # （M20 实体执行覆盖：SCAN 规划与轨迹生成保持厂商等价，仅把物理路径跟踪
+    #   改为非完整约束。保持常规 SCAN 曲率连续，但在重规划要求底盘航向变化
+    #   超过 31.5° 前停止平移；低于约 11.5° 恢复平移；在 8.6°~31.5° 之间
+    #   渐进降低平移速度，避免机身切到障碍角。）
+    heading_error_threshold: 0.55            # 航向误差阈值（弧度）≈31.5°：超过则停平移转向
+    heading_error_resume_threshold: 0.20     # 航向误差恢复阈值（弧度）≈11.5°：低于则恢复平移
+    heading_slowdown_threshold: 0.15         # 航向减速阈值（弧度）≈8.6°：开始渐进减速
+    heading_alignment_min_hold_sec: 0.40     # 航向对齐最短保持时间（秒）：转向到位后保持

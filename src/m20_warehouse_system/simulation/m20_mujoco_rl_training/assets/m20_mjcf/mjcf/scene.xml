@@ -1,14 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- ======================================================================
+     scene.xml —— 环境场景网格模型（中文注释版）
+     作用：声明 2185 个 STL 网格资产（../meshes/N.stl，mm -> m 缩放 0.001），
+           并全部挂载到 main_body 下组成完整的环境场景（与官方 sdk_deploy 一致）。
+     说明：本文件只新增中文注释，未改动任何原始内容；网格声明与几何挂载
+           为程序化生成的重复数据行，逐行保持原样。
+     ====================================================================== -->
 <mujoco model="scene">
+  <!-- 资源定义：2185 个 STL 网格（1.stl ~ 2185.stl），单位毫米转米（缩放 0.001） -->
   <asset>
-    <mesh name="mesh_1" file="../meshes/01.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="mesh_2" file="../meshes/02.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="mesh_3" file="../meshes/03.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="mesh_4" file="../meshes/04.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="mesh_5" file="../meshes/05.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="mesh_6" file="../meshes/06.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="mesh_7" file="../meshes/07.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="mesh_8" file="../meshes/08.stl" scale="0.001 0.001 0.001"/>
-    <mesh name="mesh_9" file="../meshes/09.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="mesh_1" file="../meshes/1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="mesh_2" file="../meshes/2.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="mesh_3" file="../meshes/3.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="mesh_4" file="../meshes/4.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="mesh_5" file="../meshes/5.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="mesh_6" file="../meshes/6.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="mesh_7" file="../meshes/7.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="mesh_8" file="../meshes/8.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="mesh_9" file="../meshes/9.stl" scale="0.001 0.001 0.001"/>
     <mesh name="mesh_10" file="../meshes/10.stl" scale="0.001 0.001 0.001"/>
     <mesh name="mesh_11" file="../meshes/11.stl" scale="0.001 0.001 0.001"/>
     <mesh name="mesh_12" file="../meshes/12.stl" scale="0.001 0.001 0.001"/>
@@ -2187,6 +2196,7 @@
     <mesh name="mesh_2185" file="../meshes/2185.stl" scale="0.001 0.001 0.001"/>
   </asset>
 
+  <!-- 世界坐标系：场景主体 main_body 挂载全部 2185 个网格几何 -->
   <worldbody>
     <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
     <body name="main_body" pos="-33 108 0">

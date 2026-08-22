@@ -1,32 +1,33 @@
+# NavigateFloor.action — 楼层内导航动作（单目标点导航，含楼层/地图校验）
 # Goal
-string goal_id
-string floor_id
-uint64 map_generation
-geometry_msgs/PoseStamped target_pose
-float32 timeout_sec
+string goal_id                    # 导航目标 ID
+string floor_id                   # 目标楼层
+uint64 map_generation             # 目标所属地图代数
+geometry_msgs/PoseStamped target_pose  # 目标位姿（标准带时间戳位姿消息）
+float32 timeout_sec               # 导航超时时间 [s]
 ---
 # Result
-uint8 ERROR_NONE=0
-uint8 ERROR_INVALID_REQUEST=1
-uint8 ERROR_FLOOR_MISMATCH=2
-uint8 ERROR_MAP_NOT_READY=3
-uint8 ERROR_NO_ROUTE=4
-uint8 ERROR_TIMEOUT=5
-uint8 ERROR_CANCELLED=6
-uint8 ERROR_FLOOR_SWITCH=7
-uint8 ERROR_RESET_FAILED=8
-uint8 ERROR_INTERNAL=255
+uint8 ERROR_NONE=0                # 成功
+uint8 ERROR_INVALID_REQUEST=1     # 请求非法
+uint8 ERROR_FLOOR_MISMATCH=2      # 楼层不匹配（目标与当前楼层不符）
+uint8 ERROR_MAP_NOT_READY=3       # 地图未就绪
+uint8 ERROR_NO_ROUTE=4            # 无可行路径
+uint8 ERROR_TIMEOUT=5             # 导航超时
+uint8 ERROR_CANCELLED=6           # 被取消
+uint8 ERROR_FLOOR_SWITCH=7        # 导航期间发生楼层切换
+uint8 ERROR_RESET_FAILED=8        # 导航状态复位失败
+uint8 ERROR_INTERNAL=255          # 内部错误
 
-bool success
-string goal_id
-string floor_id
-uint64 map_generation
-float32 final_distance
-uint8 error_code
-string message
+bool success                      # 是否成功到达
+string goal_id                    # 返回目标 ID
+string floor_id                   # 返回楼层 ID
+uint64 map_generation             # 返回地图代数
+float32 final_distance            # 结束时的剩余距离 [m]
+uint8 error_code                  # 错误码
+string message                    # 附加说明/错误信息
 ---
 # Feedback
-string state
-float32 distance_remaining
-uint32 route_update_count
-string message
+string state                      # 导航状态（ACTIVE/ARRIVED/FAILED 等）
+float32 distance_remaining        # 剩余距离 [m]
+uint32 route_update_count         # 路径重规划次数（监控规划稳定性）
+string message                    # 附加说明

@@ -1,71 +1,80 @@
+# =============================================================================
+# f1_planner_native.yaml —— F1 场景"原生 SCAN"档的规划器参数
+# 所属模块：m20_scan_navigation / config（scan_planner_node 规划器节点）
+# 用途：原生 SCAN 模式使用。算法参数与上游 SCAN-Planner 的 planner.yaml 完全
+#       一致，仅针对 M20 机身几何、工程坐标系与受控的近目标退出做了适配。
+# 注意：/** 是 ROS2 通配节点名，表示该参数表应用到匹配的任意节点。
+# =============================================================================
 /**:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: false      # 是否使用仿真时间；false = 真机/实时
 
     # Native SCAN profile: algorithmic values match the upstream
     # plan_manage/config/planner.yaml. Only M20 geometry, project frames and
     # the controlled near-goal exit are adapted for this integration.
-    fsm.navi_mode: 1
-    fsm.thresh_replan: 1.0
-    fsm.thresh_no_replan: 0.1
-    fsm.target_reached_tolerance: 0.20
-    fsm.planning_horizon: 7.5
-    fsm.emergency_time: 1.0
-    fsm.fail_safe: true
-    fsm.max_replan_fail_count: 1000
+    # （原生 SCAN 档：算法数值与上游 plan_manage/config/planner.yaml 一致，
+    #   仅适配了 M20 几何、工程坐标系与受控的近目标退出。）
+    fsm.navi_mode: 1                 # 导航模式：1 = 目标点导航（非路径跟踪）
+    fsm.thresh_replan: 1.0           # 重规划触发阈值（米）：离参考轨迹偏差超过该值重规划
+    fsm.thresh_no_replan: 0.1        # 不重规划阈值（米）：偏差小于该值保持当前轨迹
+    fsm.target_reached_tolerance: 0.20  # 判定"到达目标"的容差（米）
+    fsm.planning_horizon: 7.5        # 规划时间/距离视野（秒或米，轨迹前瞻长度）
+    fsm.emergency_time: 1.0          # 紧急停车时间（秒）：预测到碰撞提前急停
+    fsm.fail_safe: true              # 是否启用失效保护（异常时安全停车）
+    fsm.max_replan_fail_count: 1000  # 连续重规划失败最大次数（超过进入失效保护）
 
-    grid_map.resolution: 0.05
-    grid_map.sliding_map_size_x: 10.0
-    grid_map.sliding_map_size_y: 10.0
-    grid_map.sliding_map_size_z: 5.0
-    grid_map.local_update_range_x: 5.0
-    grid_map.local_update_range_y: 5.0
-    grid_map.local_update_range_z: 2.5
-    grid_map.map_sliding_en: true
-    grid_map.map_sliding_thresh: 0.2
-    grid_map.double_cylinder_radius: 0.25
-    grid_map.double_cylinder_offset: 0.20
-    grid_map.body_height: 0.59
-    grid_map.obstacles_inflation_z_up: 0.15
-    grid_map.obstacles_inflation_z_down: 0.50
-    grid_map.frame_id: world
-    grid_map.sliding_map_frame_id: m20_sliding_map
-    grid_map.ground_height: 0.0
-    grid_map.sensor_type: lidar
-    grid_map.cloud_is_world: true
-    grid_map.need_extrinsic: false
+    grid_map.resolution: 0.05        # 占据栅格地图分辨率（米/格）
+    grid_map.sliding_map_size_x: 10.0  # 滑动地图 x 方向尺寸（米）
+    grid_map.sliding_map_size_y: 10.0  # 滑动地图 y 方向尺寸（米）
+    grid_map.sliding_map_size_z: 5.0   # 滑动地图 z 方向尺寸（米）
+    grid_map.local_update_range_x: 5.0 # 局部更新范围 x（米）：只更新机器人附近区域
+    grid_map.local_update_range_y: 5.0 # 局部更新范围 y（米）
+    grid_map.local_update_range_z: 2.5 # 局部更新范围 z（米）
+    grid_map.map_sliding_en: true     # 是否启用地图滑动（跟随机器人移动）
+    grid_map.map_sliding_thresh: 0.2  # 地图滑动触发阈值（米）：偏离中心超过该值滑动
+    grid_map.double_cylinder_radius: 0.25  # 双圆柱碰撞模型半径（米）
+    grid_map.double_cylinder_offset: 0.20  # 双圆柱轴向偏移（米）
+    grid_map.body_height: 0.59        # 机身高度（米）
+    grid_map.obstacles_inflation_z_up: 0.15   # 障碍物 z 向上膨胀量（米）
+    grid_map.obstacles_inflation_z_down: 0.50 # 障碍物 z 向下膨胀量（米）
+    grid_map.frame_id: world          # 全局地图坐标系
+    grid_map.sliding_map_frame_id: m20_sliding_map  # 滑动地图坐标系
+    grid_map.ground_height: 0.0       # 地面高度（米）
+    grid_map.sensor_type: lidar       # 传感器类型：激光雷达
+    grid_map.cloud_is_world: true     # 输入点云是否已是世界系（无需额外变换）
+    grid_map.need_extrinsic: false    # 是否需要外参标定（点云已在世界系，不需要）
 
-    grid_map.cx: 321.04638671875
-    grid_map.cy: 243.44969177246094
-    grid_map.fx: 387.229248046875
-    grid_map.fy: 387.229248046875
-    grid_map.depth_filter_maxdist: 3.0
-    grid_map.depth_filter_mindist: 0.3
-    grid_map.depth_filter_margin: 1
-    grid_map.k_depth_scaling_factor: 1000.0
-    grid_map.skip_pixel: 2
+    grid_map.cx: 321.04638671875      # 深度相机内参：主点 x（像素，兼容上游默认值）
+    grid_map.cy: 243.44969177246094   # 深度相机内参：主点 y（像素）
+    grid_map.fx: 387.229248046875     # 深度相机内参：x 方向焦距（像素）
+    grid_map.fy: 387.229248046875     # 深度相机内参：y 方向焦距（像素）
+    grid_map.depth_filter_maxdist: 3.0    # 深度图过滤：最大距离（米）
+    grid_map.depth_filter_mindist: 0.3    # 深度图过滤：最小距离（米）
+    grid_map.depth_filter_margin: 1       # 深度图过滤边界（像素）
+    grid_map.k_depth_scaling_factor: 1000.0  # 深度值缩放因子（毫米->米换算）
+    grid_map.skip_pixel: 2            # 深度图降采样步长（每隔几个像素取一个）
 
-    grid_map.p_hit: 0.85
-    grid_map.p_miss: 0.30
-    grid_map.p_min: 0.12
-    grid_map.p_max: 0.98
-    grid_map.p_occ: 0.80
-    grid_map.max_ray_length: 5.0
-    grid_map.vis_height: 0.59
-    grid_map.show_occ_time: false
+    grid_map.p_hit: 0.85              # 栅格被击中时的占用概率更新值
+    grid_map.p_miss: 0.30             # 栅格被射线穿过时的空闲概率更新值
+    grid_map.p_min: 0.12              # 栅格占用概率下限（钳制）
+    grid_map.p_max: 0.98              # 栅格占用概率上限（钳制）
+    grid_map.p_occ: 0.80              # 判定为占据的概率阈值
+    grid_map.max_ray_length: 5.0      # 射线投影最大长度（米）
+    grid_map.vis_height: 0.59         # 可视化切片高度（米）
+    grid_map.show_occ_time: false     # 是否显示占据时间信息
 
-    manager.max_vel: 0.75
-    manager.max_acc: 0.50
-    manager.max_jerk: 4.0
-    manager.control_points_distance: 0.20
-    manager.feasibility_tolerance: 0.50
-    manager.planning_horizon: 7.5
+    manager.max_vel: 0.75             # 轨迹生成最大速度（m/s）
+    manager.max_acc: 0.50             # 轨迹生成最大加速度（m/s^2）
+    manager.max_jerk: 4.0             # 轨迹生成最大加加速度（m/s^3）
+    manager.control_points_distance: 0.20  # B 样条控制点间距（米）
+    manager.feasibility_tolerance: 0.50    # 可行性检查容差（米）
+    manager.planning_horizon: 7.5     # 规划视野（与 fsm.planning_horizon 一致）
 
-    optimization.lambda_smooth: 1.0
-    optimization.lambda_collision: 1.0
-    optimization.lambda_feasibility: 0.1
-    optimization.lambda_fitness: 1.0
-    optimization.dist0: 0.20
-    optimization.max_vel: 0.75
-    optimization.max_acc: 0.50
-    optimization.order: 3
+    optimization.lambda_smooth: 1.0       # 平滑代价权重
+    optimization.lambda_collision: 1.0    # 碰撞代价权重
+    optimization.lambda_feasibility: 0.1  # 可行性代价权重
+    optimization.lambda_fitness: 1.0      # 目标贴合度代价权重
+    optimization.dist0: 0.20              # 优化器软净空距离（米）：障碍保持该距离
+    optimization.max_vel: 0.75            # 优化约束：最大速度（m/s）
+    optimization.max_acc: 0.50            # 优化约束：最大加速度（m/s^2）
+    optimization.order: 3                 # B 样条阶数（3 = 三次样条）

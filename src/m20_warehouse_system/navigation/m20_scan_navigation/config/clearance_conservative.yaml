@@ -1,18 +1,30 @@
-scan_planner_node:
+# =============================================================================
+# clearance_conservative.yaml —— "保守"净空档参数
+# 所属模块：m20_scan_navigation / config
+# 用途：SCAN 规划参数与厂商项目完全一致（0.25/0.18/0.20），额外的 0.05 米
+#       执行余量由独立指令守卫负责（见 m20_collision_guard 段）。标称直线
+#       净空 0.90 米。本档侧重安全余量而非窄通道通过性。
+# =============================================================================
+scan_planner_node:            # SCAN 规划器节点参数段
   ros__parameters:
     # Keep SCAN planning identical to the vendored project.  The independent
     # command guard below owns the additional 0.05 m execution margin.
-    grid_map.double_cylinder_radius: 0.25
-    grid_map.double_cylinder_offset: 0.18
-    optimization.dist0: 0.20
+    # （SCAN 规划与厂商项目保持完全一致；下方独立指令守卫负责额外的 0.05 米
+    #   执行余量。）
+    grid_map.double_cylinder_radius: 0.25   # 双圆柱碰撞模型半径（米）
+    grid_map.double_cylinder_offset: 0.18   # 双圆柱轴向偏移（米）
+    optimization.dist0: 0.20                # 优化器软净空（米）
 
-m20_collision_guard:
+m20_collision_guard:          # 在线碰撞守卫节点参数段
   ros__parameters:
-    footprint_radius: 0.25
-    footprint_offset: 0.18
-    safety_margin: 0.05
+    footprint_radius: 0.25    # 守卫足迹半径（米）
+    footprint_offset: 0.18    # 守卫足迹轴向偏移（米）
+    safety_margin: 0.05       # 安全余量（米）：0.25+0.05 -> 硬停半径 0.30m
     # The measured worst MuJoCo stop travel is 0.156 m. At the 0.45 m/s
     # command limit this 0.70 s horizon still previews 0.315 m, while
     # avoiding the one-second constant-turn extrapolation deadlock around
     # isolated obstacle corners.
-    lookahead_sec: 0.70
+    # （实测 MuJoCo 最差停车滑行距离为 0.156 米；在 0.45 m/s 指令上限下，
+    #   0.70 秒前瞻仍能预判 0.315 米，同时避免孤立障碍角点处一秒恒定转向
+    #   外推导致的死锁。）
+    lookahead_sec: 0.70       # 守卫前瞻时间（秒）

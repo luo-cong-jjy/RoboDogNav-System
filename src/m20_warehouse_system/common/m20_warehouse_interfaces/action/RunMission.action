@@ -1,21 +1,22 @@
+# RunMission.action — 运行仓库巡检任务动作（跨楼层多步骤任务执行）
 # Goal
-string mission_id
-bool restart
+string mission_id         # 任务 ID
+bool restart              # 是否从零重启任务（false = 从上次中断处继续）
 ---
 # Result
-uint8 ERROR_NONE=0
-uint8 ERROR_INVALID_REQUEST=1
-uint8 ERROR_NAVIGATION=2
-uint8 ERROR_FLOOR_SWITCH=3
-uint8 ERROR_STOPPED=4
-uint8 ERROR_CANCELLED=5
-uint8 ERROR_INTERNAL=255
+uint8 ERROR_NONE=0            # 成功
+uint8 ERROR_INVALID_REQUEST=1 # 请求非法
+uint8 ERROR_NAVIGATION=2      # 导航环节失败
+uint8 ERROR_FLOOR_SWITCH=3    # 楼层切换环节失败
+uint8 ERROR_STOPPED=4         # 任务被停止
+uint8 ERROR_CANCELLED=5       # 任务被取消
+uint8 ERROR_INTERNAL=255      # 内部错误
 
-bool success
-string mission_id
-uint32 completed_steps
-uint8 error_code
-string message
+bool success              # 是否成功完成
+string mission_id         # 任务 ID
+uint32 completed_steps    # 已完成的步骤数
+uint8 error_code          # 错误码
+string message            # 附加说明/错误信息
 ---
 # Feedback
-m20_warehouse_interfaces/MissionState state
+m20_warehouse_interfaces/MissionState state  # 任务状态（复用 MissionState 消息）

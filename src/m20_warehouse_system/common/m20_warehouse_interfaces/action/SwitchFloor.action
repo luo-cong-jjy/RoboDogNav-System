@@ -1,28 +1,29 @@
-# Goal
-string source_floor
-string target_floor
-string elevator_id
+# SwitchFloor.action — 跨楼层切换动作（协调导航/停稳/切图/位姿转移全流程）
+# Goal（目标：请求跨楼层切换）
+string source_floor       # 源楼层 ID（当前所在楼层）
+string target_floor       # 目标楼层 ID（要切换到的楼层）
+string elevator_id        # 使用的电梯/转运设备 ID
 ---
-# Result
-uint8 ERROR_NONE=0
-uint8 ERROR_INVALID_REQUEST=1
-uint8 ERROR_NOT_AT_TRIGGER=2
-uint8 ERROR_STOP_TIMEOUT=3
-uint8 ERROR_NAVIGATION_RESET=4
-uint8 ERROR_MAP_SWITCH=5
-uint8 ERROR_POSE_TRANSFER=6
-uint8 ERROR_SENSING_TIMEOUT=7
-uint8 ERROR_CANCELLED=8
-uint8 ERROR_TRANSFER=9
-uint8 ERROR_INTERNAL=255
+# Result（结果：切换是否成功及错误码）
+uint8 ERROR_NONE=0               # 成功
+uint8 ERROR_INVALID_REQUEST=1    # 请求非法（参数错误等）
+uint8 ERROR_NOT_AT_TRIGGER=2     # 机器人未到达楼层切换触发点
+uint8 ERROR_STOP_TIMEOUT=3       # 机器人停稳超时
+uint8 ERROR_NAVIGATION_RESET=4   # 导航状态复位失败
+uint8 ERROR_MAP_SWITCH=5         # 楼层地图切换失败
+uint8 ERROR_POSE_TRANSFER=6      # 跨楼层位姿转移失败
+uint8 ERROR_SENSING_TIMEOUT=7    # 新楼层局部感知数据超时
+uint8 ERROR_CANCELLED=8          # 动作被取消
+uint8 ERROR_TRANSFER=9           # 转运执行失败（电梯等）
+uint8 ERROR_INTERNAL=255         # 内部错误
 
-bool success
-string active_floor
-uint64 map_generation
-uint8 error_code
-string message
+bool success               # 是否成功
+string active_floor        # 切换完成后的激活楼层
+uint64 map_generation      # 切换后的地图代数
+uint8 error_code           # 错误码（失败时）
+string message             # 附加说明/错误信息
 ---
-# Feedback
-string phase
-uint64 map_generation
-string message
+# Feedback（反馈：切换过程中的阶段进度）
+string phase               # 当前阶段（如 APPROACH/STOP/TRANSFER/MAP_SWITCH/POSE/READY）
+uint64 map_generation      # 当前地图代数
+string message             # 附加说明

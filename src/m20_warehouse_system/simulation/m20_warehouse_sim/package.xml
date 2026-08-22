@@ -1,30 +1,59 @@
 <?xml version="1.0"?>
+<!-- ======================================================================
+     package.xml —— m20_warehouse_sim 包的 ROS2 包描述文件（manifest，中文注释版）
+     功能：声明包的名称、版本、描述、维护者、许可证与编译/运行/测试依赖
+     说明：本文件只新增中文注释，未改动任何原始标签与内容
+     ====================================================================== -->
 <package format="3">
+  <!-- 包名：m20_warehouse_sim -->
   <name>m20_warehouse_sim</name>
+  <!-- 版本号 -->
   <version>0.4.0</version>
+  <!-- 包功能描述：M20 仓库系统的纯 RViz 平面运动学仿真后端 -->
   <description>RViz-only planar kinematic backend for the M20 warehouse system.</description>
+  <!-- 维护者：Virdyn Robotics -->
   <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
+  <!-- 许可证类型：Apache-2.0 -->
   <license>Apache-2.0</license>
 
+  <!-- 构建工具依赖：ament_cmake（ROS2 CMake 构建工具） -->
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- 构建工具依赖：ament_cmake_python（Python 包安装支持） -->
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
+  <!-- ==================== 运行期依赖（exec_depend） ==================== -->
+  <!-- geometry_msgs：PoseStamped / TransformStamped / Twist 消息 -->
   <exec_depend>geometry_msgs</exec_depend>
+  <!-- 自定义接口消息包：SetSimulationPose 服务定义 -->
   <exec_depend>m20_warehouse_interfaces</exec_depend>
+  <!-- nav_msgs：Odometry（里程计）/ Path（轨迹）消息 -->
   <exec_depend>nav_msgs</exec_depend>
+  <!-- ROS2 Python 客户端库：节点/话题/服务/参数 -->
   <exec_depend>rclpy</exec_depend>
+  <!-- sensor_msgs：JointState（关节状态）消息 -->
   <exec_depend>sensor_msgs</exec_depend>
+  <!-- std_msgs：Bool 等基础消息 -->
   <exec_depend>std_msgs</exec_depend>
+  <!-- tf2_ros：TransformBroadcaster（TF 变换广播） -->
   <exec_depend>tf2_ros</exec_depend>
 
+  <!-- ==================== 测试依赖（test_depend） ==================== -->
+  <!-- ament pytest 测试支持 -->
   <test_depend>ament_cmake_pytest</test_depend>
+  <!-- Python 代码风格检查（flake8） -->
   <test_depend>ament_flake8</test_depend>
+  <!-- ament 自动 lint 测试框架 -->
   <test_depend>ament_lint_auto</test_depend>
+  <!-- ament 通用 lint 检查 -->
   <test_depend>ament_lint_common</test_depend>
+  <!-- Python docstring 规范检查（pep257） -->
   <test_depend>ament_pep257</test_depend>
+  <!-- Python 测试框架：pytest -->
   <test_depend>python3-pytest</test_depend>
 
+  <!-- 导出配置区 -->
   <export>
+    <!-- 构建类型：ament_cmake -->
     <build_type>ament_cmake</build_type>
   </export>
 </package>

@@ -1,28 +1,31 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>m20_official_description</name>
-  <version>0.2.0</version>
+  <name>m20_official_description</name>   <!-- 包名：M20 官方模型描述（ROS2 封装） -->
+  <version>0.2.0</version>                <!-- 版本号 -->
   <description>
     ROS 2 wrapper around the official Deep Robotics M20 URDF and mesh assets.
   </description>
-  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
-  <license>BSD-3-Clause</license>
+  <!-- 描述：围绕 Deep Robotics 官方 M20 URDF 与网格资源的 ROS2 封装包 -->
+  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>  <!-- 维护者 -->
+  <license>BSD-3-Clause</license>         <!-- 许可证 -->
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>  <!-- 构建工具：ament_cmake -->
 
-  <exec_depend>joint_state_publisher</exec_depend>
-  <exec_depend>launch</exec_depend>
-  <exec_depend>launch_ros</exec_depend>
-  <exec_depend>robot_state_publisher</exec_depend>
-  <exec_depend>rviz2</exec_depend>
-  <exec_depend>xacro</exec_depend>
+  <!-- 运行期依赖（用于 display.launch.py 显示模型） -->
+  <exec_depend>joint_state_publisher</exec_depend>  <!-- 关节状态发布 -->
+  <exec_depend>launch</exec_depend>                 <!-- launch 框架 -->
+  <exec_depend>launch_ros</exec_depend>             <!-- ROS2 launch 节点动作 -->
+  <exec_depend>robot_state_publisher</exec_depend>  <!-- TF 树发布 -->
+  <exec_depend>rviz2</exec_depend>                  <!-- 可视化 -->
+  <exec_depend>xacro</exec_depend>                  <!-- xacro 宏展开 -->
 
-  <test_depend>ament_cmake_pytest</test_depend>
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <!-- 测试依赖 -->
+  <test_depend>ament_cmake_pytest</test_depend>     <!-- pytest 构建集成 -->
+  <test_depend>ament_lint_auto</test_depend>        <!-- 自动 lint -->
+  <test_depend>ament_lint_common</test_depend>      <!-- 通用 lint 规则 -->
+  <test_depend>python3-pytest</test_depend>         <!-- Python pytest -->
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_cmake</build_type>  <!-- 构建类型 -->
   </export>
 </package>

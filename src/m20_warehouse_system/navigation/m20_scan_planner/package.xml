@@ -1,45 +1,58 @@
 <?xml version="1.0"?>
 <package format="3">
+  <!-- ============================================================
+       本文件：m20_scan_planner 包的 package.xml（ROS 2 包清单）
+       职责：声明包的元信息（名称/版本/描述/维护者/许可证），以及
+       构建依赖（buildtool_depend）、运行依赖（depend/exec_depend）
+       与测试依赖（test_depend），供 colcon/rosdep 解析依赖关系。
+       ============================================================ -->
   <name>m20_scan_planner</name>
   <version>0.2.0</version>
   <description>M20-adapted SCAN-Planner ROS 2 nodes, controllers, launch and configuration.</description>
+  <!-- 描述：面向 M20 四足机器人适配的 SCAN-Planner ROS 2 节点、控制器、启动文件与配置 -->
   <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
   <license>Apache-2.0</license>
 
+  <!-- ============ 构建工具依赖 ============ -->
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- ============ 编译期+运行期依赖（C++ 库/消息包） ============ -->
   <depend>ament_index_cpp</depend>
   <exec_depend>ament_index_python</exec_depend>
-  <depend>bspline_opt</depend>
-  <depend>eigen</depend>
-  <depend>geometry_msgs</depend>
-  <depend>m20_warehouse_interfaces</depend>
-  <depend>nav_msgs</depend>
-  <depend>path_searching</depend>
-  <depend>plan_env</depend>
-  <depend>rclcpp</depend>
-  <depend>rclpy</depend>
-  <depend>scan_planner_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>std_msgs</depend>
-  <depend>tf2</depend>
-  <depend>tf2_geometry_msgs</depend>
-  <depend>tf2_ros</depend>
-  <depend>traj_utils</depend>
-  <depend>visualization_msgs</depend>
+  <depend>bspline_opt</depend> <!-- B 样条轨迹优化 -->
+  <depend>eigen</depend> <!-- Eigen 线性代数 -->
+  <depend>geometry_msgs</depend> <!-- 几何消息 -->
+  <depend>m20_warehouse_interfaces</depend> <!-- M20 自定义消息接口 -->
+  <depend>nav_msgs</depend> <!-- 导航消息（Odometry/Path） -->
+  <depend>path_searching</depend> <!-- 路径搜索库 -->
+  <depend>plan_env</depend> <!-- 规划环境 -->
+  <depend>rclcpp</depend> <!-- ROS 2 C++ 客户端库 -->
+  <depend>rclpy</depend> <!-- ROS 2 Python 客户端库（脚本使用） -->
+  <depend>scan_planner_msgs</depend> <!-- SCAN-Planner 自定义消息 -->
+  <depend>sensor_msgs</depend> <!-- 传感器消息 -->
+  <depend>std_msgs</depend> <!-- 标准消息 -->
+  <depend>tf2</depend> <!-- TF2 基础库 -->
+  <depend>tf2_geometry_msgs</depend> <!-- TF2 几何消息转换 -->
+  <depend>tf2_ros</depend> <!-- TF2 ROS 接口 -->
+  <depend>traj_utils</depend> <!-- 轨迹工具 -->
+  <depend>visualization_msgs</depend> <!-- 可视化消息 -->
 
-  <exec_depend>m20_official_description</exec_depend>
-  <exec_depend>launch</exec_depend>
-  <exec_depend>launch_ros</exec_depend>
-  <exec_depend>local_sensing_node</exec_depend>
-  <exec_depend>map_generator</exec_depend>
-  <exec_depend>mockamap</exec_depend>
-  <exec_depend>odom_visualization</exec_depend>
-  <exec_depend>python3-numpy</exec_depend>
-  <exec_depend>robot_state_publisher</exec_depend>
-  <exec_depend>rviz2</exec_depend>
-  <exec_depend>xacro</exec_depend>
-  <test_depend>launch_testing_ament_cmake</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <!-- ============ 纯运行期依赖（仿真/可视化/工具包） ============ -->
+  <exec_depend>m20_official_description</exec_depend> <!-- M20 官方机器人描述（URDF/xacro） -->
+  <exec_depend>launch</exec_depend> <!-- launch 框架 -->
+  <exec_depend>launch_ros</exec_depend> <!-- launch 的 ROS 2 支持 -->
+  <exec_depend>local_sensing_node</exec_depend> <!-- 局部感知节点（建图/障碍感知） -->
+  <exec_depend>map_generator</exec_depend> <!-- 地图生成器 -->
+  <exec_depend>mockamap</exec_depend> <!-- mockamap 仿真地图包 -->
+  <exec_depend>odom_visualization</exec_depend> <!-- 里程计可视化 -->
+  <exec_depend>python3-numpy</exec_depend> <!-- Python numpy（脚本依赖） -->
+  <exec_depend>robot_state_publisher</exec_depend> <!-- 机器人状态发布 -->
+  <exec_depend>rviz2</exec_depend> <!-- RViz2 可视化 -->
+  <exec_depend>xacro</exec_depend> <!-- xacro 宏展开工具 -->
 
+  <!-- ============ 测试依赖 ============ -->
+  <test_depend>launch_testing_ament_cmake</test_depend> <!-- launch 测试框架 -->
+  <test_depend>python3-pytest</test_depend> <!-- pytest 测试框架 -->
+
+  <!-- 构建类型：ament_cmake（CMake 构建的 ROS 2 包） -->
   <export><build_type>ament_cmake</build_type></export>
 </package>

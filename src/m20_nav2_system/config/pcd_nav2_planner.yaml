@@ -1,0 +1,46 @@
+# =============================================================================
+# pcd_nav2_planner.yaml
+# 所属模块：基于 PCD 点云地图的 Nav2 纯规划/全局代价地图配置
+# 用途：由 pcd_to_occupancy_grid 生成的地图（PGM/YAML）加载为静态地图，
+#       仅运行 map_server + planner_server + global_costmap，用于离线/纯规划
+#       场景（如 grid_astar_planner 或路径预览），不运行控制器与里程计。
+# =============================================================================
+map_server:                        # Nav2 地图服务节点
+  ros__parameters:
+    use_sim_time: false            # 是否使用仿真时间；false = 真机/离线
+    yaml_filename: ""              # 地图 YAML 路径；留空则由 launch 文件动态传入
+
+planner_server:                    # Nav2 全局路径规划节点
+  ros__parameters:
+    use_sim_time: false
+    expected_planner_frequency: 1.0        # 期望规划频率（Hz），低于此值会告警
+    planner_plugins: [GridBased]           # 启用插件列表：栅格全局规划器
+    GridBased:                             # 插件配置块
+      plugin: nav2_navfn_planner/NavfnPlanner  # Navfn 全局规划算法插件
+      tolerance: 0.5                        # 规划容差（米）：终点无法到达时找最近可达点
+      use_astar: false                      # 是否用 A* 算法（false = 用 NavFn 波前算法）
+      allow_unknown: true                   # 允许路径穿过未知区域（代价更高）
+
+global_costmap:                    # 全局代价地图（map 系，用于全局规划）
+  global_costmap:                  # costmap 双层命名空间固定层级
+    ros__parameters:
+      use_sim_time: false
+      update_frequency: 1.0                 # 代价地图更新频率（Hz）
+      publish_frequency: 1.0                # 代价地图可视化发布频率（Hz）
+      global_frame: map                     # 全局地图坐标系
+      robot_base_frame: base_link           # 机器人本体坐标系
+      transform_tolerance: 0.5              # TF 变换容差（秒）
+      robot_radius: 0.30                    # 机器人圆形足迹半径（米）
+      resolution: 0.20                      # 代价地图分辨率（米/格），PCD 地图较粗
+      track_unknown_space: true             # 是否把未知区域计入代价计算
+      always_send_full_costmap: true        # 始终发送完整代价地图（便于可视化/调试）
+      plugins: [static_layer, inflation_layer]  # 图层：静态地图 + 膨胀
+
+      static_layer:                         # 静态地图层：加载 PG M/YAML 地图
+        plugin: nav2_costmap_2d::StaticLayer
+        map_subscribe_transient_local: true # 使用 transient_local QoS 接收地图（迟到订阅也能收到）
+
+      inflation_layer:                      # 膨胀层：把障碍物向外膨胀
+        plugin: nav2_costmap_2d::InflationLayer
+        inflation_radius: 0.50              # 膨胀半径（米），障碍物周围禁行/高代价区域
+        cost_scaling_factor: 3.0            # 代价衰减系数（越大衰减越快，路径越贴障碍）

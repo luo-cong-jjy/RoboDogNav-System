@@ -1,37 +1,49 @@
 <?xml version="1.0"?>
+<!-- ============================================================================
+     【中文注释】本文件职责说明（中文注释工程新增，原代码未改动）
+     文件名：package.xml
+     所属：m20_locomotion_control —— M20 运动控制包清单（ROS 2 package.xml format 3）
+     核心职责：声明包的元信息、构建工具依赖、运行依赖与测试依赖。
+       - 构建工具：ament_cmake / ament_cmake_python；
+       - 运行依赖：几何/消息/启动/导航等消息库、rclpy、厂商 drdds 消息、
+         scan_planner_msgs、python3-yaml；
+       - 测试依赖：ament pytest / lint / flake8 / pep257。
+     ============================================================================ -->
 <package format="3">
-  <name>m20_locomotion_control</name>
-  <version>0.1.0</version>
+  <name>m20_locomotion_control</name>         <!-- 包名 -->
+  <version>0.1.0</version>                    <!-- 版本号 -->
   <description>
     Safety-preserving motion-intent adapter between warehouse navigation and
     the Deep Robotics M20 RL deployment controller.
+    <!-- 中文注释：位于仓库导航与 Deep Robotics M20 RL 部署控制器之间的、
+         保持安全的运动意图适配器。 -->
   </description>
-  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
-  <license>Apache-2.0</license>
+  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>  <!-- 维护者 -->
+  <license>Apache-2.0</license>               <!-- 许可证 -->
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>          <!-- 构建工具依赖 -->
+  <buildtool_depend>ament_cmake_python</buildtool_depend>   <!-- Python 包构建支持 -->
 
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>drdds</exec_depend>
-  <exec_depend>ament_index_python</exec_depend>
-  <exec_depend>launch</exec_depend>
-  <exec_depend>launch_ros</exec_depend>
-  <exec_depend>nav_msgs</exec_depend>
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>scan_planner_msgs</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>std_srvs</exec_depend>
-  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>          <!-- 几何消息（Twist 等） -->
+  <exec_depend>drdds</exec_depend>                  <!-- 厂商 DrDDS 消息 -->
+  <exec_depend>ament_index_python</exec_depend>     <!-- 包共享目录查找 -->
+  <exec_depend>launch</exec_depend>                 <!-- launch 框架 -->
+  <exec_depend>launch_ros</exec_depend>             <!-- launch ROS 扩展 -->
+  <exec_depend>nav_msgs</exec_depend>               <!-- 导航消息（Odometry 等） -->
+  <exec_depend>rclpy</exec_depend>                  <!-- ROS2 Python 客户端库 -->
+  <exec_depend>scan_planner_msgs</exec_depend>      <!-- SCAN 规划器消息（Bspline 等） -->
+  <exec_depend>std_msgs</exec_depend>               <!-- 标准消息（Bool/String） -->
+  <exec_depend>std_srvs</exec_depend>               <!-- 标准服务（SetBool 等） -->
+  <exec_depend>python3-yaml</exec_depend>           <!-- PyYAML（能力配置解析） -->
 
-  <test_depend>ament_cmake_pytest</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>  <!-- pytest 测试支持 -->
+  <test_depend>ament_flake8</test_depend>        <!-- flake8 风格检查 -->
+  <test_depend>ament_lint_auto</test_depend>     <!-- 自动 lint -->
+  <test_depend>ament_lint_common</test_depend>   <!-- 通用 lint 规则 -->
+  <test_depend>ament_pep257</test_depend>        <!-- docstring 规范检查 -->
+  <test_depend>python3-pytest</test_depend>      <!-- Python pytest -->
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_cmake</build_type>  <!-- 构建类型 -->
   </export>
 </package>

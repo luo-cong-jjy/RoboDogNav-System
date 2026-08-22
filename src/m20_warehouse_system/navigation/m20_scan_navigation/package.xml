@@ -1,34 +1,45 @@
 <?xml version="1.0"?>
+<!-- =========================================================================
+     package.xml —— m20_scan_navigation 包清单
+     所属模块：m20_warehouse_system / navigation / m20_scan_navigation
+     职责：围绕 m20_scan_planner（SCAN 算法镜像包）提供类型化导航网关与可选
+           网格路线适配器；声明构建/运行/测试依赖。
+     ========================================================================= -->
 <package format="3">
   <name>m20_scan_navigation</name>
   <version>0.7.0</version>
   <description>
     Typed navigation and optional grid-route adapters around m20_scan_planner.
+    <!-- 围绕 m20_scan_planner 的类型化导航与可选网格路线适配器。 -->
   </description>
   <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
   <license>Apache-2.0</license>
 
+  <!-- 构建工具依赖 -->
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
-  <depend>geometry_msgs</depend>
-  <depend>m20_warehouse_interfaces</depend>
-  <depend>nav_msgs</depend>
-  <depend>std_msgs</depend>
+  <!-- 编译期/接口依赖：消息与接口定义 -->
+  <depend>geometry_msgs</depend>               <!-- PoseStamped 等几何消息 -->
+  <depend>m20_warehouse_interfaces</depend>    <!-- NavigateFloor action / FloorState 等 -->
+  <depend>nav_msgs</depend>                    <!-- Odometry 里程计消息 -->
+  <depend>std_msgs</depend>                    <!-- Bool / String 等标准消息 -->
 
-  <exec_depend>ament_index_python</exec_depend>
-  <exec_depend>launch</exec_depend>
-  <exec_depend>launch_ros</exec_depend>
-  <exec_depend>local_sensing_node</exec_depend>
-  <exec_depend>m20_scan_planner</exec_depend>
-  <exec_depend>python3-numpy</exec_depend>
-  <exec_depend>python3-yaml</exec_depend>
-  <exec_depend>rclpy</exec_depend>
+  <!-- 运行期依赖 -->
+  <exec_depend>ament_index_python</exec_depend>     <!-- 包共享目录查询 -->
+  <exec_depend>launch</exec_depend>                 <!-- launch 框架 -->
+  <exec_depend>launch_ros</exec_depend>             <!-- launch ROS2 扩展 -->
+  <exec_depend>local_sensing_node</exec_depend>     <!-- 局部感知（点云渲染）节点 -->
+  <exec_depend>m20_scan_planner</exec_depend>       <!-- SCAN 规划器/控制器（算法核心） -->
+  <exec_depend>python3-numpy</exec_depend>          <!-- NumPy -->
+  <exec_depend>python3-yaml</exec_depend>           <!-- PyYAML（读取配置/净空） -->
+  <exec_depend>rclpy</exec_depend>                  <!-- ROS2 Python 客户端 -->
 
-  <test_depend>ament_cmake_pytest</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <!-- 测试依赖 -->
+  <test_depend>ament_cmake_pytest</test_depend>     <!-- ament pytest 集成 -->
+  <test_depend>python3-pytest</test_depend>         <!-- pytest 框架 -->
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_cmake</build_type>   <!-- 构建类型：ament_cmake（混合 Python 安装） -->
   </export>
 </package>

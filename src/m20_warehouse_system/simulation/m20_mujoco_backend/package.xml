@@ -1,4 +1,13 @@
 <?xml version="1.0"?>
+<!-- ============================================================
+     文件：package.xml
+     用途：m20_mujoco_backend 的 ROS2 包清单（format 3）。
+           - 描述：M20 的 MuJoCo 动力学后端与同源仓库碰撞世界生成器；
+           - 构建工具：ament_cmake / ament_cmake_python；
+           - 运行依赖：drdds（SDK 消息）、m20_official_description
+             （网格模型）、常用 ROS 接口消息与 Python 库；
+           - 测试依赖：pytest、flake8、lint、pep257。
+     ============================================================ -->
 <package format="3">
   <name>m20_mujoco_backend</name>
   <version>0.1.0</version>
@@ -8,9 +17,11 @@
   <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
   <license>Apache-2.0</license>
 
+  <!-- 构建工具依赖：ament cmake 及 Python 包安装支持。 -->
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
+  <!-- 运行依赖：索引/launch 工具、SDK 自定义消息、标准 ROS 消息与 TF。 -->
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>drdds</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
@@ -18,6 +29,7 @@
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>m20_official_description</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
+  <!-- Python 运行库：numpy（数值）、pip（mujoco 安装）、yaml（配置解析）。 -->
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-pip</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
@@ -26,6 +38,7 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
 
+  <!-- 测试依赖：pytest 与 ament 代码规范检查。 -->
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_lint_auto</test_depend>
@@ -34,6 +47,7 @@
   <test_depend>python3-pytest</test_depend>
 
   <export>
+    <!-- ament_cmake 构建类型（配合 ament_python_install_package）。 -->
     <build_type>ament_cmake</build_type>
   </export>
 </package>

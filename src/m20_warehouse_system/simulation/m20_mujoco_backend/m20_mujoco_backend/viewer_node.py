@@ -12,6 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ============================================================
+# 文件：viewer_node.py
+# 用途：M20 MuJoCo「只读显示进程」（节点名 m20_mujoco_viewer）。
+#       - 独立于物理后端进程运行：订阅 /m20/sim/body_pose（Odometry）
+#         与 /joint_states（JointState），把 ROS 状态镜像到一个
+#         「不推进物理」的 MuJoCo 模型中用于 3D 显示；
+#       - 自带 GLFW 窗口与鼠标旋转/缩放/滚轮控制，按 max_fps 限帧，
+#         GUI 卡顿不会阻塞 1kHz 物理循环（见 run() 的独立节拍）；
+#       - 支持 low_cost_render（关闭阴影/反射/抗锯齿），
+#         仅影响显示副本，不影响物理模型；
+#       - 由 launch 以 nice -n 10 低优先级启动，仅供诊断观察。
+# ============================================================
+
 """Display a read-only M20 MuJoCo replica outside the physics process."""
 
 from __future__ import annotations
@@ -39,6 +52,13 @@ class M20MujocoViewer(Node):
 
     def __init__(self) -> None:
         super().__init__('m20_mujoco_viewer')
+        # ---------- 参数声明 ----------
+        # model_xml_path：world_generator 生成的世界文件路径（必填）
+        # pose_topic / joint_states_topic：订阅的位姿与关节话题
+        # follow_body：跟随的机体（默认 base_link）
+        # distance/azimuth/elevation：跟随相机初始参数
+        # max_fps：显示帧率上限；low_cost_render：低开销渲染开关
+        # initial_x/y/z/yaw：冷启动位姿
         self.declare_parameter('model_xml_path', '')
         self.declare_parameter('pose_topic', '/m20/sim/body_pose')
         self.declare_parameter('joint_states_topic', '/joint_states')
@@ -53,6 +73,7 @@ class M20MujocoViewer(Node):
         self.declare_parameter('initial_z', 0.20)
         self.declare_parameter('initial_yaw', 0.0)
 
+        # 加载世界模型（由 launch 生成的 MJCF 文件）。
         model_path = Path(
             str(self.get_parameter('model_xml_path').value)
         ).expanduser()
@@ -67,11 +88,14 @@ class M20MujocoViewer(Node):
         if self._low_cost_render:
             # These settings affect only the read-only display replica.  The
             # physical model keeps its original contacts and materials.
+            # 低开销渲染：只修改显示副本，关闭阴影、反射、抗锯齿，
+            # 物理模型保持原有接触与材质不变。
             self._model.light_castshadow[:] = 0
             self._model.mat_reflectance[:] = 0.0
             self._model.vis.quality.shadowsize = 0
             self._model.vis.quality.offsamples = 0
         self._data = mujoco.MjData(self._model)
+        # 冷启动位姿：自由关节 qpos 布局为 [x, y, z, quat(wxyz), 关节角×16]。
         self._data.qpos[:] = 0.0
         self._data.qpos[0] = float(
             self.get_parameter('initial_x').value
@@ -87,6 +111,7 @@ class M20MujocoViewer(Node):
         )
         self._data.qpos[7:23] = JOINT_INITIAL_POSITION
 
+        # 解析跟随机体 id（用于相机 lookat 跟踪）。
         body_name = str(self.get_parameter('follow_body').value)
         self._body_id = mujoco.mj_name2id(
             self._model,
@@ -97,6 +122,7 @@ class M20MujocoViewer(Node):
             raise RuntimeError(
                 f'MuJoCo viewer follow body does not exist: {body_name}'
             )
+        # 建立「关节名 → qpos 地址」映射，供关节回调直接写入。
         self._joint_qpos = {}
         for name in JOINT_NAMES:
             joint_id = mujoco.mj_name2id(
@@ -113,6 +139,8 @@ class M20MujocoViewer(Node):
                 'MuJoCo viewer could not resolve all official M20 joints'
             )
 
+        # 位姿与关节话题都用 BEST_EFFORT + depth=1 的 QOS，
+        # 显示进程允许丢帧，不需要可靠传输。
         qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -129,6 +157,7 @@ class M20MujocoViewer(Node):
             self._joint_callback,
             qos,
         )
+        # 帧周期：1 / max_fps（最小 1fps）。
         self._frame_period = 1.0 / max(
             1.0,
             float(self.get_parameter('max_fps').value),
@@ -149,6 +178,7 @@ class M20MujocoViewer(Node):
 
     def _open_window(self) -> None:
         """Create a frame-capped MuJoCo OpenGL window on this thread."""
+        # 初始化 GLFW 并创建 960×720 窗口（不开 MSAA）。
         if not glfw.init():
             raise RuntimeError('GLFW initialization failed')
         glfw.window_hint(glfw.SAMPLES, 0)
@@ -165,18 +195,22 @@ class M20MujocoViewer(Node):
         glfw.make_context_current(self._window)
         # Avoid an unconstrained native render thread.  The ROS render loop
         # below is the only owner of swap_buffers and enforces max_fps.
+        # 垂直同步 1：渲染循环是 swap_buffers 的唯一所有者并按 max_fps 限帧。
         glfw.swap_interval(1)
 
+        # 初始化 MuJoCo 相机/渲染选项/场景/渲染上下文。
         self._camera = mujoco.MjvCamera()
         self._option = mujoco.MjvOption()
         mujoco.mjv_defaultCamera(self._camera)
         mujoco.mjv_defaultOption(self._option)
+        # 关闭 geomgroup[1]（碰撞体组），显示时只画外观组。
         self._option.geomgroup[1] = 0
         self._scene = mujoco.MjvScene(self._model, maxgeom=10000)
         self._render_context = mujoco.MjrContext(
             self._model,
             mujoco.mjtFontScale.mjFONTSCALE_150.value,
         )
+        # 自由相机 + 手动 lookat 跟踪（不用 TRACKING 模式，避免平滑滞后）。
         self._camera.type = mujoco.mjtCamera.mjCAMERA_FREE
         self._camera.trackbodyid = -1
         self._camera.distance = max(
@@ -194,6 +228,7 @@ class M20MujocoViewer(Node):
             ),
         )
         self._camera.lookat[:] = self._data.xpos[self._body_id]
+        # 注册鼠标/滚轮/键盘回调，支持原生旋转缩放。
         self._last_cursor = glfw.get_cursor_pos(self._window)
         glfw.set_cursor_pos_callback(self._window, self._cursor_callback)
         glfw.set_scroll_callback(self._window, self._scroll_callback)
@@ -201,6 +236,8 @@ class M20MujocoViewer(Node):
 
     def _cursor_callback(self, window, x_position, y_position) -> None:
         """Keep native rotate and zoom controls without viewer side panels."""
+        # 鼠标拖拽控制：右键=平移（Shift 切换水平/垂直）、
+        # 左键=旋转、中键=缩放；无按键按下时直接返回。
         last_x, last_y = self._last_cursor
         self._last_cursor = (x_position, y_position)
         left = glfw.get_mouse_button(
@@ -235,6 +272,7 @@ class M20MujocoViewer(Node):
             )
         else:
             action = mujoco.mjtMouse.mjMOUSE_ZOOM
+        # 位移量除以窗口高度归一化，再交给 mjv_moveCamera 处理。
         _, height = glfw.get_window_size(window)
         scale = max(1, height)
         mujoco.mjv_moveCamera(
@@ -248,6 +286,7 @@ class M20MujocoViewer(Node):
 
     def _scroll_callback(self, _window, _x_offset, y_offset) -> None:
         """Zoom the direct-follow camera with the mouse wheel."""
+        # 滚轮缩放：每格 y_offset 缩放 -5%。
         mujoco.mjv_moveCamera(
             self._model,
             mujoco.mjtMouse.mjMOUSE_ZOOM,
@@ -259,10 +298,15 @@ class M20MujocoViewer(Node):
 
     def _key_callback(self, window, key, _scan, action, _mods) -> None:
         """Close the diagnostic viewer with Escape."""
+        # 按 Esc 关闭窗口。
         if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
             glfw.set_window_should_close(window, True)
 
     def _pose_callback(self, message: Odometry) -> None:
+        # 位姿回调：把 Odometry 的位姿写入 qpos。
+        # 校验所有分量有限后：
+        #   qpos[0:3]  = 位置
+        #   ROS 四元数是 xyzw，MuJoCo 自由关节是 wxyz，需交换顺序。
         pose = message.pose.pose
         values = (
             pose.position.x,
@@ -286,6 +330,7 @@ class M20MujocoViewer(Node):
         self._dirty = True
 
     def _joint_callback(self, message: JointState) -> None:
+        # 关节回调：按名称把 JointState 位置写入对应 qpos 地址（若存在且有限）。
         for name, position in zip(message.name, message.position):
             address = self._joint_qpos.get(name)
             if address is not None and math.isfinite(float(position)):
@@ -293,6 +338,8 @@ class M20MujocoViewer(Node):
                 self._dirty = True
 
     def _render(self) -> None:
+        # 有更新时先 mj_forward 计算运动学（显示副本不推进物理时间）；
+        # 相机 lookat 跟随指定机体，然后更新场景并渲染、交换缓冲、轮询事件。
         if self._dirty:
             mujoco.mj_forward(self._model, self._data)
             self._dirty = False
@@ -314,6 +361,8 @@ class M20MujocoViewer(Node):
 
     def run(self, stop_requested: threading.Event) -> None:
         """Service ROS state and render without driving simulation time."""
+        # 主循环：以 max_fps 为节拍，每帧先 spin_once（超时不超过下一帧），
+        # 到点才渲染；显示进程不推进任何物理时间。
         next_frame = time.monotonic()
         while (
             not stop_requested.is_set()
@@ -332,6 +381,7 @@ class M20MujocoViewer(Node):
 
     def close(self) -> None:
         """Request closure of the isolated native window."""
+        # 销毁 GLFW 窗口并终止 GLFW，退出前清理原生资源。
         if getattr(self, '_window', None) is not None:
             glfw.destroy_window(self._window)
             self._window = None
@@ -348,6 +398,8 @@ def main(args=None) -> None:
     # Let the render loop close GLFW before ROS tears down its context.  The
     # default asynchronous rclpy signal handler can otherwise leave MuJoCo's
     # native viewer thread alive during interpreter shutdown.
+    # 禁用 rclpy 默认异步信号处理器，改为自己捕获 SIGINT/SIGTERM，
+    # 先让渲染循环关闭 GLFW，再执行 ROS 收尾，避免原生线程残留。
     rclpy.init(
         args=args,
         signal_handler_options=SignalHandlerOptions.NO,

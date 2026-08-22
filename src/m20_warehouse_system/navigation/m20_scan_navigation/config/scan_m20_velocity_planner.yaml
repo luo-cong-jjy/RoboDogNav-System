@@ -1,5 +1,12 @@
-scan_planner_node:
+# =============================================================================
+# scan_m20_velocity_planner.yaml —— M20 速度包络覆盖档（规划器侧）
+# 所属模块：m20_scan_navigation / config
+# 用途：把 SCAN 轨迹速度限制与已验证的 M20 指令包络对齐。作为 launch 中
+#       叠加在 scan_vendor_planner.yaml 之后的参数覆盖。
+# =============================================================================
+scan_planner_node:            # SCAN 规划器节点参数段
   ros__parameters:
     # Match SCAN trajectory limits to the validated M20 command envelope.
-    manager.max_vel: 0.45
-    optimization.max_vel: 0.45
+    # （把 SCAN 轨迹限制与已验证的 M20 指令包络对齐。）
+    manager.max_vel: 0.45             # 轨迹生成最大速度（m/s）= M20 指令上限
+    optimization.max_vel: 0.45        # 优化约束最大速度（m/s），与 manager 一致

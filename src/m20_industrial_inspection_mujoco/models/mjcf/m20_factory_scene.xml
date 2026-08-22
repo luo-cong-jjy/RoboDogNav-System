@@ -1,5 +1,0 @@
-<mujoco model="m20_factory_scene">
-    <include file="./M20_factory_robot.xml"/>
-    <include file="./official_scene.xml"/>
-    <include file="./official_stair.xml"/>
-</mujoco>

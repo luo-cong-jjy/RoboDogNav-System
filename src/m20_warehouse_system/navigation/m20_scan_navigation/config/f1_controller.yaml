@@ -1,13 +1,19 @@
+# =============================================================================
+# f1_controller.yaml —— F1 场景控制器参数（仓库兼容档）
+# 所属模块：m20_scan_navigation / config（closed_loop_controller 控制器节点）
+# 用途：仓库网格路线兼容档的控制器限速（较慢），算法参数与 SCAN 控制器一致。
+# 注意：/** 是 ROS2 通配节点名。
+# =============================================================================
 /**:
   ros__parameters:
-    use_sim_time: false
-    time_forward: 0.8
-    heading_error_threshold: 0.8
-    kp_pos: 0.8
-    kp_yaw: 1.5
-    max_vx: 0.40
-    max_vy: 0.18
-    max_vyaw: 0.60
-    finish_dist: 0.20
-    forward_only: false
-    max_forward_lateral_speed: 0.18
+    use_sim_time: false      # 是否使用仿真时间；false = 真机/实时
+    time_forward: 0.8              # 轨迹前向投影时间（秒）
+    heading_error_threshold: 0.8   # 航向误差阈值（弧度）
+    kp_pos: 0.8                    # 位置 P 增益
+    kp_yaw: 1.5                    # 航向 P 增益
+    max_vx: 0.40                   # 最大纵向速度（m/s）：仓库兼容档较慢
+    max_vy: 0.18                   # 最大横向速度（m/s）
+    max_vyaw: 0.60                 # 最大偏航角速度（rad/s）
+    finish_dist: 0.20              # 到达判定距离（米）
+    forward_only: false            # 是否只允许前进（false = 允许双向）
+    max_forward_lateral_speed: 0.18  # 前进时的最大横向速度（m/s）

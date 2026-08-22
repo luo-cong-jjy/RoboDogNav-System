@@ -1,10 +1,18 @@
-closed_loop_controller:
+# =============================================================================
+# scan_m20_velocity_controller.yaml —— M20 速度包络覆盖档（控制器侧）
+# 所属模块：m20_scan_navigation / config（closed_loop_controller 控制器节点）
+# 用途：在不改动 SCAN 控制算法的前提下，叠加 M20 的指令速度包络，并开启
+#       "轨迹进度同步"以贴近实测 M20 的移动进度。
+# =============================================================================
+closed_loop_controller:       # 闭环控制器节点参数段
   ros__parameters:
     # M20 command envelope layered over the unchanged SCAN controller.
-    max_vx: 0.45
-    max_vy: 0.20
-    max_vyaw: 0.65
+    # （在未改动的 SCAN 控制器之上叠加 M20 指令包络。）
+    max_vx: 0.45             # 最大纵向速度（m/s）= M20 指令上限
+    max_vy: 0.20             # 最大横向速度（m/s）
+    max_vyaw: 0.65           # 最大偏航角速度（rad/s）
     # Keep the time-parameterized reference close to measured M20 progress.
-    trajectory_progress_sync: true
-    projection_samples: 60
-    max_time_ahead: 0.20
+    # （让时间参数化的参考点贴近实测的 M20 移动进度。）
+    trajectory_progress_sync: true   # 是否启用轨迹进度同步
+    projection_samples: 60           # 轨迹投影采样点数
+    max_time_ahead: 0.20             # 参考点允许超前当前时间的最多秒数（s）

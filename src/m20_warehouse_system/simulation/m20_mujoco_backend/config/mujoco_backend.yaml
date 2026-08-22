@@ -1,42 +1,62 @@
+# ============================================================
+# 文件：mujoco_backend.yaml
+# 用途：m20_mujoco_backend 物理后端节点的默认 ROS2 参数。
+#       标准 launch 先加载本文件，再用启动参数覆盖关键项
+#       （模型路径、初始位姿、viewer 参数、实时倍率等）。
+# ============================================================
 m20_mujoco_backend:
   ros__parameters:
     # The standard launch starts the isolated m20_mujoco_viewer process.
+    # 标准 launch 会单独启动 m20_mujoco_viewer 进程，因此本后端无头运行。
     use_viewer: false
+    # 内嵌 viewer（仅遗留直跑模式）是否跟随机器人。
     viewer_follow_robot: true
     viewer_follow_body: base_link
     # Direct top-down follow avoids MuJoCo TRACKING-camera smoothing lag.
+    # 直接俯视跟随：避免 MuJoCo TRACKING 相机的平滑滞后。
     viewer_distance: 4.0
     viewer_azimuth: 90.0
     # -89 degrees is visually top-down without the exact -90 singularity.
+    # -89° 在视觉上等同俯视，又避开 -90° 的奇异点。
     viewer_elevation: -89.0
     # The isolated low-priority viewer is capped independently of physics.
+    # 独立 viewer 的帧率上限，与物理循环互不影响。
     viewer_max_fps: 30.0
-    timestep: 0.001
-    real_time_factor: 1.0
-    max_catchup_steps: 8
-    state_publish_hz: 200.0
-    diagnostics_publish_hz: 10.0
-    path_publish_hz: 10.0
-    path_max_poses: 5000
-    initial_z: 0.20
-    command_timeout_sec: 0.50
-    startup_hold_kp: 80.0
-    startup_hold_kd: 2.0
-    wheel_hold_kd: 0.60
+    # ---------- 物理与调度 ----------
+    timestep: 0.001          # 物理步长（秒），默认 1ms
+    real_time_factor: 1.0    # 实时倍率（1.0 = 与墙钟同步）
+    max_catchup_steps: 8     # 单次循环最多补跑的物理步数
+    # ---------- 发布频率 ----------
+    state_publish_hz: 200.0      # 关节/IMU/里程计状态发布频率
+    diagnostics_publish_hz: 10.0 # 诊断 JSON 发布频率
+    path_publish_hz: 10.0        # 历史轨迹发布频率
+    path_max_poses: 5000         # 轨迹最大点数（超限裁剪尾部）
+    # ---------- 冷启动 ----------
+    initial_z: 0.20          # 机身初始高度（m）；x/y/yaw 由 launch 覆盖
+    # ---------- 控制与安全 ----------
+    command_timeout_sec: 0.50    # 指令超时（s），超时后轮子目标清零
+    startup_hold_kp: 80.0        # 启动保持阶段腿部位置增益
+    startup_hold_kd: 2.0         # 启动保持阶段腿部阻尼
+    wheel_hold_kd: 0.60          # 轮子保持阻尼
     # The official zero-command policy remains active for leg balance. Only
     # wheel velocity targets are overridden with a physical damping brake.
+    # 官方零指令策略仍负责腿部平衡；驻车制动只覆盖轮子的速度目标，
+    # 以物理阻尼代替制动。
     parking_brake_enabled: true
-    parking_brake_kd: 4.0
+    parking_brake_kd: 4.0        # 驻车制动的轮子阻尼系数
     locomotion_mode_topic: /m20/locomotion/mode
-    min_base_height: 0.05
-    max_tilt_rad: 1.20
-    standing_ready_height: 0.55
-    standing_ready_stable_sec: 0.30
+    # ---------- 状态判定 ----------
+    min_base_height: 0.05        # 最低机身高度（m），低于此值判故障
+    max_tilt_rad: 1.20           # 最大倾斜角（rad），超过判故障
+    standing_ready_height: 0.55  # 站立就绪判定高度（m）
+    standing_ready_stable_sec: 0.30 # 站稳持续时间（s）
     # Match the vendored SCAN first-scene contract and RViz fixed frame.
+    # 与厂商 SCAN 首场景约定及 RViz 固定坐标系保持一致。
     map_frame: world
     base_frame: base_link
-    body_pose_topic: /m20/sim/body_pose
-    path_topic: /quad_0/path
-    ready_topic: /m20/sim/backend_ready
-    fault_topic: /m20/sim/backend_fault
-    dynamics_state_topic: /m20/sim/dynamics_state
+    # ---------- 话题 ----------
+    body_pose_topic: /m20/sim/body_pose        # 机身位姿（Odometry）
+    path_topic: /quad_0/path                   # 历史轨迹
+    ready_topic: /m20/sim/backend_ready        # 后端就绪（Bool，锁存）
+    fault_topic: /m20/sim/backend_fault        # 后端故障（String，锁存）
+    dynamics_state_topic: /m20/sim/dynamics_state # 诊断 JSON

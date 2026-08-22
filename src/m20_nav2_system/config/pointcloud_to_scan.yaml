@@ -1,0 +1,32 @@
+# =============================================================================
+# pointcloud_to_scan.yaml
+# 所属模块：rslidar_pointcloud_to_scan 节点（PointCloud2 -> LaserScan 转换）
+# 用途：把背部 3D 雷达点云裁剪成 2D 激光扫描 /scan 供 Nav2 使用。
+# 与 rslidar_pointcloud_to_scan.yaml 的区别：本文件面向真机，
+#   use_sim_time=false，且 target_frame 直接指定为 base_link。
+# =============================================================================
+rslidar_pointcloud_to_scan:        # 节点名（与 rslidar 转换包同名节点）
+  ros__parameters:                 # ROS2 参数命名空间固定层级
+    # 是否使用仿真时间。false = 真机运行，使用系统硬件时钟
+    use_sim_time: false
+
+    # Empty means keep the cloud frame. For Nav2 on the real robot, prefer base_link
+    # after base_link -> lidar_link TF is correct.
+    # （空字符串表示沿用点云自身 frame；真机上若 base_link <-> lidar_link 的
+    #   TF 已正确发布，则优先使用 base_link）
+    target_frame: base_link        # 输出 LaserScan 的目标坐标系：统一转到 base_link
+    transform_tolerance: 0.05      # TF 查找容差（秒），超时丢弃该帧数据
+
+    # Tune these after checking the real lidar installation height and pitch.
+    # （根据真机雷达安装高度与俯仰角实测后调整）
+    min_height: -0.30              # 保留点的最低高度（米）
+    max_height: 0.30               # 保留点的最高高度（米）
+
+    angle_min: -3.141592653589793  # 扫描起始角（弧度）= -180°
+    angle_max: 3.141592653589793   # 扫描结束角（弧度）= +180°（全周 360°）
+    angle_increment: 0.0034906585  # 角度增量（弧度）≈ 0.2°（1800 线）
+    scan_time: 0.10                # 一次扫描周期（秒）= 10 Hz
+
+    range_min: 0.20                # 有效测距最小值（米），滤除近处机身杂点
+    range_max: 30.0                # 有效测距最大值（米），超出视为无效
+    use_inf: true                  # 无测量处以 inf 填充而非 0，便于下游处理

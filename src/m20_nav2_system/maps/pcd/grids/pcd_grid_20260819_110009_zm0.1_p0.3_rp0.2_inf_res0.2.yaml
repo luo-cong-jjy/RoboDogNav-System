@@ -1,0 +1,7 @@
+image: pcd_grid_20260819_110009_zm0.1_p0.3_rp0.2_inf_res0.2.pgm
+mode: trinary
+resolution: 0.200000
+origin: [-88.032997, -50.464001, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25

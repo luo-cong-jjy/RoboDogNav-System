@@ -1,6 +1,9 @@
 # Clear all navigation state that is tied to a previous floor/map generation.
-string floor_id
-uint64 generation
+# 服务用途：清除与"旧楼层/旧地图代数"绑定的所有导航状态（楼层切换后的状态清理）
+# --- 请求部分 ---
+string floor_id      # 要清理的楼层 ID
+uint64 generation    # 旧的地图代数：仅当当前代数等于该值时清理（防误清新状态）
 ---
-bool success
-string message
+# --- 响应部分 ---
+bool success         # 是否清理成功
+string message       # 附加说明/错误信息

@@ -1,17 +1,39 @@
+# ======================================================================
+# dynamic_local_sensing.yaml —— 动态局部感知节点参数配置（中文注释版）
+# 对应节点：m20_multifloor_map 包中的 dynamic_local_sensing_node.py
+# 作用：配置局部点云感知的输入/输出话题、感知半径、发布频率与雷达安装偏移
+# 说明：本文件只新增中文注释，未改动任何原始参数与结构
+# ======================================================================
+# 通配命名空间：该参数块对任意节点名生效
 /**:
+  # ROS2 参数声明根节点
   ros__parameters:
+    # 全局活动地图点云话题（输入）：地图服务器发布的当前代次全局点云
     global_cloud_topic: /m20/map/active_global_cloud
+    # 楼层状态话题（输入）：楼层 ID 与地图代次（generation）变化通知
     floor_state_topic: /m20/map/state
+    # 机身位姿话题（输入）：仿真中机器人的 Odometry 位姿
     body_pose_topic: /m20/sim/body_pose
+    # 局部点云发布话题（输出）：裁剪后的局部点云（SCAN 感知主输出）
     local_cloud_topic: /m20/sensing/local_cloud
+    # 传感器点云发布话题（输出）：兼容 SCAN 规划器 sensor_cloud 约定的调试流
     sensor_cloud_topic: /m20/sensing/sensor_cloud
+    # 雷达位姿发布话题（输出）：考虑安装偏移后的雷达坐标系位姿
     lidar_pose_topic: /m20/sensing/lidar_pose
+    # 感知半径（单位：米）：以机身为中心的圆形感知窗口半径
     sensing_radius: 20.0
     # 3500 x 16-byte points stays below the 65.5 kB local DDS datagram limit.
     # Rotating slices cover the complete local map over successive frames.
+    # 每帧点云最大点数：3500 个 16 字节点不超过本地 DDS 数据报 65.5 kB 上限；
+    # 旋转分片可在连续多帧内覆盖完整局部地图
     max_points_per_cloud: 3500
+    # 点云发布频率（单位：Hz）
     publish_rate_hz: 10.0
+    # 雷达相对机身的 x 方向安装偏移（单位：米，沿机身前进方向）
     lidar_offset_x: 0.18
+    # 雷达相对机身的 z 方向安装偏移（单位：米，向上为正）
     lidar_offset_z: 0.12
+    # 输出点云/位姿的坐标系（世界系/地图系）
     output_frame: map
+    # 雷达坐标系名称（用于 lidar_pose 的 child_frame_id）
     lidar_frame: lidar_link

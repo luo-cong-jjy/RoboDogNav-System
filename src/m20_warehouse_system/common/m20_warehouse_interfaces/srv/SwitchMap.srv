@@ -1,8 +1,12 @@
 # Commit a new active floor map only if the caller still owns the expected generation.
-string target_floor
-uint64 expected_current_generation
+# 服务用途：提交新的激活楼层地图；仅当调用方仍持有预期的地图代数时才提交成功
+#           （乐观锁/Compare-And-Swap 语义，防止并发切换时旧调用覆盖新状态）
+# --- 请求部分 ---
+string target_floor              # 目标楼层 ID
+uint64 expected_current_generation  # 调用方期望的当前代数（提交前校验）
 ---
-bool success
-string active_floor
-uint64 generation
-string message
+# --- 响应部分 ---
+bool success                     # 是否提交成功
+string active_floor              # 提交后的激活楼层
+uint64 generation                # 提交后的地图代数（若成功则已递增）
+string message                   # 附加说明/错误信息

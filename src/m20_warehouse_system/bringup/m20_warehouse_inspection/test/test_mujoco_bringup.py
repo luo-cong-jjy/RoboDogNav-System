@@ -57,6 +57,17 @@ def test_complete_launch_composes_scan_sdk_and_physics():
     assert 'm20_progress' in launch
 
 
+def test_inspection_trigger_launch_only_starts_the_mission_client():
+    launch = (
+        ROOT / 'launch' / 'start_inspection_mujoco.launch.py'
+    ).read_text(encoding='utf-8')
+
+    assert "'m20_start_inspection'" in launch
+    assert "'ros2', 'run', 'm20_warehouse_inspection'" in launch
+    assert 'IncludeLaunchDescription' not in launch
+    assert 'dense_four_corner_patrol' in launch
+
+
 def test_rviz_launch_keeps_its_compatible_default_backend():
     launch = (
         ROOT / 'launch' / 'multifloor_scan_rviz.launch.py'

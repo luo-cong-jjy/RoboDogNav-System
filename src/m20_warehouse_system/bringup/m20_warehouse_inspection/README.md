@@ -267,8 +267,8 @@ unset ROS_LOCALHOST_ONLY
 export CYCLONEDDS_URI=file:///home/virdyn/robodog_nav_system/install/\
 m20_warehouse_inspection/share/m20_warehouse_inspection/config/cyclonedds_local.xml
 
-ros2 run m20_warehouse_inspection m20_start_inspection \
-  --mission-id dense_four_corner_patrol
+ros2 launch m20_warehouse_inspection start_inspection_mujoco.launch.py \
+  mission_id:=dense_four_corner_patrol
 ```
 
 MuJoCo 原生三维窗口现在默认打开。如需无界面运行或降低重复渲染负载，启动时传入

@@ -1,23 +1,51 @@
+# ============================================================================
+# 【文件职责】safety.yaml —— m20_safety_supervisor 节点参数配置
+# 本文件为速度安全监督节点（safety_supervisor_node.py）提供话题与参数配置：
+#   - 订阅导航候选指令 / 手动指令 / 急停 / 楼层切换保持 / 任务保持 /
+#     碰撞停止 / 碰撞恢复指令 / 地图就绪 / 里程计；
+#   - 发布安全指令（cmd_vel_safe）与安全状态；
+#   - 控制发布频率、指令/里程计超时、加速度限制与手动优先权。
+# 注意：线速度/角速度限幅（max_linear_x 等）由所选平台能力档案注入。
+# ============================================================================
+
 m20_safety_supervisor:
   ros__parameters:
+    # 导航候选速度话题（安全门之前的候选指令，与预测/后端共用同一模型）
     navigation_topic: /m20/navigation/cmd_vel_candidate
+    # 手动控制速度话题
     manual_topic: /m20/control/cmd_vel_manual
+    # 安全指令输出话题（经限幅/限速/门控后的最终速度）
     safe_topic: /m20/control/cmd_vel_safe
+    # 急停（E-Stop）状态话题
     e_stop_topic: /m20/control/e_stop
+    # 楼层切换保持话题（切换期间强制停车）
     floor_hold_topic: /m20/control/floor_switch_hold
+    # 任务保持话题（任务暂停/停止期间强制停车）
     mission_hold_topic: /m20/control/mission_hold
+    # 碰撞停止话题（碰撞守卫的 fail-closed 输出）
     collision_stop_topic: /m20/control/collision_stop
+    # 碰撞恢复可用标志话题
     collision_recovery_available_topic: /m20/control/collision_recovery_available
+    # 碰撞恢复指令话题（仅允许已校验形状：前进滚动/直线后退）
     collision_recovery_command_topic: /m20/control/collision_recovery_cmd
+    # 碰撞恢复指令的新鲜时长（秒，超过则忽略恢复指令）
     collision_recovery_timeout_sec: 0.15
+    # 碰撞恢复指令的斜坡时长（秒，比例斜坡保持曲率）
     collision_recovery_ramp_sec: 1.0
+    # 执行保持话题（发布给下游执行器：非导航状态即保持）
     execution_hold_topic: /m20/control/execution_hold
+    # 地图就绪话题（地图未就绪时 fail-closed 停车）
     map_ready_topic: /m20/map/ready
+    # 里程计话题（用于检测里程计超时失效）
     odom_topic: /m20/sim/body_pose
+    # 安全门发布频率（Hz）
     publish_rate_hz: 50.0
+    # 导航/手动指令超时（秒，超时输出零指令）
     command_timeout_sec: 0.5
+    # 里程计超时（秒，超时 fail-closed 停车）
     odom_timeout_sec: 0.5
     # Command limits are injected from the selected platform capability.
-    max_linear_accel: 1.0
-    max_angular_accel: 1.2
-    manual_priority: true
+    # 【中文】速度限幅由所选平台能力档案注入（此处不重复配置）。
+    max_linear_accel: 1.0     # 线加速度上限（m/s^2）
+    max_angular_accel: 1.2    # 角加速度上限（rad/s^2）
+    manual_priority: true     # 手动指令是否优先于导航指令

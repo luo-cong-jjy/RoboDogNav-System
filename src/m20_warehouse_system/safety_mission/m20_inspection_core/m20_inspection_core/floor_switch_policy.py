@@ -12,41 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ============================================================================
+# 【文件职责】floor_switch_policy.py —— 楼层切换策略解析（纯函数，无 ROS 依赖）
+# 本文件是 m20_inspection_core 的"楼层切换"纯逻辑模块，供
+# floor_switch_manager_node.py 与 mission_executor_node.py 调用，主要包括：
+#   1) 从 YAML 配置解析电梯/连廊（elevators）的显式路线（transitions）
+#      或兼容旧格式的双向连廊，得到可执行的 TransitionPlan；
+#   2) 合并系统级 / 连廊级 / 路线级的传输策略（transfer_adapter、
+#      pose_handoff、延迟与超时等），支持新旧配置键的兼容回退；
+#   3) 提供位姿误差计算 pose_error（平面距离 + 角度差归一化）。
+# ============================================================================
+
 """Resolve floor routes and replaceable transport policies from YAML."""
 
-from dataclasses import dataclass
-import math
-from typing import Any, Mapping, Sequence, Tuple
+# ------------------------- 标准库导入 -------------------------
+from dataclasses import dataclass  # 数据类装饰器：用于定义不可变的路由计划值对象
+import math                        # 数学库：距离/角度计算与有限值校验
+from typing import Any, Mapping, Sequence, Tuple  # 类型提示：Any/Mapping/Sequence/Tuple
 
 
-Pose2D = Tuple[float, float, float]
+Pose2D = Tuple[float, float, float]  # 二维位姿类型别名：(x, y, yaw)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True)  # 冻结数据类：路由计划创建后不可变
 class TransitionPlan:
     """Resolved directional route plus its transport/handoff strategy."""
+    # 【中文】已解析的定向楼层转移路线及其传输/位姿交接策略
 
-    connector_id: str
-    source_floor: str
-    target_floor: str
-    source_trigger: Pose2D
-    target_release: Pose2D
-    trigger_tolerance_xy: float
-    trigger_tolerance_yaw: float
-    transfer_adapter: str
-    pose_handoff: str
-    transition_delay_sec: float
-    transfer_timeout_sec: float
-    external_action_name: str
+    connector_id: str         # 连廊/电梯 id
+    source_floor: str         # 源楼层
+    target_floor: str         # 目标楼层
+    source_trigger: Pose2D    # 源侧触发位姿（机器人需到达该位姿才允许开始转移）
+    target_release: Pose2D    # 目标侧释放位姿（转移完成后机器人应处于该位姿）
+    trigger_tolerance_xy: float   # 触发位姿的平面位置容差（米）
+    trigger_tolerance_yaw: float  # 触发位姿的航向角容差（弧度）
+    transfer_adapter: str         # 传输适配器：timed_hold（定时保持）/ external_action（外部动作）
+    pose_handoff: str             # 位姿交接策略：preserve / set_simulation_pose / wait_for_target / none
+    transition_delay_sec: float   # 定时保持模式下的保持时长（秒）
+    transfer_timeout_sec: float   # 传输过程超时（秒）
+    external_action_name: str     # 外部传输 Action 的名称（external_action 模式使用）
 
 
-TRANSFER_ADAPTERS = frozenset({'timed_hold', 'external_action'})
-POSE_HANDOFFS = frozenset(
+TRANSFER_ADAPTERS = frozenset({'timed_hold', 'external_action'})  # 支持的传输适配器集合
+POSE_HANDOFFS = frozenset(  # 支持的位姿交接策略集合
     {'preserve', 'set_simulation_pose', 'wait_for_target', 'none'}
 )
 
 
 def _pose3(values: Sequence[float], field: str) -> Pose2D:
+    # 【功能】将位姿值序列解析并校验为 Pose2D（必须恰好 3 个有限数值）
+    # 【参数】values - 原始位姿序列；field - 字段名（用于报错信息）
+    # 【返回】校验通过的 (x, y, yaw) 元组
     if len(values) != 3:
         raise ValueError(f'{field} must contain x, y, yaw')
     pose = tuple(float(value) for value in values)
@@ -56,6 +72,9 @@ def _pose3(values: Sequence[float], field: str) -> Pose2D:
 
 
 def _finite_number(value: Any, field: str) -> float:
+    # 【功能】把任意值转为有限的 float 数值（非数值/非有限值报错）
+    # 【参数】value - 原始值；field - 字段名（用于报错信息）
+    # 【返回】校验通过的有限浮点数
     try:
         result = float(value)
     except (TypeError, ValueError) as error:
@@ -77,6 +96,11 @@ def _transfer_policy(
     profiles. New profiles should use ``floor_switch`` and optional
     ``transfer`` overrides on a connector or an individual route.
     """
+    # 【中文】合并系统级 / 连廊级 / 路线级的传输设置（从高到低覆盖）。
+    # 旧版 simulation 键保留为兼容回退；新配置应使用 floor_switch 以及
+    # 连廊或单条路线上的可选 transfer 覆盖。
+    # 【参数】config - 系统配置；connector - 连廊配置；route - 路线配置（可能为空映射）
+    # 【返回】(adapter, handoff, delay, timeout, action_name) 五元组
     simulation = config.get('simulation', {})
     transaction = config.get('map_switch_transaction', {})
     settings = {
@@ -94,6 +118,7 @@ def _transfer_policy(
     }
     system_policy = config.get('floor_switch', {})
     if isinstance(system_policy, Mapping):
+        # 系统级 floor_switch 键 -> 内部设置键的别名映射
         aliases = {
             'transfer_adapter': 'adapter',
             'pose_handoff': 'pose_handoff',
@@ -108,6 +133,7 @@ def _transfer_policy(
         (connector, 'connector.transfer'),
         (route, 'route.transfer'),
     ):
+        # 连廊级与路线级的 transfer 覆盖（优先级递增：系统 < 连廊 < 路线）
         override = owner.get('transfer', {})
         if override is None:
             continue
@@ -150,6 +176,9 @@ def resolve_transition(
     target_floor: str,
 ) -> TransitionPlan:
     """Resolve an explicit route or a legacy bidirectional connector."""
+    # 【中文】解析一条显式路线（transitions）或兼容旧格式的双向连廊。
+    # 【参数】config - 系统配置；connector_id - 连廊 id；source_floor - 源楼层；target_floor - 目标楼层
+    # 【返回】TransitionPlan 路线计划；配置非法时抛出 ValueError
     connectors = config.get('elevators', {})
     floors = config.get('floors', {})
     if connector_id not in connectors:
@@ -165,6 +194,7 @@ def resolve_transition(
     route: Mapping[str, Any] = {}
     routes = connector.get('transitions')
     if routes is not None:
+        # 显式路线表：按 from/to 精确匹配唯一一条路线
         if not isinstance(routes, list) or not routes:
             raise ValueError(
                 f'{connector_id}.transitions must be a non-empty list'
@@ -194,6 +224,7 @@ def resolve_transition(
             'target_release_pose',
         )
     else:
+        # 旧格式双向连廊：判断正向/反向，正向用连廊自带位姿，反向需显式启用
         forward = (
             source_floor == connector['source_floor']
             and target_floor == connector['target_floor']
@@ -213,6 +244,7 @@ def resolve_transition(
         elif reverse and bool(
             connector.get('reverse_transition_enabled', False)
         ):
+            # 反向路线：无显式位姿时回退到电梯轿厢位姿 / 电梯厅位姿
             trigger = _pose3(
                 connector.get(
                     'reverse_source_trigger_pose',
@@ -269,6 +301,9 @@ def resolve_transition(
 
 def pose_error(current: Pose2D, target: Pose2D) -> Tuple[float, float]:
     """Return planar distance and wrapped absolute yaw error."""
+    # 【中文】计算当前位姿相对目标位姿的平面距离与归一化（[-pi, pi] 包裹）的航向角误差
+    # 【参数】current - 当前位姿 (x, y, yaw)；target - 目标位姿 (x, y, yaw)
+    # 【返回】(平面距离, 航向角误差绝对值) 二元组
     distance = math.hypot(current[0] - target[0], current[1] - target[1])
     yaw_error = abs(
         math.atan2(

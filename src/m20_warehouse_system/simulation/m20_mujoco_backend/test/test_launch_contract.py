@@ -12,15 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ============================================================
+# 文件：test_launch_contract.py
+# 用途：对「全系统 MuJoCo 接口契约」的静态检查（pytest）。
+#       通过字符串断言锁定后端/launch/查看器源码中的关键话题名、
+#       实现模式与参数，防止后续重构意外破坏接口约定
+#       （例如把 viewer 改成可推进物理、改掉话题、去掉独立 viewer）。
+#       注意：这些断言只针对包内源码文本，不启动任何 ROS 节点。
+# ============================================================
+
 """Static checks for the full-system MuJoCo interface contract."""
 
 from pathlib import Path
 
-
+# 包根目录（test/ 的上一级）。
 ROOT = Path(__file__).parents[1]
 
 
 def test_backend_owns_current_scan_pose_and_sdk_topics():
+    # 后端节点源码契约：
+    #   - 必须拥有 /m20/sim/body_pose、/quad_0/path 与 SDK 话题
+    #     /JOINTS_CMD、/JOINTS_DATA、/IMU_DATA、/m20/locomotion/mode；
+    #   - 必须使用 FREE 相机同步（mjCAMERA_FREE + _sync_viewer），
+    #     并按 viewer_step_interval 限频同步（_last_viewer_sync_step）；
+    #   - 必须实现轮子制动（apply_wheel_brake）与世界系→机体系
+    #     速度换算（world_vector_to_body），且诊断含三组速度字段。
     source = (
         ROOT / 'm20_mujoco_backend' / 'backend_node.py'
     ).read_text(encoding='utf-8')
@@ -43,6 +59,12 @@ def test_backend_owns_current_scan_pose_and_sdk_topics():
 
 
 def test_world_launch_uses_selected_system_configuration():
+    # launch 文件契约：
+    #   - 必须通过 LaunchConfiguration('system_config') 选择系统配置；
+    #   - 必须调用 generate_world 生成世界；
+    #   - 必须把 viewer_max_fps 透传给独立 viewer 节点
+    #     （executable='m20_mujoco_viewer'），物理节点 use_viewer=False；
+    #   - viewer 必须以 nice -n 10 低优先级运行。
     source = (
         ROOT / 'launch' / 'mujoco_backend.launch.py'
     ).read_text(encoding='utf-8')
@@ -56,6 +78,13 @@ def test_world_launch_uses_selected_system_configuration():
 
 
 def test_viewer_is_a_read_only_ros_state_replica():
+    # viewer 节点契约：
+    #   - 订阅 /m20/sim/body_pose 与 /joint_states；
+    #   - 是只读显示副本：允许 mj_forward（运动学），但绝不出现
+    #     mujoco.mj_step(（不推进物理），也不创建 launch_passive 被动查看器；
+    #   - 使用 FREE 相机、支持 low_cost_render（关阴影）、
+    #     GLFW 自绘渲染（swap_buffers / mjv_updateScene / mjr_render）；
+    #   - 日志必须声明 GUI 时序不阻塞物理。
     source = (
         ROOT / 'm20_mujoco_backend' / 'viewer_node.py'
     ).read_text(encoding='utf-8')

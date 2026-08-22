@@ -1,18 +1,43 @@
+# ======================================================================
+# rviz_kinematic.yaml —— RViz 平面运动学后端参数配置（纯 RViz 场景，中文注释版）
+# 对应节点：m20_warehouse_sim 包中的 kinematic_backend_node.py（节点名 m20_rviz_kinematic_backend）
+# 使用场景：纯 RViz 平面仿真（无厂商渲染器），坐标系与速度上限按默认 M20 配置
+# 注意：本文件只是"兜底默认值"；集成 launch 会从系统级 YAML 覆盖这些参数
+# 说明：本文件只新增中文注释，未改动任何原始参数与结构
+# ======================================================================
+# 节点名（参数所属节点）
 m20_rviz_kinematic_backend:
+  # ROS2 参数声明根节点
   ros__parameters:
     # Fallback only; integration launch overrides from the system YAML.
+    # 注释（原文）：仅作兜底默认值；集成 launch 会从系统 YAML 覆盖以下参数
+    # 初始 x 位置（米）
     initial_x: -37.0
+    # 初始 y 位置（米）
     initial_y: 0.0
+    # 初始 z 高度（米）
     initial_z: 0.59
+    # 初始航向角（弧度）
     initial_yaw: 0.0
+    # 里程计/TF 的父坐标系
     frame_id: map
+    # 机身坐标系
     child_frame_id: base_link
+    # 状态更新频率（Hz）
     update_rate_hz: 50.0
+    # 速度指令超时时间（秒），超时未收到指令则停车
     command_timeout_sec: 0.3
+    # x 方向最大线速度（米/秒）
     max_linear_x: 0.45
+    # y 方向最大线速度（米/秒）
     max_linear_y: 0.20
+    # 最大角速度（弧度/秒）
     max_angular_z: 0.65
+    # 轮子半径（米），用于计算轮子转角
     wheel_radius: 0.09
+    # 轨迹最多保留的位姿数
     path_max_poses: 3000
+    # 安全速度指令订阅话题
     safe_cmd_topic: /m20/control/cmd_vel_safe
+    # 里程计发布话题
     odom_topic: /m20/sim/body_pose

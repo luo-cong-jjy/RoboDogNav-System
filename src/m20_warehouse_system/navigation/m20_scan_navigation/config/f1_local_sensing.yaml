@@ -1,40 +1,47 @@
+# =============================================================================
+# f1_local_sensing.yaml —— F1 场景局部感知（仿真雷达渲染）参数
+# 所属模块：m20_scan_navigation / config（local_sensing_node / pcl_render_node）
+# 用途：F1 仓库场景的局部感知配置：把当前激活地图渲染成雷达点云供 SCAN 使用。
+#       本档开启碰撞检查（collision_check.enable=1）并加载全局地图话题。
+# 注意：/** 是 ROS2 通配节点名。
+# =============================================================================
 /**:
   ros__parameters:
-    use_sim_time: false
-    quadrotor_name: m20/sensing
-    sensor_type: lidar
-    body_pose_topic: /m20/sim/body_pose
-    map.resolution: 0.10
-    map.x_size: 40.0
-    map.y_size: 40.0
-    map.z_size: 3.0
-    sensing_horizon: 20.0
-    sensing_rate: 10.0
-    estimation_rate: 10.0
-    polar_resolution: 0.5
-    yaw_fov: 360.0
-    vertical_fov: 70.0
-    min_raylength: 0.20
-    downsample_res: 0.10
-    lidar_pitch: 0.0
-    is_360lidar: 1
-    use_minicf_pattern: 1
-    use_avia_pattern: 0
-    use_vlp32_pattern: 0
-    use_os64_pattern: 0
-    use_os128_pattern: 0
-    cam_width: 640
-    cam_height: 480
-    cam_fx: 387.229248046875
-    cam_fy: 387.229248046875
-    cam_cx: 321.04638671875
-    cam_cy: 243.44969177246094
-    dynamic.enable: 0
-    dynamic.object_size: 0.0
-    dynamic.object_count: 0
-    dynamic.mode: 0
-    dynamic.velocity: 0.0
-    collision_check.enable: 1
-    collision_check.range: 0.28
-    use_global_map_topic: true
-    pcd_map_file: ''
+    use_sim_time: false      # 是否使用仿真时间；false = 真机/实时
+    quadrotor_name: m20/sensing      # 感知对象名称（M20）
+    sensor_type: lidar               # 传感器类型：激光雷达
+    body_pose_topic: /m20/sim/body_pose  # 机身位姿/里程计输入话题
+    map.resolution: 0.10             # 全局地图分辨率（米/格）
+    map.x_size: 40.0                 # 全局地图 x 尺寸（米）
+    map.y_size: 40.0                 # 全局地图 y 尺寸（米）
+    map.z_size: 3.0                  # 全局地图 z 尺寸（米）
+    sensing_horizon: 20.0            # 感知视野距离（米）
+    sensing_rate: 10.0               # 感知发布频率（Hz）
+    estimation_rate: 10.0            # 状态估计频率（Hz）
+    polar_resolution: 0.5            # 极坐标栅格角分辨率（度）
+    yaw_fov: 360.0                   # 偏航视场角（度）= 全周
+    vertical_fov: 70.0               # 俯仰视场角（度）
+    min_raylength: 0.20              # 最小射线长度（米）
+    downsample_res: 0.10             # 点云降采样分辨率（米）
+    lidar_pitch: 0.0                 # 雷达安装俯仰角（度）
+    is_360lidar: 1                   # 是否 360 度雷达
+    use_minicf_pattern: 1            # 是否使用 miniCF 点云模式
+    use_avia_pattern: 0              # 是否用 Avia 雷达模式
+    use_vlp32_pattern: 0             # 是否用 VLP-32 雷达模式
+    use_os64_pattern: 0              # 是否用 OS-64 雷达模式
+    use_os128_pattern: 0             # 是否用 OS-128 雷达模式
+    cam_width: 640                   # 相机图像宽度（像素，兼容上游）
+    cam_height: 480                  # 相机图像高度（像素）
+    cam_fx: 387.229248046875         # 相机内参：x 焦距
+    cam_fy: 387.229248046875         # 相机内参：y 焦距
+    cam_cx: 321.04638671875          # 相机内参：主点 x
+    cam_cy: 243.44969177246094       # 相机内参：主点 y
+    dynamic.enable: 0                # 动态物体开关（0 = 关闭）
+    dynamic.object_size: 0.0         # 动态物体尺寸（米）
+    dynamic.object_count: 0          # 动态物体数量
+    dynamic.mode: 0                  # 动态物体模式
+    dynamic.velocity: 0.0            # 动态物体速度（m/s）
+    collision_check.enable: 1        # 碰撞检查开关（1 = 开启）
+    collision_check.range: 0.28      # 碰撞检查范围（米）：约等于 M20 硬停半径
+    use_global_map_topic: true       # 是否订阅全局地图话题（当前激活地图）
+    pcd_map_file: ''                 # PCD 地图文件路径（空 = 不使用文件地图）

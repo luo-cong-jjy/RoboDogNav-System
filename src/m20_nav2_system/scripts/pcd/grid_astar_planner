@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+# =============================================================================
+# grid_astar_planner
+# 所属模块：m20_nav2_system / scripts/pcd（点云地图工具链）
+# 职责：基于 Nav2 的 PGM/YAML 栅格地图离线运行 A* 全局路径规划，
+#       输出世界坐标路径（CSV）与可视化叠加图（PPM）。
+#       用于 PCD 地图场景下离线验证路径、导出巡检参考路线。
+# 用法示例：
+#   grid_astar_planner --map maps/pcd/grids/xxx.yaml \
+#       --start 0 0 --goal 10 20 --output-path plan.csv --overlay overlay.ppm
+# 坐标约定：PGM 第 0 行是地图顶部（y 最大），world_to_cell/cell_to_world
+#       负责在 ROS 地图坐标（左下原点）与像素行号（顶部原点）之间换算。
+# =============================================================================
+
+import argparse        # 命令行参数解析
+import heapq           # 优先队列（A* 的 open 表）
+import math            # 数学函数（hypot 距离）
+from collections import deque   # 双端队列（BFS 找最近空闲格）
+from pathlib import Path        # 跨平台路径处理
+
+import numpy as np     # 数值计算（地图数组操作）
+
+
+def parse_map_yaml(path):
+    """解析 Nav2 地图 YAML，提取 image / resolution / origin 三项关键信息。"""
+    values = {}                         # 用简单逐行解析收集 key: value（不引入 yaml 依赖）
+    for line in path.read_text(encoding="utf-8").splitlines():
+        text = line.strip()
+        # 跳过空行、注释行以及不含冒号的行
+        if not text or text.startswith("#") or ":" not in text:
+            continue
+        key, value = text.split(":", 1)  # 只按第一个冒号切分
+        values[key.strip()] = value.strip()
+
+    # 图片文件名：若为相对路径则相对于 YAML 所在目录解析
+    image = values["image"]
+    image_path = Path(image)
+    if not image_path.is_absolute():
+        image_path = path.parent / image_path
+
+    # origin 形如 "[x, y, theta]"，去掉方括号后按逗号拆分转 float
+    origin_text = values["origin"].strip().strip("[]")
+    origin = [float(item.strip()) for item in origin_text.split(",")]
+    return {
+        "image": image_path,                 # PGM 图片路径
+        "resolution": float(values["resolution"]),  # 分辨率（米/格）
+        "origin": origin,                    # 地图左下角的世界坐标 [x, y, theta]
+    }
+
+
+def read_pgm(path):
+    """读取二进制 PGM（P5 格式）灰度图，返回 uint8 二维数组（行=height）。"""
+    with path.open("rb") as file_obj:
+        # P5 是二进制灰度 PGM 的魔数
+        magic = file_obj.readline().strip()
+        if magic != b"P5":
+            raise ValueError(f"only binary PGM P5 is supported, got {magic!r}")
+
+        # PGM 头部可能包含注释行，循环读取直到凑齐 width/height/maxval 三个数字
+        tokens = []
+        while len(tokens) < 3:
+            line = file_obj.readline()
+            if not line:
+                raise ValueError("PGM header ended early")
+            if line.startswith(b"#"):
+                continue            # 跳过注释行
+            tokens.extend(line.split())
+
+        width = int(tokens[0])      # 图片宽度（列数）
+        height = int(tokens[1])     # 图片高度（行数）
+        max_value = int(tokens[2])  # 最大灰度值
+        if max_value != 255:
+            raise ValueError("only 8-bit PGM is supported")
+
+        # 读取全部像素数据并 reshape 为 (height, width)
+        data = np.frombuffer(file_obj.read(width * height), dtype=np.uint8)
+        return data.reshape((height, width))
+
+
+def world_to_cell(x, y, origin, resolution, height):
+    """世界坐标 -> 栅格行列号（row 从顶部数起）。"""
+    # 列号：x 相对地图原点的偏移除以分辨率
+    col = int(math.floor((x - origin[0]) / resolution))
+    # 行号：y 方向在地图中自下而上，先算自底向上的行，再翻转为像素行
+    row_from_bottom = int(math.floor((y - origin[1]) / resolution))
+    row = height - 1 - row_from_bottom
+    return row, col
+
+
+def cell_to_world(row, col, origin, resolution, height):
+    """栅格行列号 -> 世界坐标（取格子中心点）。"""
+    # x：原点到格子中心的距离
+    x = origin[0] + (col + 0.5) * resolution
+    # y：像素行翻转为自底向上后取中心
+    row_from_bottom = height - 1 - row
+    y = origin[1] + (row_from_bottom + 0.5) * resolution
+    return x, y
+
+
+def nearest_free(free, row, col):
+    """从给定格出发 BFS 寻找最近的可通行格（free=True）。"""
+    height, width = free.shape
+    # 先把越界坐标钳制到地图范围内
+    row = min(max(row, 0), height - 1)
+    col = min(max(col, 0), width - 1)
+    # 目标格本身可通行则直接返回
+    if free[row, col]:
+        return row, col
+
+    # BFS 四邻域搜索最近的 free 格
+    queue = deque([(row, col)])
+    visited = np.zeros_like(free, dtype=bool)   # 访问标记，避免重复入队
+    visited[row, col] = True
+    while queue:
+        current_row, current_col = queue.popleft()
+        # 四方向邻居（上/下/左/右）
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nr = current_row + dr
+            nc = current_col + dc
+            # 越界或已访问则跳过
+            if nr < 0 or nc < 0 or nr >= height or nc >= width or visited[nr, nc]:
+                continue
+            if free[nr, nc]:       # 找到第一个可通行格即返回
+                return nr, nc
+            visited[nr, nc] = True
+            queue.append((nr, nc))
+
+    # 整张地图都没有可通行格
+    raise ValueError("map has no free cell")
+
+
+def auto_start_goal(free):
+    """未指定起终点时，自动在地图左下/右上区域各取一个可通行点。"""
+    height, width = free.shape
+    # 目标位置：约 75% 高度/20% 宽度（左下）与 25% 高度/80% 宽度（右上）
+    targets = [
+        (int(height * 0.75), int(width * 0.20)),
+        (int(height * 0.25), int(width * 0.80)),
+    ]
+    # 用 nearest_free 确保起终点落在可通行格上
+    return nearest_free(free, *targets[0]), nearest_free(free, *targets[1])
+
+
+def astar(free, start, goal):
+    """A* 路径搜索：返回从 start 到 goal 的栅格路径（行列号列表）。"""
+    height, width = free.shape
+    # 把二维格编码成一维索引（row*width+col），便于用 numpy 数组管理
+    start_idx = start[0] * width + start[1]
+    goal_idx = goal[0] * width + goal[1]
+    total = height * width
+
+    g_score = np.full(total, np.inf, dtype=np.float32)  # 起点到各格的实际代价
+    came_from = np.full(total, -1, dtype=np.int64)      # 回溯表：记录每个格来自哪个格
+    closed = np.zeros(total, dtype=bool)                # 已扩展集合
+
+    def heuristic(row, col):
+        """启发函数：到目标的欧氏距离（A* 可采纳，保证最优）。"""
+        return math.hypot(goal[0] - row, goal[1] - col)
+
+    g_score[start_idx] = 0.0
+    # open 表：优先队列按 (f=g+h, 索引) 排序，每次弹出 f 最小的格
+    open_heap = [(heuristic(*start), start_idx)]
+    # 八邻域邻居及其移动代价：直行 1.0，对角 sqrt(2)
+    neighbors = [
+        (-1, 0, 1.0),
+        (1, 0, 1.0),
+        (0, -1, 1.0),
+        (0, 1, 1.0),
+        (-1, -1, math.sqrt(2.0)),
+        (-1, 1, math.sqrt(2.0)),
+        (1, -1, math.sqrt(2.0)),
+        (1, 1, math.sqrt(2.0)),
+    ]
+
+    while open_heap:
+        # 弹出 f 值最小的格（丢弃已在 closed 中的过期条目）
+        _, current = heapq.heappop(open_heap)
+        if closed[current]:
+            continue
+        # 到达目标：回溯 came_from 重建路径
+        if current == goal_idx:
+            return reconstruct_path(came_from, current, width)
+
+        closed[current] = True     # 标记为已扩展
+        row = current // width     # 由一维索引还原行列
+        col = current % width
+        # 遍历八邻域
+        for dr, dc, cost in neighbors:
+            nr = row + dr
+            nc = col + dc
+            # 越界或不可通行则跳过
+            if nr < 0 or nc < 0 or nr >= height or nc >= width or not free[nr, nc]:
+                continue
+            neighbor = nr * width + nc
+            if closed[neighbor]:
+                continue
+            # 松弛操作：若经当前格到达邻居更近则更新 g 值并压入 open 表
+            tentative = g_score[current] + cost
+            if tentative < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative
+                heapq.heappush(open_heap, (tentative + heuristic(nr, nc), neighbor))
+
+    # open 表耗尽仍未到达目标：无可行路径
+    return []
+
+
+def reconstruct_path(came_from, current, width):
+    """从目标格沿 came_from 回溯到起点，得到有序路径（起点在前）。"""
+    path = []
+    while current >= 0:            # came_from[start] = -1 作为终止标志
+        path.append((current // width, current % width))
+        current = came_from[current]
+    path.reverse()                 # 反转为从起点到终点
+    return path
+
+
+def write_path_csv(path, world_path):
+    """把世界坐标路径写入 CSV（x,y 两列）。"""
+    with path.open("w", encoding="utf-8") as file_obj:
+        file_obj.write("x,y\n")    # 表头
+        for x, y in world_path:
+            file_obj.write(f"{x:.6f},{y:.6f}\n")
+
+
+def write_overlay(path, image, planned_path, start, goal):
+    """把规划路径叠加到地图灰度图上，输出 PPM 彩色图（P6 格式）。"""
+    # 灰度图扩展为 RGB 三通道
+    rgb = np.repeat(image[:, :, None], 3, axis=2)
+    occupied = image < 65           # 灰度 <65 视为障碍（与 pcd_to_occupancy_grid 一致）
+    rgb[occupied] = [0, 0, 0]       # 障碍显示为黑色
+    rgb[~occupied] = [245, 245, 245]  # 空闲显示为浅灰
+    for row, col in planned_path:
+        rgb[row, col] = [240, 60, 40]     # 规划路径显示为红色
+    rgb[start[0], start[1]] = [40, 180, 70]   # 起点显示为绿色
+    rgb[goal[0], goal[1]] = [30, 90, 240]     # 终点显示为蓝色
+
+    # 写 P6（二进制 RGB）PPM 文件
+    with path.open("wb") as file_obj:
+        file_obj.write(f"P6\n{image.shape[1]} {image.shape[0]}\n255\n".encode("ascii"))
+        file_obj.write(rgb.astype(np.uint8).tobytes())
+
+
+def parse_args():
+    """解析命令行参数。"""
+    parser = argparse.ArgumentParser(description="Run a simple A* global plan on a Nav2 PGM/YAML map.")
+    parser.add_argument("--map", required=True, help="Map YAML file.")          # 地图 YAML 路径
+    parser.add_argument("--start", nargs=2, type=float, metavar=("X", "Y"))     # 起点世界坐标
+    parser.add_argument("--goal", nargs=2, type=float, metavar=("X", "Y"))      # 终点世界坐标
+    parser.add_argument("--output-path", default="", help="CSV path for planned world coordinates.")  # 路径 CSV 输出
+    parser.add_argument("--overlay", default="", help="PPM overlay image path.")  # 可视化叠加图输出
+    return parser.parse_args()
+
+
+def main():
+    """主流程：读地图 -> 计算起终点 -> A* 规划 -> 输出 CSV/叠加图。"""
+    args = parse_args()
+    map_yaml = Path(args.map).expanduser().resolve()   # 展开 ~ 并取绝对路径
+    meta = parse_map_yaml(map_yaml)                    # 解析地图 YAML
+    image = read_pgm(meta["image"])                    # 读取 PGM 灰度图
+    free = image > 200                                 # 灰度 >200 视为可通行（其余为障碍/未知）
+    height, _ = free.shape
+
+    if args.start and args.goal:
+        # 命令行指定起终点：世界坐标转栅格，再吸附到最近可通行格
+        start = nearest_free(
+            free,
+            *world_to_cell(args.start[0], args.start[1], meta["origin"], meta["resolution"], height),
+        )
+        goal = nearest_free(
+            free,
+            *world_to_cell(args.goal[0], args.goal[1], meta["origin"], meta["resolution"], height),
+        )
+    else:
+        # 未指定时自动选点
+        start, goal = auto_start_goal(free)
+
+    planned_path = astar(free, start, goal)   # 执行 A* 搜索
+    if not planned_path:
+        raise RuntimeError("A* failed to find a path")   # 无路径则报错
+
+    # 栅格路径转世界坐标路径
+    world_path = [
+        cell_to_world(row, col, meta["origin"], meta["resolution"], height)
+        for row, col in planned_path
+    ]
+    # 累加相邻点距离计算路径总长
+    length = 0.0
+    for (x0, y0), (x1, y1) in zip(world_path, world_path[1:]):
+        length += math.hypot(x1 - x0, y1 - y0)
+
+    # 打印规划结果摘要
+    start_world = cell_to_world(start[0], start[1], meta["origin"], meta["resolution"], height)
+    goal_world = cell_to_world(goal[0], goal[1], meta["origin"], meta["resolution"], height)
+    print(f"map: {map_yaml}")
+    print(f"start: ({start_world[0]:.3f}, {start_world[1]:.3f})")
+    print(f"goal: ({goal_world[0]:.3f}, {goal_world[1]:.3f})")
+    print(f"path points: {len(world_path)}")
+    print(f"path length: {length:.2f} m")
+
+    # 输出 CSV（自动创建父目录）
+    if args.output_path:
+        output_path = Path(args.output_path).expanduser().resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        write_path_csv(output_path, world_path)
+        print(f"written: {output_path}")
+
+    # 输出 PPM 叠加图（自动创建父目录）
+    if args.overlay:
+        overlay = Path(args.overlay).expanduser().resolve()
+        overlay.parent.mkdir(parents=True, exist_ok=True)
+        write_overlay(overlay, image, planned_path, start, goal)
+        print(f"written: {overlay}")
+
+
+if __name__ == "__main__":
+    main()

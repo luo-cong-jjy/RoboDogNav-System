@@ -1,28 +1,42 @@
+# ============================================================================
+# 【文件职责】collision_guard.yaml —— 碰撞守卫（稳健栅格路线版）参数配置
+# 本文件为碰撞守卫节点（collision_guard_node.py）提供参数：
+#   - 文件名保留旧名以兼容既有启动配置，但运行时输入始终是 SCAN 的
+#     在线占用体素点云，而非静态 OccupancyGrid；
+#   - 相对原生 SCAN 版采用更保守的足印包络（0.38 m 半径 + 0.12 m 裕量）
+#     与更长的前视（1.00 s），适配栅格路线的运行场景；
+#   - 命令、漂移与有界恢复数值由所选 M20 能力档案注入。
+# ============================================================================
+
 m20_collision_guard:
   ros__parameters:
     # Legacy filename retained for configuration compatibility. Runtime input
     # is SCAN's online occupied-voxel cloud, never a static OccupancyGrid.
-    occupancy_cloud_topic: /grid_map/occupancy
-    expected_cloud_frame: world
-    occupancy_cloud_timeout_sec: 0.75
-    online_grid_resolution: 0.10
-    online_grid_size: 16.0
-    minimum_obstacle_z_from_body: -0.50
-    maximum_obstacle_z_from_body: 0.70
-    odom_topic: /m20/sim/body_pose
-    command_topic: /m20/navigation/cmd_vel_candidate
-    stop_topic: /m20/control/collision_stop
-    state_topic: /m20/control/collision_guard_state
-    diagnostic_topic: /m20/control/collision_guard_diagnostic
-    recovery_available_topic: /m20/control/collision_recovery_available
-    recovery_command_topic: /m20/control/collision_recovery_cmd
-    occupied_threshold: 50
-    footprint_radius: 0.38
-    footprint_offset: 0.18
-    safety_margin: 0.12
-    lookahead_sec: 1.00
-    sample_period_sec: 0.05
-    command_timeout_sec: 0.50
-    publish_rate_hz: 20.0
+    # 【中文】保留旧文件名以兼容配置；运行时输入始终是 SCAN 在线占用体素
+    # 点云，而非静态 OccupancyGrid。
+    occupancy_cloud_topic: /grid_map/occupancy   # 在线占用体素点云话题
+    expected_cloud_frame: world                  # 点云期望坐标系（不匹配则 fail-closed）
+    occupancy_cloud_timeout_sec: 0.75            # 占用点云超时（秒）
+    online_grid_resolution: 0.10                 # 在线栅格分辨率（米/格）
+    online_grid_size: 16.0                       # 在线栅格边长（米，以机器人为中心）
+    minimum_obstacle_z_from_body: -0.50          # 障碍高度带下限（相对机体 z）
+    maximum_obstacle_z_from_body: 0.70           # 障碍高度带上限（相对机体 z）
+    odom_topic: /m20/sim/body_pose               # 里程计话题（位姿/速度来源）
+    command_topic: /m20/navigation/cmd_vel_candidate  # 候选指令话题（预安全）
+    stop_topic: /m20/control/collision_stop      # 碰撞停止输出话题
+    state_topic: /m20/control/collision_guard_state   # 守卫状态话题
+    diagnostic_topic: /m20/control/collision_guard_diagnostic  # 守卫诊断话题
+    recovery_available_topic: /m20/control/collision_recovery_available  # 恢复可用标志话题
+    recovery_command_topic: /m20/control/collision_recovery_cmd  # 恢复指令话题
+    occupied_threshold: 50                       # 占用判定阈值（栅格值 >= 该值视为占用）
+    footprint_radius: 0.38     # 足印半径（米，保守双圆模型，栅格路线更保守）
+    footprint_offset: 0.18     # 前/后圆相对机体中心的偏移（米）
+    safety_margin: 0.12        # 安全裕量（米，叠加到足印半径）
+    lookahead_sec: 1.00        # 前视预测时长（秒）
+    sample_period_sec: 0.05    # 预测采样周期（秒）
+    command_timeout_sec: 0.50  # 指令超时（秒）
+    publish_rate_hz: 20.0      # 守卫评估/发布频率（Hz）
     # Command, drift and bounded-recovery values come from the selected M20
     # capability profile. This file only defines the robust grid-route shape.
+    # 【中文】命令、漂移与有界恢复数值来自所选 M20 能力档案；
+    # 本文件仅定义稳健的栅格路线足印形状。

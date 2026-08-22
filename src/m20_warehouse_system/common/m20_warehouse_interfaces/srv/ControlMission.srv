@@ -1,12 +1,14 @@
 # Control the currently active mission without creating a second mission goal.
-uint8 PAUSE=1
-uint8 RESUME=2
-uint8 STOP=3
-uint8 RETRY_CURRENT=4
-
-string mission_id
-uint8 command
+# 服务用途：控制当前激活的任务（暂停/继续/停止/重试），不创建新任务目标
+uint8 PAUSE=1        # 命令常量：暂停任务
+uint8 RESUME=2       # 命令常量：继续任务
+uint8 STOP=3         # 命令常量：停止任务
+uint8 RETRY_CURRENT=4  # 命令常量：重试当前步骤
+# --- 请求部分 ---
+string mission_id    # 要控制的任务 ID
+uint8 command        # 控制命令（上面的常量之一）
 ---
-bool success
-string state
-string message
+# --- 响应部分 ---
+bool success         # 是否执行成功
+string state         # 控制后任务的当前状态
+string message       # 附加说明/错误信息

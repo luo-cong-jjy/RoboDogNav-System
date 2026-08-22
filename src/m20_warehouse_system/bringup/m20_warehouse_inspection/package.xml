@@ -1,54 +1,96 @@
 <?xml version="1.0"?>
+<!-- ==========================================================================
+     package.xml：m20_warehouse_inspection 包的清单文件（ROS2 ament_cmake 格式）。
+     包定位：M20 平面多区域仓库巡检系统的集成、配置与 bringup 包，
+     包含多楼层/多场景的 launch 文件、系统配置文件、地图资源、
+     RViz 配置、巡检/验收/回归等 Python 脚本及单元测试。
+     ========================================================================== -->
 <package format="3">
-  <name>m20_warehouse_inspection</name>
-  <version>1.4.0</version>
+  <name>m20_warehouse_inspection</name>  <!-- 包名：与 CMakeLists.txt 中 project() 保持一致 -->
+  <version>1.4.0</version>  <!-- 包版本号 -->
   <description>
     Integration, configuration, and bringup package for the M20 flat multi-region
     warehouse inspection system.
-  </description>
-  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>
-  <license>Apache-2.0</license>
+  </description>  <!-- 包功能描述：M20 平面多区域仓库巡检系统的集成/配置/bringup 包 -->
+  <maintainer email="virdyn@example.com">Virdyn Robotics</maintainer>  <!-- 包维护者及邮箱 -->
+  <license>Apache-2.0</license>  <!-- 开源许可证：Apache 2.0 -->
 
+  <!-- 构建工具依赖：ament_cmake 构建系统（编译/安装本包所需） -->
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- 构建工具依赖：ament_cmake_python（安装 Python 包源码所需） -->
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
+  <!-- 运行期依赖：ament_index_python（get_package_share_directory 等包查询接口） -->
   <exec_depend>ament_index_python</exec_depend>
+  <!-- 运行期依赖：geometry_msgs（几何消息，Pose、Twist 等） -->
   <exec_depend>geometry_msgs</exec_depend>
+  <!-- 运行期依赖：launch（Python launch 框架，运行 launch 文件必需） -->
   <exec_depend>launch</exec_depend>
+  <!-- 运行期依赖：launch_ros（ROS2 节点 launch 动作 Node 等） -->
   <exec_depend>launch_ros</exec_depend>
+  <!-- 运行期依赖：m20_inspection_core（巡检核心：任务执行器/安全监督/碰撞防护/楼层切换等） -->
   <exec_depend>m20_inspection_core</exec_depend>
+  <!-- 运行期依赖：m20_multifloor_map（多楼层地图相关节点） -->
   <exec_depend>m20_multifloor_map</exec_depend>
+  <!-- 运行期依赖：m20_locomotion_control（M20 运动控制：导航适配器/SDK/能力档案） -->
   <exec_depend>m20_locomotion_control</exec_depend>
+  <!-- 运行期依赖：m20_mujoco_backend（MuJoCo 物理仿真后端） -->
   <exec_depend>m20_mujoco_backend</exec_depend>
+  <!-- 运行期依赖：m20_official_description（M20 官方 URDF 描述） -->
   <exec_depend>m20_official_description</exec_depend>
+  <!-- 运行期依赖：m20_sdk_deploy（官方 RL 控制 SDK 部署） -->
   <exec_depend>m20_sdk_deploy</exec_depend>
+  <!-- 运行期依赖：m20_scan_planner（SCAN 规划器，vendor） -->
   <exec_depend>m20_scan_planner</exec_depend>
+  <!-- 运行期依赖：m20_scan_navigation（SCAN 导航栈） -->
   <exec_depend>m20_scan_navigation</exec_depend>
+  <!-- 运行期依赖：m20_warehouse_interfaces（仓库消息/服务接口） -->
   <exec_depend>m20_warehouse_interfaces</exec_depend>
+  <!-- 运行期依赖：m20_warehouse_sim（仓库仿真：RViz 运动学后端等） -->
   <exec_depend>m20_warehouse_sim</exec_depend>
+  <!-- 运行期依赖：nav_msgs（导航消息，Odometry、OccupancyGrid 等） -->
   <exec_depend>nav_msgs</exec_depend>
+  <!-- 运行期依赖：python3-numpy（数值计算） -->
   <exec_depend>python3-numpy</exec_depend>
+  <!-- 运行期依赖：python3-scipy（科学计算） -->
   <exec_depend>python3-scipy</exec_depend>
+  <!-- 运行期依赖：python3-yaml（YAML 配置解析） -->
   <exec_depend>python3-yaml</exec_depend>
+  <!-- 运行期依赖：rclpy（ROS2 Python 客户端库） -->
   <exec_depend>rclpy</exec_depend>
+  <!-- 运行期依赖：robot_state_publisher（根据 URDF 发布机器人 TF） -->
   <exec_depend>robot_state_publisher</exec_depend>
+  <!-- 运行期依赖：rviz2（可视化工具） -->
   <exec_depend>rviz2</exec_depend>
+  <!-- 运行期依赖：sensor_msgs（传感器消息，LaserScan、PointCloud2 等） -->
   <exec_depend>sensor_msgs</exec_depend>
+  <!-- 运行期依赖：sensor_msgs_py（sensor_msgs 的 Python 支持） -->
   <exec_depend>sensor_msgs_py</exec_depend>
+  <!-- 运行期依赖：scan_planner_msgs（SCAN 规划器消息） -->
   <exec_depend>scan_planner_msgs</exec_depend>
+  <!-- 运行期依赖：std_msgs（标准消息，Header 等） -->
   <exec_depend>std_msgs</exec_depend>
+  <!-- 运行期依赖：tf2_ros（TF2 坐标变换库） -->
   <exec_depend>tf2_ros</exec_depend>
+  <!-- 运行期依赖：visualization_msgs（可视化消息，Marker 等） -->
   <exec_depend>visualization_msgs</exec_depend>
+  <!-- 运行期依赖：xacro（URDF 宏展开工具） -->
   <exec_depend>xacro</exec_depend>
 
+  <!-- 测试依赖：ament_cmake_pytest（pytest 测试框架） -->
   <test_depend>ament_cmake_pytest</test_depend>
+  <!-- 测试依赖：ament_flake8（Python 风格检查） -->
   <test_depend>ament_flake8</test_depend>
+  <!-- 测试依赖：ament_lint_auto（自动 lint 测试） -->
   <test_depend>ament_lint_auto</test_depend>
+  <!-- 测试依赖：ament_lint_common（通用 lint 规则） -->
   <test_depend>ament_lint_common</test_depend>
+  <!-- 测试依赖：ament_pep257（Python docstring 风格检查） -->
   <test_depend>ament_pep257</test_depend>
+  <!-- 测试依赖：python3-pytest（pytest 运行器） -->
   <test_depend>python3-pytest</test_depend>
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_cmake</build_type>  <!-- 构建类型：ament_cmake -->
   </export>
 </package>

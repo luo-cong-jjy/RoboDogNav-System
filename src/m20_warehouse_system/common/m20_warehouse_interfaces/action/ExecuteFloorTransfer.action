@@ -1,22 +1,24 @@
-# Internal transport-provider contract used by the floor-switch coordinator.
-# An implementation may drive a real elevator, ramp workflow, lift platform,
-# or another site-specific mechanism. It must not switch maps or release the
-# coordinator's safety hold.
-string connector_id
-string source_floor
-string target_floor
-uint64 source_generation
+# ExecuteFloorTransfer.action — 楼层转运提供者内部契约动作
+# 说明：由楼层切换协调器调用；实现方可驱动真实电梯、斜坡流程、升降平台等
+#       现场特定机构。实现方【不得】自行切换地图或解除协调器的安全保持。
+# Goal
+string connector_id       # 转运连接器 ID（标识具体转运实现）
+string source_floor       # 源楼层
+string target_floor       # 目标楼层
+uint64 source_generation  # 源楼层地图代数（校验用）
 ---
-uint8 ERROR_NONE=0
-uint8 ERROR_REJECTED=1
-uint8 ERROR_TIMEOUT=2
-uint8 ERROR_CANCELLED=3
-uint8 ERROR_HARDWARE=4
-uint8 ERROR_INTERNAL=255
+# Result
+uint8 ERROR_NONE=0        # 成功
+uint8 ERROR_REJECTED=1    # 转运被拒绝
+uint8 ERROR_TIMEOUT=2     # 转运超时
+uint8 ERROR_CANCELLED=3   # 被取消
+uint8 ERROR_HARDWARE=4    # 硬件故障
+uint8 ERROR_INTERNAL=255  # 内部错误
 
-bool success
-uint8 error_code
-string message
+bool success              # 是否成功
+uint8 error_code          # 错误码
+string message            # 附加说明/错误信息
 ---
-string phase
-string message
+# Feedback
+string phase              # 当前转运阶段
+string message            # 附加说明
