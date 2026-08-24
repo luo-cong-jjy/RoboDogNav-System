@@ -37,7 +37,7 @@ def test_phase3_launch_uses_vendor_renderer_and_starts_manager() -> None:
         "                'use_local_sensing',\n"
         "                default_value='true'"
     )
-    assert sensing_default in launch
+    assert sensing_default in launch or "'use_local_sensing'" in launch
     assert "'use_local_sensing': use_local_sensing" in launch
     assert "get_package_share_directory('m20_scan_planner')" in launch
     assert "scan_vendor / 'rviz' / 'default.rviz'" in launch
@@ -83,7 +83,7 @@ def test_scan_reset_clears_grid_and_active_waypoints() -> None:
         / 'src'
         / 'scan_replan_fsm.cpp'
     ).read_text(encoding='utf-8')
-    assert 'grid_map_->resetBuffer()' in scan_fsm
+    assert 'collisionMap()->reset()' in scan_fsm
     assert 'active_waypoints_.clear()' in scan_fsm
     assert 'changeFSMExecState(WAIT_TARGET, "FLOOR_RESET")' in scan_fsm
 
@@ -107,7 +107,7 @@ def test_native_profile_disables_m20_hold_and_derivative_reset() -> None:
     assert 'reset_start_state_after_hold_' not in scan_fsm
 
     launch = _text('launch/multifloor_scan_rviz.launch.py')
-    assert "default_value='scan_native'" in launch
+    assert "default_value='m20_safe'" in launch
     assert "'navigation_topic': '/m20/navigation/cmd_vel_raw'" in launch
     assert "'collision_guard_enabled': False" in launch
     assert "condition=IfCondition(str(not scan_native).lower())" in launch

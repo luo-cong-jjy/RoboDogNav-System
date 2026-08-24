@@ -1,5 +1,8 @@
 """Trigger an inspection mission against an already running MuJoCo stack."""
 
+# Copyright 2026 Virdyn Robotics
+# Licensed under the Apache License, Version 2.0
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from pathlib import Path

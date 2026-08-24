@@ -14,6 +14,10 @@
  */
 // #include <fstream>
 #include <plan_manage/planner_manager.h>   // 规划管理器声明（本文件实现其接口）
+#include <plan_env/grid_map.h>
+#include "m20_trajectory/scan_optimizer_adapter.h"
+#include "m20_trajectory/scan_map_adapter.h"
+#include <bspline_opt/uniform_bspline.h>
 #include <chrono>        // 时间库：std::chrono（各阶段耗时统计）
 #include <thread>        // 线程库（预留）
 
@@ -81,12 +85,12 @@ namespace scan_planner    // 扫描规划器命名空间
     local_data_.traj_id_ = 0;        // 初始化局部轨迹 ID
     grid_map_.reset(new GridMap);    // 创建栅格地图
     grid_map_->initMap(node_);       // 初始化地图（读取地图参数/建立网格）
+    collision_map_ = std::make_shared<m20_trajectory::ScanMapAdapter>(grid_map_);
 
-    bspline_optimizer_rebound_.reset(new BsplineOptimizer);   // 创建 B 样条优化器
-    bspline_optimizer_rebound_->setParam(node_);             // 设置优化器参数
-    bspline_optimizer_rebound_->setEnvironment(grid_map_);   // 设置优化器环境（栅格地图）
-    bspline_optimizer_rebound_->a_star_.reset(new AStar);    // 创建 A* 搜索器（前端无碰撞调整）
-    bspline_optimizer_rebound_->a_star_->initGridMap(grid_map_, Eigen::Vector3i(100, 100, 100));   // 初始化 A* 栅格
+    bspline_optimizer_rebound_.reset(new m20_trajectory::ScanOptimizerAdapter);
+    bspline_optimizer_rebound_->configure(node_, grid_map_);
+    bspline_optimizer_rebound_->backend().a_star_.reset(new AStar);
+    bspline_optimizer_rebound_->backend().a_star_->initGridMap(grid_map_, Eigen::Vector3i(100, 100, 100));
 
     visualization_ = vis;            // 绑定可视化对象
   }
@@ -136,7 +140,7 @@ namespace scan_planner    // 扫描规划器命名空间
         flag_first_call = false;         // 清除首次调用标志
         flag_force_polynomial = false;   // 清除强制多项式标志
 
-        PolynomialTraj gl_traj;          // 全局多项式初始轨迹
+        m20_trajectory::PolynomialTraj gl_traj;          // 全局多项式初始轨迹
 
         double dist = (start_pt - local_target_pt).norm();   // 起点到目标距离
         double time = pow(pp_.max_vel_, 2) / pp_.max_acc_ > dist ? sqrt(dist / pp_.max_acc_) : (dist - pow(pp_.max_vel_, 2) / pp_.max_acc_) / pp_.max_vel_ + 2 * pp_.max_vel_ / pp_.max_acc_;
@@ -144,7 +148,7 @@ namespace scan_planner    // 扫描规划器命名空间
 
         if (!flag_randomPolyTraj)        // 非随机初始路径：直接生成单段多项式轨迹
         {
-          gl_traj = PolynomialTraj::one_segment_traj_gen(start_pt, start_vel, start_acc, local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), time);
+          gl_traj = m20_trajectory::PolynomialTraj::one_segment_traj_gen(start_pt, start_vel, start_acc, local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), time);
         }
         else                             // 随机初始路径：插入随机中间点后做 min-snap
         {
@@ -159,7 +163,7 @@ namespace scan_planner    // 扫描规划器命名空间
           pos.col(2) = local_target_pt;
           Eigen::VectorXd t(2);          // 两段时间（各为总时间一半）
           t(0) = t(1) = time / 2;
-          gl_traj = PolynomialTraj::minSnapTraj(pos, start_vel, local_target_vel, start_acc, Eigen::Vector3d::Zero(), t);   // min-snap 生成
+          gl_traj = m20_trajectory::PolynomialTraj::minSnapTraj(pos, start_vel, local_target_vel, start_acc, Eigen::Vector3d::Zero(), t);   // min-snap 生成
         }
 
         double t;                        // 采样时刻
@@ -213,7 +217,7 @@ namespace scan_planner    // 扫描规划器命名空间
         double poly_time = (local_data_.position_traj_.evaluateDeBoorT(t) - local_target_pt).norm() / pp_.max_vel_ * 2;   // 到目标的衔接多项式时长（按 2 倍速度反推）
         if (poly_time > ts)              // 衔接段长于一个步长：补充生成多项式段
         {
-          PolynomialTraj gl_traj = PolynomialTraj::one_segment_traj_gen(local_data_.position_traj_.evaluateDeBoorT(t),   // 单段多项式衔接轨迹
+          m20_trajectory::PolynomialTraj gl_traj = m20_trajectory::PolynomialTraj::one_segment_traj_gen(local_data_.position_traj_.evaluateDeBoorT(t),   // 单段多项式衔接轨迹
                                                                         local_data_.velocity_traj_.evaluateDeBoorT(t),
                                                                         local_data_.acceleration_traj_.evaluateDeBoorT(t),
                                                                         local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), poly_time);
@@ -277,7 +281,7 @@ namespace scan_planner    // 扫描规划器命名空间
     UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);   // 由路径点参数化 B 样条（反解控制点）
 
     vector<vector<Eigen::Vector3d>> a_star_paths;                        // A* 路径（多层）
-    a_star_paths = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);   // 前端 A*：控制点无碰撞调整
+    a_star_paths = bspline_optimizer_rebound_->backend().initControlPoints(ctrl_pts, true);
 
     t_init = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();   // 记录初始化耗时
 
@@ -288,7 +292,7 @@ namespace scan_planner    // 扫描规划器命名空间
     t_start = std::chrono::steady_clock::now();   // 重新计时（优化阶段）
 
     /*** STEP 2: OPTIMIZE ***/   // 第二步：后端优化
-    bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);   // 反弹优化轨迹
+    bool flag_step_1_success = bspline_optimizer_rebound_->optimize(ctrl_pts, ts);
     cout << "first_optimize_step_success=" << flag_step_1_success << endl;   // 打印优化结果
     if (!flag_step_1_success)          // 优化失败
     {
@@ -423,11 +427,11 @@ namespace scan_planner    // 扫描规划器命名空间
     time(0) *= 2.0;                           // 首段时间加倍（加减速段）
     time(time.rows() - 1) *= 2.0;             // 末段时间加倍（加减速段）
 
-    PolynomialTraj gl_traj;                   // 全局多项式轨迹
+    m20_trajectory::PolynomialTraj gl_traj;                   // 全局多项式轨迹
     if (pos.cols() >= 3)                      // 3 个以上点：min-snap 轨迹
-      gl_traj = PolynomialTraj::minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
+      gl_traj = m20_trajectory::PolynomialTraj::minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
     else if (pos.cols() == 2)                 // 2 个点：单段轨迹
-      gl_traj = PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, start_acc, pos.col(1), end_vel, end_acc, time(0));
+      gl_traj = m20_trajectory::PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, start_acc, pos.col(1), end_vel, end_acc, time(0));
     else
       return false;                           // 点数不足
 
@@ -491,11 +495,11 @@ namespace scan_planner    // 扫描规划器命名空间
     time(0) *= 2.0;                          // 首段时间加倍
     time(time.rows() - 1) *= 2.0;            // 末段时间加倍
 
-    PolynomialTraj gl_traj;                  // 全局多项式轨迹
+    m20_trajectory::PolynomialTraj gl_traj;                  // 全局多项式轨迹
     if (pos.cols() >= 3)                     // 3 个以上点：min-snap 轨迹
-      gl_traj = PolynomialTraj::minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
+      gl_traj = m20_trajectory::PolynomialTraj::minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
     else if (pos.cols() == 2)                // 2 个点：单段轨迹
-      gl_traj = PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, start_acc, end_pos, end_vel, end_acc, time(0));
+      gl_traj = m20_trajectory::PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, start_acc, end_pos, end_vel, end_acc, time(0));
     else
       return false;                          // 点数不足
 
@@ -518,11 +522,12 @@ namespace scan_planner    // 扫描规划器命名空间
     traj = UniformBspline(ctrl_pts, 3, ts);  // 用重分配后的控制点重建样条
 
     double t_step = traj.getTimeSum() / (ctrl_pts.cols() - 3);   // 采样步长（按控制点数均分时长）
-    bspline_optimizer_rebound_->ref_pts_.clear();                // 清空参考点
+    bspline_optimizer_rebound_->backend().ref_pts_.clear();
     for (double t = 0; t < traj.getTimeSum() + 1e-4; t += t_step)
-      bspline_optimizer_rebound_->ref_pts_.push_back(traj.evaluateDeBoorT(t));   // 采样轨迹作为参考点（约束轨迹形状）
+      bspline_optimizer_rebound_->backend().ref_pts_.push_back(traj.evaluateDeBoorT(t));
 
-    bool success = bspline_optimizer_rebound_->BsplineOptimizeTrajRefine(ctrl_pts, ts, optimal_control_points);   // 精化优化
+    bool success = bspline_optimizer_rebound_->refine(ctrl_pts, ts, bspline_optimizer_rebound_->backend().ref_pts_);
+    optimal_control_points = ctrl_pts;
 
     return success;                          // 返回优化结果
   }
@@ -530,7 +535,7 @@ namespace scan_planner    // 扫描规划器命名空间
   // 更新局部轨迹信息：保存位置/速度/加速度样条与执行信息
   void SCANPlannerManager::updateTrajInfo(const UniformBspline &position_traj, const rclcpp::Time time_now)
   {
-    local_data_.start_time_ = time_now;      // 记录起始时刻
+        local_data_.start_time_ = time_now;      // 记录起始时刻
     local_data_.position_traj_ = position_traj;   // 位置样条
     local_data_.velocity_traj_ = local_data_.position_traj_.getDerivative();   // 速度样条（一阶导）
     local_data_.acceleration_traj_ = local_data_.velocity_traj_.getDerivative();   // 加速度样条（二阶导）

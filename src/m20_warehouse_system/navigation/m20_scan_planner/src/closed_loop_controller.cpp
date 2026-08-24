@@ -46,7 +46,7 @@
 #include <tf2/utils.h>
 #endif
 
-#include "bspline_opt/uniform_bspline.h"   // 均匀 B 样条：UniformBspline（轨迹求值）
+#include "m20_trajectory/uniform_bspline.h"   // M20 自有均匀 B 样条轨迹求值
 
 namespace scan_planner    // 扫描规划器命名空间
 {
@@ -283,7 +283,10 @@ private:
     traj_.push_back(traj_[1].getDerivative());         // 加速度样条
     traj_duration_ = traj_[0].getTimeSum();            // 轨迹总时长
     traj_id_ = msg->traj_id;                           // 轨迹 ID
-    exec_time_ = trajectory_progress_sync_ ? projectTimeToCurrentPose() : 0.0;   // 初始化轨迹时钟（投影同步或从 0 开始）
+    // 重规划接管必须从新轨迹的边界状态开始。将当前位置投影到新轨迹
+    // 的最近点会跳过起始切向，导致速度方向瞬间改变、首段锯齿和跟踪滞后。
+    // 后续控制循环仍会用投影结果限制轨迹时钟，避免执行进度漂移。
+    exec_time_ = 0.0;
     last_update_time_ = now();                         // 更新时间戳
     receive_traj_ = true;                              // 标记已收到轨迹
     const Eigen::Vector3d initial_position = traj_[0].evaluateDeBoorT(0.0);   // 轨迹起点

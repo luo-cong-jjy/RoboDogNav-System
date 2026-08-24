@@ -163,7 +163,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(  # 执行档案
                 'execution_profile',
-                default_value='scan_native',  # 默认上游兼容 SCAN 执行
+                default_value='m20_safe',  # 默认使用完整 M20 安全执行链
                 description=(
                     'Default upstream-compatible SCAN execution; use '
                     'm20_safe for the Twist guard/adapter or m20_progress '

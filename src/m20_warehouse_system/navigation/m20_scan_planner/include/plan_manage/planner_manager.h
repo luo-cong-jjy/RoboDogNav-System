@@ -19,12 +19,17 @@
 
 #include <stdlib.h>             // 标准库：rand（随机初始路径生成）
 
-#include <bspline_opt/bspline_optimizer.h>      // B 样条优化器：BsplineOptimizer（后端优化/前端 A*）
-#include <bspline_opt/uniform_bspline.h>        // 均匀 B 样条：UniformBspline（轨迹表示）
-#include <plan_env/grid_map.h>                  // 栅格地图：GridMap（碰撞环境）
 #include <plan_manage/plan_container.hpp>       // 轨迹数据容器：GlobalTrajData/LocalTrajData/PlanParameters
 #include <rclcpp/rclcpp.hpp>                    // ROS2 C++ 客户端库：Node 等
 #include <traj_utils/planning_visualization.h>  // 规划可视化：PlanningVisualization
+#include "m20_trajectory/trajectory_optimizer_boundary.h"
+#include "m20_trajectory/map_collision_boundary.h"
+
+namespace m20_trajectory {
+class ScanOptimizerAdapter;
+class MapCollisionBoundary;
+}
+class GridMap;
 
 namespace scan_planner    // 扫描规划器命名空间
 {
@@ -59,13 +64,18 @@ namespace scan_planner    // 扫描规划器命名空间
     PlanParameters pp_;             // 规划算法参数
     LocalTrajData local_data_;      // 当前局部轨迹数据
     GlobalTrajData global_data_;    // 全局轨迹数据
-    GridMap::Ptr grid_map_;         // 栅格地图指针
+    m20_trajectory::MapCollisionBoundary::Ptr collision_map_;
+
+    m20_trajectory::MapCollisionBoundary::Ptr collisionMap() const {
+      return collision_map_;
+    }
 
   private:
+    std::shared_ptr<GridMap> grid_map_;
     rclcpp::Node *node_{nullptr};   // 所属 ROS2 节点指针
     /* main planning algorithms & modules */   // 核心规划算法与模块
     PlanningVisualization::Ptr visualization_;      // 可视化对象
-    BsplineOptimizer::Ptr bspline_optimizer_rebound_;   // 反弹重规划使用的 B 样条优化器
+    std::shared_ptr<m20_trajectory::ScanOptimizerAdapter> bspline_optimizer_rebound_;
 
     int continuous_failures_count_{0};      // 连续规划失败计数（用于随机初始路径扰动强度）
 

@@ -51,13 +51,13 @@ tracking:  # 跟踪/滞回参数
   lateral_max_forward_mps: 0.10    # 横移最大前向速度
   course_yaw_gain: 1.20            # 航向误差增益
   turn_course_enter_rad: 0.25      # 进入转弯航向误差
-  turn_course_exit_rad: 0.08       # 退出转弯航向误差
+  turn_course_exit_rad: 0.12       # 退出转弯航向误差（抗抖滞回）
   turn_yaw_exit_radps: 0.20        # 退出转弯偏航阈值
-  turn_min_hold_sec: 0.50          # 转弯滞回最短保持
+  turn_min_hold_sec: 1.00          # 转弯滞回最短保持
   cruise_yaw_deadband_radps: 0.02  # 巡航偏航死区
-  cruise_yaw_filter_time_constant_sec: 0.12  # 巡航偏航滤波时间常数
-  output_linear_accel_mps2: 0.60   # 输出线加速度限幅
-  output_yaw_accel_radps2: 0.80    # 输出偏航角加速度限幅
+  cruise_yaw_filter_time_constant_sec: 0.20  # 巡航偏航滤波时间常数
+  output_linear_accel_mps2: 1.00   # 输出线加速度限幅
+  output_yaw_accel_radps2: 1.20    # 输出偏航角加速度限幅
   reverse_tracking_enter_angle_rad: 2.10  # 进入倒车跟踪角度（滞回上限）
   reverse_tracking_exit_angle_rad: 1.75   # 退出倒车跟踪角度（滞回下限）
   reverse_tracking_min_hold_sec: 0.80     # 倒车跟踪最短保持时间

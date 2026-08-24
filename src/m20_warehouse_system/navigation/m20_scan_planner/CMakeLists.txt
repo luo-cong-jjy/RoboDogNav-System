@@ -28,28 +28,67 @@ add_compile_options(-Wall -Wextra -Wpedantic) # 开启常用编译警告
 # ---- 查找构建依赖包 ----
 find_package(ament_cmake REQUIRED) # ament_cmake：ROS 2 构建系统
 find_package(ament_index_cpp REQUIRED) # ament 资源索引（C++ 接口）
-find_package(bspline_opt REQUIRED) # B 样条轨迹优化库（SCAN-Planner 核心）
+find_package(cv_bridge REQUIRED) # 地图环境依赖的 OpenCV/ROS 转换接口
+find_package(PCL REQUIRED COMPONENTS common)
+find_package(pcl_conversions REQUIRED)
 find_package(Eigen3 REQUIRED) # Eigen 线性代数库
 find_package(geometry_msgs REQUIRED) # 几何消息类型
 find_package(m20_warehouse_interfaces REQUIRED) # M20 自定义消息接口
 find_package(nav_msgs REQUIRED) # 导航消息（Odometry/Path 等）
-find_package(path_searching REQUIRED) # 路径搜索库（A* 等）
-find_package(plan_env REQUIRED) # 规划环境（地图/网格表示）
 find_package(rclcpp REQUIRED) # ROS 2 C++ 客户端库
-find_package(scan_planner_msgs REQUIRED) # SCAN-Planner 自定义消息
 find_package(sensor_msgs REQUIRED) # 传感器消息（点云等）
 find_package(std_msgs REQUIRED) # 标准消息
 find_package(tf2 REQUIRED) # TF2 基础库
 find_package(tf2_geometry_msgs REQUIRED) # TF2 与几何消息转换
 find_package(tf2_ros REQUIRED) # TF2 ROS 接口
-find_package(traj_utils REQUIRED) # 轨迹工具库
 find_package(visualization_msgs REQUIRED) # 可视化消息（Marker 等）
+
+# Build the vendored message definitions inside this package.  The vendor tree
+# is COLCON_IGNORE'd, so this does not create a second package during discovery.
+add_subdirectory(
+  vendor/scan_planner_msgs
+  ${CMAKE_CURRENT_BINARY_DIR}/vendor_scan_planner_msgs
+)
+
+# Internal compatibility build of the algorithm backend.  The vendor package
+# remains hidden from colcon discovery, but its targets are built as part of
+# this package's closure.
+set(m20_vendor_saved_build_testing "${BUILD_TESTING}")
+set(BUILD_TESTING OFF)
+add_subdirectory(
+  vendor/plan_env
+  ${CMAKE_CURRENT_BINARY_DIR}/vendor_plan_env
+)
+add_subdirectory(
+  vendor/path_searching
+  ${CMAKE_CURRENT_BINARY_DIR}/vendor_path_searching
+)
+add_subdirectory(
+  vendor/bspline_opt
+  ${CMAKE_CURRENT_BINARY_DIR}/vendor_bspline_opt
+)
+add_subdirectory(
+  vendor/traj_utils
+  ${CMAKE_CURRENT_BINARY_DIR}/vendor_traj_utils
+)
+set(BUILD_TESTING "${m20_vendor_saved_build_testing}")
+unset(m20_vendor_saved_build_testing)
+
+# Expose headers from the in-tree compatibility libraries to this package's
+# targets without relying on an installed vendor package.
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bspline_opt/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/vendor/plan_env/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/vendor/path_searching/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/vendor/traj_utils/include
+  ${CMAKE_CURRENT_BINARY_DIR}/vendor_scan_planner_msgs/rosidl_generator_cpp)
+include_directories(${PCL_INCLUDE_DIRS})
 
 # 规划器主节点依赖的包列表（供 ament_target_dependencies 使用）
 set(scan_planner_dependencies
-  ament_index_cpp bspline_opt geometry_msgs m20_warehouse_interfaces nav_msgs path_searching plan_env
-  rclcpp scan_planner_msgs sensor_msgs std_msgs tf2 tf2_geometry_msgs tf2_ros
-  traj_utils visualization_msgs)
+  ament_index_cpp cv_bridge geometry_msgs m20_warehouse_interfaces nav_msgs pcl_conversions
+  rclcpp sensor_msgs std_msgs tf2 tf2_geometry_msgs tf2_ros
+  visualization_msgs)
 
 # ---- 编译规划器主节点 ----
 add_executable(scan_planner_node
@@ -58,16 +97,16 @@ add_executable(scan_planner_node
   src/planner_manager.cpp)  # 规划管理器：调用全局/局部规划器
 target_include_directories(scan_planner_node PRIVATE include) # 添加头文件搜索路径
 ament_target_dependencies(scan_planner_node ${scan_planner_dependencies}) # 声明依赖
-target_link_libraries(scan_planner_node Eigen3::Eigen) # 链接 Eigen
+target_link_libraries(scan_planner_node Eigen3::Eigen bspline_opt path_searching plan_env traj_utils scan_planner_msgs__rosidl_typesupport_cpp) # 链接内置算法库与消息类型支持
 
 # ---- 编译四个辅助可执行文件（开环/闭环控制器、运动学仿真、步态发布） ----
 foreach(target open_loop_controller closed_loop_controller m20_kinematic_sim m20_gait_publisher)
   add_executable(${target} src/${target}.cpp) # 每个目标对应 src/ 下的同名源文件
   target_include_directories(${target} PRIVATE include)
   ament_target_dependencies(${target}
-    bspline_opt geometry_msgs nav_msgs rclcpp scan_planner_msgs sensor_msgs
+    geometry_msgs nav_msgs rclcpp sensor_msgs
     std_msgs tf2 tf2_geometry_msgs tf2_ros)
-  target_link_libraries(${target} Eigen3::Eigen)
+  target_link_libraries(${target} Eigen3::Eigen bspline_opt scan_planner_msgs__rosidl_typesupport_cpp)
 endforeach()
 
 # ---- 安装规则 ----

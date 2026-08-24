@@ -492,7 +492,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(  # 执行档案
                 'execution_profile',
-                default_value='scan_native',  # 默认上游原生 SCAN 命令路径
+                default_value='m20_safe',  # 默认使用完整 M20 安全执行链
                 description=(
                     'scan_native preserves the upstream SCAN command path; '
                     'm20_safe enables the experimental rolling adapter, '

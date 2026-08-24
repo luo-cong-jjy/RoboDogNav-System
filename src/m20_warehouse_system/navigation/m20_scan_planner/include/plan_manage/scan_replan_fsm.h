@@ -73,6 +73,13 @@ namespace scan_planner    // 扫描规划器命名空间
     std::vector<Eigen::Vector3d> preset_waypoints_;   // 预设路点序列
     int waypoint_num_;                          // 预设路点数量
     double planning_horizon_;                   // 局部规划视界 [m]
+    double initial_heading_speed_;              // 新目标起步时沿机体朝向的参考速度
+    double startup_replan_lock_sec_;            // 起步阶段禁止普通重规划
+    rclcpp::Time trajectory_started_at_;        // 当前轨迹开始时间
+    rclcpp::Time last_replan_publish_at_;       // 上次成功发布轨迹时间
+    double min_replan_interval_sec_;            // 成功轨迹最小发布间隔
+    double replan_retry_cooldown_sec_;          // 失败重规划退避间隔
+    rclcpp::Time last_replan_attempt_at_;      // 最近一次重规划尝试时间
     double emergency_time_;                     // 紧急停车判定时间窗 [s]
     double rviz_goal_height_;                   // RViz 目标点高度（取自初始机体 z）
     double self_inflation_z_up_, self_inflation_z_down_;   // 自膨胀圆柱上下延伸量 [m]

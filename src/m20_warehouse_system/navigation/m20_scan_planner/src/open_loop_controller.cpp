@@ -32,7 +32,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #endif
 
-#include "bspline_opt/uniform_bspline.h"   // 均匀 B 样条：UniformBspline（轨迹求值）
+#include "m20_trajectory/uniform_bspline.h"   // M20 自有均匀 B 样条轨迹求值
 
 namespace scan_planner    // 扫描规划器命名空间
 {

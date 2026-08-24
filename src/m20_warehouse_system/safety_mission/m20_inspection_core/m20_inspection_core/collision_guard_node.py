@@ -38,7 +38,12 @@ from geometry_msgs.msg import Twist   # Twist 消息：候选指令/恢复指令
 from nav_msgs.msg import Odometry     # 里程计消息：位姿与速度
 import rclpy                          # ROS2 Python 客户端库
 from rclpy.node import Node           # ROS2 节点基类
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy  # QoS 策略（锁存发布）
+from rclpy.qos import (  # QoS 策略（锁存发布与传感器输入）
+    DurabilityPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+    qos_profile_sensor_data,
+)
 from sensor_msgs.msg import PointCloud2  # 点云消息：SCAN 占用体素
 from sensor_msgs_py import point_cloud2  # 点云读取工具（read_points）
 from std_msgs.msg import Bool, String # 标准消息：停止标志 / 状态与诊断字符串
@@ -123,12 +128,12 @@ class CollisionGuard(Node):
         self.declare_parameter('footprint_offset', 0.18)  # 前后圆偏移（米）
         self.declare_parameter('safety_margin', 0.05)     # 安全裕量（米）
         self.declare_parameter('lookahead_sec', 0.70)     # 前视时长（秒）
-        self.declare_parameter('sample_period_sec', 0.05) # 预测采样周期（秒）
+        self.declare_parameter('sample_period_sec', 0.05)  # 预测采样周期（秒）
         self.declare_parameter('command_timeout_sec', 0.5)  # 候选指令超时（秒）
         self.declare_parameter('publish_rate_hz', 20.0)     # 评估/发布频率（Hz）
         self.declare_parameter('max_linear_x', 0.45)  # 线速度 x 限幅（与后端一致）
         self.declare_parameter('max_linear_y', 0.20)  # 线速度 y 限幅
-        self.declare_parameter('max_angular_z', 0.65) # 角速度限幅
+        self.declare_parameter('max_angular_z', 0.65)  # 角速度限幅
         self.declare_parameter(  # 正转向（左转）实测侧向漂移上限（米/秒）
             'model_positive_yaw_lateral_drift', 0.15
         )
@@ -139,6 +144,14 @@ class CollisionGuard(Node):
             'model_opposite_lateral_uncertainty', 0.05
         )
         self.declare_parameter('model_reference_yaw_rate', 0.65)  # 参考角速度（漂移缩放基准）
+        # Simulation uses the planner's nominal footprint as the single source
+        # of predictive geometry. Hardware profiles may enable the measured
+        # lateral-drift envelope explicitly when those measurements are valid.
+        self.declare_parameter('motion_uncertainty_enabled', True)
+        self.declare_parameter('recovery_enabled', True)
+        self.declare_parameter('predicted_collision_enabled', True)
+        self.declare_parameter('current_shell_escape_enabled', True)
+        self.declare_parameter('current_footprint_enabled', True)
         # The official-policy cold matrix validated this rolling command.
         # Pure-yaw recovery is intentionally forbidden.
         # 【中文】官方策略冷矩阵验证了该滚动指令；纯旋转恢复被有意禁止。
@@ -157,7 +170,7 @@ class CollisionGuard(Node):
         self.declare_parameter('recovery_clear_confirm_sec', 0.30)  # 恢复释放确认时长
         self.declare_parameter('recovery_rearm_clear_sec', 1.50)    # 恢复重新武装确认时长
         self.declare_parameter('recovery_max_active_sec', 6.0)      # 恢复最大活动时长
-        self.declare_parameter('recovery_max_displacement_m', 0.75) # 恢复最大总位移
+        self.declare_parameter('recovery_max_displacement_m', 0.75)  # 恢复最大总位移
         self.declare_parameter('recovery_progress_timeout_sec', 1.50)  # 恢复无进度超时
         self.declare_parameter('recovery_min_progress_m', 0.03)        # 恢复最小进度阈值
 
@@ -214,7 +227,7 @@ class CollisionGuard(Node):
             PointCloud2,
             str(self.get_parameter('occupancy_cloud_topic').value),
             self._cloud_callback,
-            10,
+            qos_profile_sensor_data,
         )
         self._odom_subscription = self.create_subscription(  # 里程计订阅
             Odometry,
@@ -376,7 +389,9 @@ class CollisionGuard(Node):
         self._stop_publisher.publish(Bool(data=stop))
         state_changed = state != self._last_state
         diagnostic_text = diagnostic or state
-        diagnostic_key = diagnostic_text.split(';', 1)[0]  # 诊断主键（分号前部分）
+        # Include the detail suffix so a changing readiness cause is
+        # published even when the high-level state remains NOT_READY.
+        diagnostic_key = diagnostic_text
         if state_changed:
             self._state_publisher.publish(String(data=state))
             self.get_logger().info(f'collision guard state: {state}')
@@ -501,15 +516,22 @@ class CollisionGuard(Node):
                 self.get_parameter('occupancy_cloud_timeout_sec').value
             ),
         )
-        if (  # 前置条件不满足：地图未就绪/过期/缺栅格/缺里程计 -> fail-closed
-            not self._cloud_frame_valid
-            or self._last_cloud_time is None
-            or now - self._last_cloud_time > cloud_timeout
-            or self._geometry is None
-            or self._blocked is None
-            or self._hard_body_blocked is None
-            or self._odom is None
-        ):
+        missing = []
+        if not self._cloud_frame_valid:
+            missing.append('cloud_frame_invalid')
+        if self._last_cloud_time is None:
+            missing.append('cloud_missing')
+        elif now - self._last_cloud_time > cloud_timeout:
+            missing.append('cloud_stale')
+        if self._geometry is None:
+            missing.append('geometry_missing')
+        if self._blocked is None:
+            missing.append('occupancy_grid_missing')
+        if self._hard_body_blocked is None:
+            missing.append('hard_body_grid_missing')
+        if self._odom is None:
+            missing.append('odom_missing')
+        if missing:
             self._reset_recovery()
             self._publish_recovery(None)
             state = (
@@ -518,7 +540,7 @@ class CollisionGuard(Node):
                 and now - self._last_cloud_time > cloud_timeout
                 else 'NOT_READY'
             )
-            self._publish(True, state)
+            self._publish(True, state, 'NOT_READY; missing=' + ','.join(missing))
             return
         command = self._command
         if (  # 候选指令超时：按零指令预测
@@ -532,8 +554,14 @@ class CollisionGuard(Node):
         sample_period = float(
             self.get_parameter('sample_period_sec').value
         )
+        collision_grid = self._blocked
+        if not bool(self.get_parameter('predicted_collision_enabled').value):
+            # SCAN already performs conservative inflation. In simulation the
+            # guard must check the physical hard-body raster, not add another
+            # half-cell shell on top of SCAN's 0.30 m double-cylinder.
+            collision_grid = self._hard_body_blocked
         blocked_sample = first_blocking_command_envelope(  # 前视包络检查（含漂移变体）
-            self._blocked,
+            collision_grid,
             self._geometry,
             (
                 float(position.x),
@@ -548,22 +576,35 @@ class CollisionGuard(Node):
                 self.get_parameter(
                     'model_positive_yaw_lateral_drift'
                 ).value
-            ),
+            ) if bool(self.get_parameter('motion_uncertainty_enabled').value) else 0.0,
             float(
                 self.get_parameter(
                     'model_negative_yaw_lateral_drift'
                 ).value
-            ),
+            ) if bool(self.get_parameter('motion_uncertainty_enabled').value) else 0.0,
             float(
                 self.get_parameter(
                     'model_opposite_lateral_uncertainty'
                 ).value
-            ),
+            ) if bool(self.get_parameter('motion_uncertainty_enabled').value) else 0.0,
             float(
                 self.get_parameter('model_reference_yaw_rate').value
             ),
         )
+        if (
+            blocked_sample is not None
+            and blocked_sample.sample_index > 0
+            and not bool(self.get_parameter('predicted_collision_enabled').value)
+        ):
+            blocked_sample = None
         danger = blocked_sample is not None
+        if (
+            blocked_sample is not None
+            and blocked_sample.sample_index == 0
+            and not bool(self.get_parameter('current_footprint_enabled').value)
+        ):
+            blocked_sample = None
+            danger = False
         diagnostic = 'CLEAR'
         recovery = None
         if blocked_sample is not None:  # ------------- 预测碰撞分支 -------------
@@ -589,7 +630,9 @@ class CollisionGuard(Node):
                 f'cmd=({command[0]:.2f},'
                 f'{command[1]:.2f},{command[2]:.2f})'
             )
-            if blocked_sample.sample_index > 0:  # 预测（而非当前）碰撞：可尝试滚动恢复
+            if blocked_sample.sample_index > 0 and bool(
+                self.get_parameter('recovery_enabled').value
+            ):  # 预测碰撞：仅在显式启用时执行主动恢复
                 pose = (
                     float(position.x),
                     float(position.y),
@@ -699,7 +742,10 @@ class CollisionGuard(Node):
                         'RECOVERY_UNAVAILABLE; '
                         f'trigger={diagnostic}'
                     )
-            else:
+            elif (
+                blocked_sample.sample_index == 0
+                and bool(self.get_parameter('current_shell_escape_enabled').value)
+            ):
                 # A hard-body overlap never authorizes motion. A false current
                 # hit created only by the conservative half-cell shell may use
                 # one bounded straight escape whose hard sweep is clear and

@@ -103,7 +103,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument('use_planner', default_value='true'),  # 默认启动规划器
             DeclareLaunchArgument(  # 执行档案
                 'execution_profile',
-                default_value='scan_native',  # 默认上游兼容 SCAN 命令路径
+                default_value='m20_safe',  # 规划基线叠加 M20 安全运动适配
                 description=(
                     'Default upstream-compatible SCAN command path; '
                     'm20_safe restores the Twist adapter/guard chain; '
@@ -217,10 +217,10 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(  # M20 平台能力档案
                 'locomotion_capability_config',
-                default_value=str(  # 默认 v1 策略能力档案
+                default_value=str(  # 仿真使用支持原地四足转向的平层能力档案
                     locomotion
                     / 'config'
-                    / 'm20_policy_v1_capabilities.yaml'
+                    / 'm20_factory_agile_flat_capabilities.yaml'
                 ),
                 description='Versioned M20 platform capability profile.',
             ),

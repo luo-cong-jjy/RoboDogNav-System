@@ -8,7 +8,7 @@
 #   - 依据后端就绪/故障、安全状态（NAVIGATION/MANUAL）、运动意图发布模式标签
 #     （/m20/locomotion/mode）；
 #   - 内置看门狗：指令超时后自动输出零指令（fail-safe）；
-#   - 可选开启 RollingNavigationAdapter（自主滚动导航适配）。
+#   - 不在此层执行导航滚动适配；该职责唯一归 m20_navigation_adapter。
 # ============================================================================
 # Copyright 2026 Virdyn Robotics
 #
@@ -191,9 +191,9 @@ class LocomotionManager(Node):
         self._rolling_adapter = RollingNavigationAdapter(  # 滚动导航适配器实例
             self._intent_parameters
         )
-        self._rolling_navigation_enabled = bool(  # 是否启用滚动导航适配
-            self.get_parameter('rolling_navigation_enabled').value
-        )
+        # Deprecated compatibility parameter. Navigation adaptation is owned
+        # exclusively by m20_navigation_adapter and is never repeated here.
+        self._rolling_navigation_enabled = False
         self._allow_manual_lateral = bool(  # 手动模式是否允许横向
             self.get_parameter('allow_manual_lateral').value
         )
@@ -286,23 +286,11 @@ class LocomotionManager(Node):
             )
         )
         self._last_adaptation_ns = now_ns
-        if (  # 自主导航模式 + 安全状态为 NAVIGATION → 使用滚动导航适配器
-            self._rolling_navigation_enabled
-            and self._safety_state == 'NAVIGATION'
-        ):
-            intent, constrained = self._rolling_adapter.update(command, dt)
-        elif (  # 手动模式允许横向 或 未启用滚动适配 → 仅按意图约束
-            self._safety_state == 'MANUAL'
-            and self._allow_manual_lateral
-        ) or not self._rolling_navigation_enabled:
-            self._rolling_adapter.reset()
-            intent, constrained = constrain_for_intent(
-                command,
-                self._intent_parameters,
-            )
-        else:  # 其他情况：安全停止
-            self._rolling_adapter.reset()
-            intent, constrained = MotionIntent.STOPPED, (0.0, 0.0, 0.0)
+        self._rolling_adapter.reset()
+        intent, constrained = constrain_for_intent(
+            command,
+            self._intent_parameters,
+        )
         self._last_command_ns = now_ns
         self._timeout_zero_sent = False
         self._publish(intent, constrained)

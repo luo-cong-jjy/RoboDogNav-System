@@ -15,6 +15,7 @@
 // 文件首行为空行（保持原样）
 
 #include <plan_manage/scan_replan_fsm.h>   // 状态机声明（本文件实现其接口）
+#include "m20_trajectory/map_collision_boundary.h"
 #include <cmath>        // 数学库：std::atan2 / std::floor / std::ceil 等
 #include <stdexcept>    // 异常类型：std::runtime_error（参数校验失败）
 
@@ -54,6 +55,10 @@ namespace scan_planner    // 扫描规划器命名空间
     replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_replan", -1.0);   // 重规划触发距离阈值
     no_replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_no_replan", -1.0);   // 不重规划距离阈值
     planning_horizon_ = load_parameter<double>(node_, "fsm.planning_horizon", -1.0);   // 局部规划视界 [m]
+    initial_heading_speed_ = load_parameter<double>(node_, "fsm.initial_heading_speed", 0.25);
+    startup_replan_lock_sec_ = load_parameter<double>(node_, "fsm.startup_replan_lock_sec", 2.0);
+    min_replan_interval_sec_ = load_parameter<double>(node_, "fsm.min_replan_interval_sec", 1.0);
+    replan_retry_cooldown_sec_ = load_parameter<double>(node_, "fsm.replan_retry_cooldown_sec", 0.25);
     emergency_time_ = load_parameter<double>(node_, "fsm.emergency_time", 1.0);   // 紧急停车判定时间窗 [s]
     enable_fail_safe_ = load_parameter<bool>(node_, "fsm.fail_safe", true);   // 是否启用失效保护
     max_replan_fail_count_ = load_parameter<int>(node_, "fsm.max_replan_fail_count", 1000);   // 最大重规划失败次数
@@ -329,7 +334,7 @@ namespace scan_planner    // 扫描规划器命名空间
   // 若全局轨迹终点被占据：从终点沿轨迹向起点搜索最近的自由点作为新终点
   bool SCANReplanFSM::adjustGlobalTargetIfOccupied()
   {
-    auto map = planner_manager_->grid_map_;            // 栅格地图
+    auto map = planner_manager_->collisionMap();
     auto &global_data = planner_manager_->global_data_;   // 全局轨迹数据
     const double duration = global_data.global_duration_;   // 全局轨迹时长
     if (!map || duration < 1e-3)         // 地图无效或轨迹过短
@@ -339,7 +344,7 @@ namespace scan_planner    // 扫描规划器命名空间
     const int sample_num = std::max(1, static_cast<int>(std::ceil(duration / sample_dt)));   // 采样点数
     const Eigen::Vector3d final_pt = global_data.global_traj_.evaluate(duration);   // 终点位置
     const Eigen::Vector3d final_prev = global_data.global_traj_.evaluate(duration * (sample_num - 1) / sample_num);   // 终点前一点
-    const int final_occ = map->getInflateOccupancy(final_pt, estimateYawFromSegment(final_prev, final_pt));   // 终点占据值（含膨胀）
+    const bool final_occ = map->occupied(final_pt, estimateYawFromSegment(final_prev, final_pt));
     if (final_occ <= 0)                  // 终点自由
       return true;
 
@@ -350,7 +355,7 @@ namespace scan_planner    // 扫描规划器命名空间
       const Eigen::Vector3d pt = global_data.global_traj_.evaluate(t);    // 采样位置
       const Eigen::Vector3d prev_pt = global_data.global_traj_.evaluate(prev_t);   // 前一点位置
 
-      if (map->getInflateOccupancy(pt, estimateYawFromSegment(prev_pt, pt)) == 0)   // 找到自由点
+      if (!map->occupied(pt, estimateYawFromSegment(prev_pt, pt)))
       {
         const Eigen::Vector3d raw_end = end_pt_;   // 保存原终点
         end_pt_ = pt;                    // 更新终点为该自由点
@@ -466,8 +471,8 @@ namespace scan_planner    // 扫描规划器命名空间
     if (have_odom_)                      // 有里程计
       callEmergencyStop(odom_pos_);      // 发布原地停止轨迹
 
-    if (planner_manager_ && planner_manager_->grid_map_)   // 重置栅格地图缓冲区
-      planner_manager_->grid_map_->resetBuffer();
+    if (planner_manager_ && planner_manager_->collisionMap())
+      planner_manager_->collisionMap()->reset();
 
     active_waypoints_.clear();           // 清空激活路点
     current_wp_ = 0;                     // 重置路点索引
@@ -673,6 +678,8 @@ namespace scan_planner    // 扫描规划器命名空间
       if (success)                       // 规划成功
       {
 
+        trajectory_started_at_ = node_->now();
+
         replan_fail_count_ = 0;          // 重置失败计数
         changeFSMExecState(EXEC_TRAJ, "FSM");   // 转入执行轨迹
         flag_escape_emergency_ = true;   // 允许紧急停车
@@ -687,8 +694,16 @@ namespace scan_planner    // 扫描规划器命名空间
 
     case REPLAN_TRAJ:                    // 重规划状态
     {
+      const rclcpp::Time now = node_->now();
+      if (last_replan_attempt_at_.seconds() > 0.0 &&
+          (now - last_replan_attempt_at_).seconds() < replan_retry_cooldown_sec_) {
+        return;
+      }
+      last_replan_attempt_at_ = now;
       if (planFromCurrentTraj())         // 基于当前轨迹重规划成功
       {
+        last_replan_publish_at_ = node_->now();
+        trajectory_started_at_ = node_->now();
         replan_fail_count_ = 0;          // 重置失败计数
         changeFSMExecState(EXEC_TRAJ, "FSM");   // 转入执行轨迹
       }
@@ -765,6 +780,16 @@ namespace scan_planner    // 扫描规划器命名空间
       }
       else                               // 距起终点都较远：需要重规划
       {
+        if (last_replan_publish_at_.seconds() > 0.0 &&
+            (node_->now() - last_replan_publish_at_).seconds()
+                < min_replan_interval_sec_) {
+          return;
+        }
+        if (trajectory_started_at_.seconds() > 0.0 &&
+            (node_->now() - trajectory_started_at_).seconds()
+                < startup_replan_lock_sec_) {
+          return;
+        }
         changeFSMExecState(REPLAN_TRAJ, "FSM");   // 转入重规划
       }
       break;
@@ -871,6 +896,12 @@ namespace scan_planner    // 扫描规划器命名空间
     start_pt_ = odom_pos_;               // 起点 = 机体位置
     start_vel_ = odom_vel_;              // 速度 = 里程计速度
     start_acc_.setZero();                // 加速度置 0
+    if (start_vel_.head<2>().norm() < 0.08 &&
+        initial_heading_speed_ > 0.0) {
+      const double yaw = getOdomYaw();
+      start_vel_.x() = initial_heading_speed_ * std::cos(yaw);
+      start_vel_.y() = initial_heading_speed_ * std::sin(yaw);
+    }
 
     LocalTrajData *info = &planner_manager_->local_data_;   // 局部轨迹数据
     if (info->start_time_.seconds() < 1e-5 || info->duration_ <= 1e-5)   // 轨迹未开始或为空
@@ -898,7 +929,7 @@ namespace scan_planner    // 扫描规划器命名空间
     updateLocalTrajTimeFreeze();         // 先处理时间冻结
 
     LocalTrajData *info = &planner_manager_->local_data_;   // 局部轨迹数据
-    auto map = planner_manager_->grid_map_;   // 栅格地图
+    auto map = planner_manager_->collisionMap();
 
     if (exec_state_ == WAIT_TARGET || info->start_time_.seconds() < 1e-5)   // 无执行轨迹
       return;
@@ -915,7 +946,7 @@ namespace scan_planner    // 扫描规划器命名空间
 
       Eigen::Vector3d pos = info->position_traj_.evaluateDeBoorT(t);   // 当前点位置
       Eigen::Vector3d pos_next = info->position_traj_.evaluateDeBoorT(std::min(t + time_step, info->duration_));   // 下一个检查点位置
-      if (map->getInflateOccupancy(pos, estimateYawFromSegment(pos, pos_next)))   // 该点处于膨胀占据区
+      if (map && map->occupied(pos, estimateYawFromSegment(pos, pos_next)))
       {
         if (planFromCurrentTraj()) // Make a chance  尝试重规划
         {
@@ -1070,7 +1101,7 @@ namespace scan_planner    // 扫描规划器命名空间
     }
 
     auto targetOccupancy = [&](const Eigen::Vector3d &pt) {   // 局部目标占据检查 lambda
-      return planner_manager_->grid_map_->getInflateOccupancy(pt, estimateYawFromSegment(odom_pos_, pt));
+      return planner_manager_->collisionMap()->occupied(pt, estimateYawFromSegment(odom_pos_, pt));
     };
 
     if (targetOccupancy(local_target_pt_) != 0)   // 局部目标处于占据区

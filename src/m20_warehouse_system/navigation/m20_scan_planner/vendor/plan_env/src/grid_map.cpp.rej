@@ -1,0 +1,213 @@
+--- src/planner/plan_env/src/grid_map.cpp
++++ src/planner/plan_env/src/grid_map.cpp
+@@ -207,9 +209,11 @@ void GridMap::updateMapBoundaryFromIndex()
+   mp_.map_origin_ = mp_.map_min_boundary_;
+ }
+ 
+-void GridMap::rebuildInflationOffsets()
+-{
+-  const double double_radius = std::max(0.0, mp_.double_cylinder_radius_);
++void GridMap::rebuildInflationOffsets()
++{
++  // 预计算一个竖直圆柱形膨胀核。真实占据体素变为 occupied/free 时，
++  // 只需把这些 offset 累加/扣减到 inflation buffer。
++  const double double_radius = std::max(0.0, mp_.double_cylinder_radius_);
+   const int inf_step_xy = ceil(double_radius / mp_.resolution_);
+   const int inf_step_z_up = ceil(mp_.obstacles_inflation_z_up / mp_.resolution_);
+   const int inf_step_z_down = ceil(mp_.obstacles_inflation_z_down / mp_.resolution_);
+@@ -258,13 +262,15 @@ void GridMap::hashIdToGlobalIndex(int addr, Eigen::Vector3i& id_g) const
+   }
+ }
+ 
+-void GridMap::updateInflationLayer(const Eigen::Vector3i& id, int delta,
+-                                   const vector<Eigen::Vector3i>& offsets,
+-                                   std::vector<int>& cnt_buffer,
+-                                   std::vector<char>& flag_buffer,
+-                                   const std::vector<char>* ignore_mask)
+-{
+-  for (const auto& offset : offsets)
++void GridMap::updateInflationLayer(const Eigen::Vector3i& id, int delta,
++                                   const vector<Eigen::Vector3i>& offsets,
++                                   std::vector<int>& cnt_buffer,
++                                   std::vector<char>& flag_buffer,
++                                   const std::vector<char>* ignore_mask)
++{
++  // delta=+1 表示新增一个真实障碍体素，delta=-1 表示该障碍被清除。
++  // 计数缓冲使多个障碍膨胀区域重叠时不会被单个障碍清除误删。
++  for (const auto& offset : offsets)
+   {
+     const Eigen::Vector3i inf_id = id + offset;
+     if (!isInMap(inf_id))
+@@ -287,9 +293,10 @@ void GridMap::updateInflation(const Eigen::Vector3i& id, int delta, const std::v
+                        md_.occupancy_buffer_inflate_, ignore_mask);
+ }
+ 
+-void GridMap::applyOccupancyUpdate(const Eigen::Vector3i& id, double new_log_odds)
+-{
+-  if (!isInMap(id))
++void GridMap::applyOccupancyUpdate(const Eigen::Vector3i& id, double new_log_odds)
++{
++  // 只有跨过占据阈值时才更新膨胀层；普通 log-odds 累加不会反复重建局部膨胀。
++  if (!isInMap(id))
+     return;
+ 
+   const int addr = toAddress(id);
+@@ -323,9 +330,11 @@ void GridMap::resetCellByAddressForSliding(int addr, const std::vector<char>& cl
+     updateInflation(id_g, -1, &clear_mask);
+ }
+ 
+-void GridMap::updateSlidingMap(const Eigen::Vector3d& center)
+-{
+-  if (!mp_.map_sliding_en_)
++void GridMap::updateSlidingMap(const Eigen::Vector3d& center)
++{
++  // 局部地图随机器人位置滑动。缓冲区地址使用取模环形映射，
++  // 因此小幅移动只清空新进入窗口的切片，不需要整体搬移体素数据。
++  if (!mp_.map_sliding_en_)
+     return;
+ 
+   Eigen::Vector3i new_origin_idx;
+@@ -473,9 +482,10 @@ int GridMap::setCacheOccupancy(Eigen::Vector3d pos, int occ)
+   return idx_ctns;
+ }
+ 
+-void GridMap::projectDepthImage()
+-{
+-  // md_.proj_points_.clear();
++void GridMap::projectDepthImage()
++{
++  // 深度图先稀疏采样并投影到世界系，后续 raycastProcess 统一处理命中点和穿越射线。
++  // md_.proj_points_.clear();
+   md_.proj_points_cnt = 0;
+ 
+   uint16_t *row_ptr;
+@@ -541,9 +551,11 @@ void GridMap::projectDepthImage()
+   }
+ }
+ 
+-void GridMap::raycastProcess()
+-{
+-  // if (md_.proj_points_.size() == 0)
++void GridMap::raycastProcess()
++{
++  // Raycasting 将投影点转成 log-odds 观测：
++  // 终点若在量程内记为 hit，射线经过的体素记为 miss，最后批量写回 occupancy_buffer_。
++  // if (md_.proj_points_.size() == 0)
+   if (md_.proj_points_cnt == 0)
+     return;
+ 
+@@ -573,14 +585,16 @@ void GridMap::raycastProcess()
+ 
+     // set flag for projected point
+ 
+-    if (!isInMap(pt_w))
+-    {
+-      pt_w = closetPointInMap(pt_w, md_.ray_pos_);
++    if (!isInMap(pt_w))
++    {
++      // 观测点在地图外时，将射线截到地图边界附近，并作为 free endpoint 处理。
++      pt_w = closetPointInMap(pt_w, md_.ray_pos_);
+ 
+       length = (pt_w - md_.ray_pos_).norm();
+-      if (length > mp_.max_ray_length_)
+-      {
+-        pt_w = (pt_w - md_.ray_pos_) / length * mp_.max_ray_length_ + md_.ray_pos_;
++      if (length > mp_.max_ray_length_)
++      {
++        // 超出最大量程的点只提供自由空间信息，不把远端标成障碍。
++        pt_w = (pt_w - md_.ray_pos_) / length * mp_.max_ray_length_ + md_.ray_pos_;
+       }
+       vox_idx = setCacheOccupancy(pt_w, 0);
+     }
+@@ -621,11 +635,12 @@ void GridMap::raycastProcess()
+       }
+     }
+ 
+-    raycaster.setInput(pt_w / mp_.resolution_, md_.ray_pos_ / mp_.resolution_);
+-
+-    while (raycaster.step(ray_pt))
+-    {
+-      Eigen::Vector3d tmp = (ray_pt + half) * mp_.resolution_;
++    raycaster.setInput(pt_w / mp_.resolution_, md_.ray_pos_ / mp_.resolution_);
++
++    while (raycaster.step(ray_pt))
++    {
++      // 从传感器原点到观测点之间的体素为 miss，用于清除旧障碍或未知区域。
++      Eigen::Vector3d tmp = (ray_pt + half) * mp_.resolution_;
+       length = (tmp - md_.ray_pos_).norm();
+ 
+       vox_idx = setCacheOccupancy(tmp, 0);
+@@ -677,8 +692,9 @@ void GridMap::raycastProcess()
+     int idx_ctns = toAddress(idx);
+     md_.cache_voxel_.pop();
+ 
+-    double log_odds_update =
+-        md_.count_hit_[idx_ctns] >= md_.count_hit_and_miss_[idx_ctns] - md_.count_hit_[idx_ctns] ? mp_.prob_hit_log_ : mp_.prob_miss_log_;
++    // 同一轮 raycast 中，一个体素可能被多条射线访问；hit 多于 miss 时按占据更新，否则按空闲更新。
++    double log_odds_update =
++        md_.count_hit_[idx_ctns] >= md_.count_hit_and_miss_[idx_ctns] - md_.count_hit_[idx_ctns] ? mp_.prob_hit_log_ : mp_.prob_miss_log_;
+ 
+     md_.count_hit_[idx_ctns] = md_.count_hit_and_miss_[idx_ctns] = 0;
+ 
+@@ -694,9 +710,10 @@ void GridMap::raycastProcess()
+ 
+     bool in_local = idx(0) >= min_id(0) && idx(0) <= max_id(0) && idx(1) >= min_id(1) &&
+                     idx(1) <= max_id(1) && idx(2) >= min_id(2) && idx(2) <= max_id(2);
+-    if (!in_local)
+-    {
+-      applyOccupancyUpdate(idx, mp_.clamp_min_log_);
++    if (!in_local)
++    {
++      // 超出 local_update_range 的缓存体素不使用本轮观测，直接压回 free，防止远处噪声污染局部地图。
++      applyOccupancyUpdate(idx, mp_.clamp_min_log_);
+     }
+ 
+     const double new_log_odds =
+@@ -799,10 +816,11 @@ void GridMap::depthPoseCallback(const sensor_msgs::msg::Image::ConstSharedPtr &i
+     return;
+   ray_q.normalize();
+ 
+-  Eigen::Vector3d ray_pos(sensor_pose.position.x, sensor_pose.position.y, sensor_pose.position.z);
+-  if (mp_.need_extrinsic_)
+-  {
+-    const Eigen::Matrix3d pose_r = ray_q.toRotationMatrix();
++  Eigen::Vector3d ray_pos(sensor_pose.position.x, sensor_pose.position.y, sensor_pose.position.z);
++  if (mp_.need_extrinsic_)
++  {
++    // 实机模式下外部里程计通常给的是机体/IMU 位姿，这里转换到深度相机光心位姿再投影。
++    const Eigen::Matrix3d pose_r = ray_q.toRotationMatrix();
+     ray_pos += pose_r * mp_.depth_extrinsic_.block<3, 1>(0, 3);
+     ray_q = Eigen::Quaterniond(pose_r * mp_.depth_extrinsic_.block<3, 3>(0, 0));
+     ray_q.normalize();
+@@ -848,10 +866,11 @@ void GridMap::sensorPoseCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &
+     return;
+   ray_q.normalize();
+ 
+-  Eigen::Vector3d ray_pos(sensor_pose.position.x, sensor_pose.position.y, sensor_pose.position.z);
+-  if (mp_.need_extrinsic_)
+-  {
+-    const Eigen::Matrix3d pose_r = ray_q.toRotationMatrix();
++  Eigen::Vector3d ray_pos(sensor_pose.position.x, sensor_pose.position.y, sensor_pose.position.z);
++  if (mp_.need_extrinsic_)
++  {
++    // lidar 点云若在传感器系发布，需要先通过外参得到传感器在世界系的位姿。
++    const Eigen::Matrix3d pose_r = ray_q.toRotationMatrix();
+     ray_pos += pose_r * mp_.lidar_extrinsic_.block<3, 1>(0, 3);
+     ray_q = Eigen::Quaterniond(pose_r * mp_.lidar_extrinsic_.block<3, 3>(0, 0));
+     ray_q.normalize();
+@@ -906,10 +925,11 @@ void GridMap::cloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr
+     if (!std::isfinite(pt.x) || !std::isfinite(pt.y) || !std::isfinite(pt.z))
+       continue;
+ 
+-    Eigen::Vector3d pt_world;
+-    if (mp_.cloud_is_world_)
+-    {
+-      pt_world = Eigen::Vector3d(pt.x, pt.y, pt.z);
++    Eigen::Vector3d pt_world;
++    if (mp_.cloud_is_world_)
++    {
++      // 仿真器默认发布世界系点云，实机可通过 cloud_is_world=false 切换为传感器系点云。
++      pt_world = Eigen::Vector3d(pt.x, pt.y, pt.z);
+     }
+     else
+     {

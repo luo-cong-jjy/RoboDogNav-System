@@ -1,0 +1,105 @@
+--- src/planner/bspline_opt/src/uniform_bspline.cpp
++++ src/planner/bspline_opt/src/uniform_bspline.cpp
+@@ -11,10 +11,12 @@ namespace scan_planner
+ 
+   UniformBspline::~UniformBspline() {}
+ 
+-  void UniformBspline::setUniformBspline(const Eigen::MatrixXd &points, const int &order,
+-                                         const double &interval)
+-  {
+-    control_points_ = points;
++  void UniformBspline::setUniformBspline(const Eigen::MatrixXd &points, const int &order,
++                                         const double &interval)
++  {
++    // 控制点按列存储为 3xN。均匀 B 样条的节点间隔固定为 interval_，
++    // 前 p_ 个节点允许为负数，这样 evaluateDeBoorT(0) 可以映射到有效时间起点。
++    control_points_ = points;
+     p_ = order;
+     interval_ = interval;
+ 
+@@ -58,12 +60,13 @@ namespace scan_planner
+   Eigen::MatrixXd UniformBspline::getControlPoint() { return control_points_; }
+ 
+   Eigen::VectorXd UniformBspline::evaluateDeBoor(const double &u) const
+-  {
+-
+-    double ub = min(max(u_(p_), u), u_(m_ - p_));
+-
+-    // determine which [ui,ui+1] lay in
+-    int k = p_;
++  {
++
++    double ub = min(max(u_(p_), u), u_(m_ - p_));
++
++    // determine which [ui,ui+1] lay in
++    // de Boor 求值只依赖当前 knot span 附近的 p_+1 个控制点。
++    int k = p_;
+     while (true)
+     {
+       if (u_(k + 1) >= ub)
+@@ -96,11 +99,12 @@ namespace scan_planner
+   //   return evaluateDeBoor(t + u_(p_));
+   // }
+ 
+-  Eigen::MatrixXd UniformBspline::getDerivativeControlPoints()
+-  {
+-    // The derivative of a b-spline is also a b-spline, its order become p_-1
+-    // control point Qi = p_*(Pi+1-Pi)/(ui+p_+1-ui+1)
+-    Eigen::MatrixXd ctp(control_points_.rows(), control_points_.cols() - 1);
++  Eigen::MatrixXd UniformBspline::getDerivativeControlPoints()
++  {
++    // The derivative of a b-spline is also a b-spline, its order become p_-1
++    // control point Qi = p_*(Pi+1-Pi)/(ui+p_+1-ui+1)
++    // 因此速度/加速度轨迹可以继续用同一套 de Boor 逻辑求值。
++    Eigen::MatrixXd ctp(control_points_.rows(), control_points_.cols() - 1);
+     for (int i = 0; i < ctp.cols(); ++i)
+     {
+       ctp.col(i) =
+@@ -131,9 +135,11 @@ namespace scan_planner
+     feasibility_tolerance_ = tolerance;
+   }
+ 
+-  bool UniformBspline::checkFeasibility(double &ratio, bool show)
+-  {
+-    bool fea = true;
++  bool UniformBspline::checkFeasibility(double &ratio, bool show)
++  {
++    // B 样条导数的控制点给出了速度/加速度的凸包界。
++    // 只要这些导数控制点在限制内，整条曲线也满足对应的分量限制。
++    bool fea = true;
+ 
+     Eigen::MatrixXd P = control_points_;
+     int dimension = control_points_.rows();
+@@ -191,9 +197,10 @@ namespace scan_planner
+     return fea;
+   }
+ 
+-  void UniformBspline::lengthenTime(const double &ratio)
+-  {
+-    int num1 = 5;
++  void UniformBspline::lengthenTime(const double &ratio)
++  {
++    // 只拉伸内部 knot，保持曲线几何控制点不变；时间变长后速度/加速度会降低。
++    int num1 = 5;
+     int num2 = getKnot().rows() - 1 - 5;
+ 
+     double delta_t = (ratio - 1.0) * (u_(num2) - u_(num1));
+@@ -206,11 +213,13 @@ namespace scan_planner
+ 
+   // void UniformBspline::recomputeInit() {}
+ 
+-  void UniformBspline::parameterizeToBspline(const double &ts, const vector<Eigen::Vector3d> &point_set,
+-                                             const vector<Eigen::Vector3d> &start_end_derivative,
+-                                             Eigen::MatrixXd &ctrl_pts)
+-  {
+-    if (ts <= 0)
++  void UniformBspline::parameterizeToBspline(const double &ts, const vector<Eigen::Vector3d> &point_set,
++                                             const vector<Eigen::Vector3d> &start_end_derivative,
++                                             Eigen::MatrixXd &ctrl_pts)
++  {
++    // 给定离散采样点和起终点速度/加速度，反解三次均匀 B 样条控制点。
++    // 对三次 B 样条，采样点与相邻三个控制点满足 (P_i + 4P_{i+1} + P_{i+2}) / 6。
++    if (ts <= 0)
+     {
+       cout << "[B-spline]:time step error." << endl;
+       return;

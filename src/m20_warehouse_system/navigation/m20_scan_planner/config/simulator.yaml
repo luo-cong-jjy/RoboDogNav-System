@@ -57,6 +57,9 @@ pcl_render_node:
     dynamic.velocity: 0.0
     collision_check.enable: 0
     collision_check.range: 0.3
+    # PointCloud2 is published with SensorDataQoS by the vendor renderer;
+    # keep the transport compatible in the standalone MuJoCo launch.
+    reliable_cloud_transport: false
     use_global_map_topic: true
     pcd_map_file: ''
 

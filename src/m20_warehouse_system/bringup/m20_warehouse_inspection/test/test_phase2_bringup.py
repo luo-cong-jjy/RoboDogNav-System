@@ -94,7 +94,7 @@ def test_integrated_system_uses_m20_velocity_overlays() -> None:
     assert "executable='m20_trajectory_progress_tracker'" in launch
     assert "execution_profile == 'm20_safe'" in launch
     assert "execution_profile == 'm20_progress'" in launch
-    assert "default_value='scan_native'" in launch
+    assert "default_value='m20_safe'" in launch
 
 
 def test_complete_uses_m20_velocity_and_standalone_keeps_vendor_defaults() -> None:

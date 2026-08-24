@@ -1,0 +1,39 @@
+--- src/planner/plan_env/include/plan_env/grid_map.h
++++ src/planner/plan_env/include/plan_env/grid_map.h
+@@ -98,13 +98,14 @@ struct MappingParameters {
+ 
+ // intermediate mapping data for fusion
+ 
+-struct MappingData {
+-  // main map data, occupancy of each voxel and Euclidean distance
+-
+-  std::vector<double> occupancy_buffer_;
+-  std::vector<char> occupancy_buffer_inflate_;
+-  std::vector<int> occupancy_buffer_inflate_cnt_;
+-  vector<Eigen::Vector3i> inflate_offsets_;
++struct MappingData {
++  // main map data, occupancy of each voxel and Euclidean distance
++
++  std::vector<double> occupancy_buffer_;
++  // inflate_cnt_ 记录每个体素被多少个真实占据体素膨胀覆盖，避免多个障碍重叠时误清空膨胀层。
++  std::vector<char> occupancy_buffer_inflate_;
++  std::vector<int> occupancy_buffer_inflate_cnt_;
++  vector<Eigen::Vector3i> inflate_offsets_;
+ 
+   // raycast origin and sensor pose data
+ 
+@@ -368,9 +369,11 @@ inline int GridMap::getOccupancy(Eigen::Vector3d pos) {
+   return md_.occupancy_buffer_[toAddress(id)] > mp_.min_occupancy_log_ ? 1 : 0;
+ }
+ 
+-inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos, double yaw) {
+-  Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
+-  Eigen::Vector3d front = pos + mp_.double_cylinder_offset_ * heading;
++inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos, double yaw) {
++  // 四足机器人在水平面内近似为沿航向分布的两个圆柱。
++  // 只要前/后任一圆柱中心落入膨胀占据层，就认为该机体姿态不可通行。
++  Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
++  Eigen::Vector3d front = pos + mp_.double_cylinder_offset_ * heading;
+   Eigen::Vector3d rear = pos - mp_.double_cylinder_offset_ * heading;
+ 
+   int front_occ = getInflateOccupancyFromBuffer(front, md_.occupancy_buffer_inflate_);

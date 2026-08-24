@@ -84,7 +84,7 @@ def test_rviz_launch_keeps_its_compatible_default_backend():
     assert 'capability_profile.controller_parameters()' in launch
     assert 'capability_profile.collision_guard_parameters()' in launch
     assert 'capability_profile.safety_parameters()' in launch
-    assert "default_value='scan_native'" in launch
+    assert "default_value='m20_safe'" in launch
     assert "'max_linear_x': capability_profile.max_forward" in launch
     assert "'max_linear_y': capability_profile.max_side" in launch
     assert "'max_angular_z': capability_profile.max_yaw" in launch

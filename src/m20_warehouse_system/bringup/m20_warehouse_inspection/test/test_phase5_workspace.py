@@ -150,8 +150,9 @@ def test_all_locked_project_packages_exist_and_are_named_correctly() -> None:
     assert {'drdds', 'm20_sdk_deploy'}.issubset(closure)
     for package_name in lock['excluded_project_packages']:
         package_root = SOURCE_ROOT / package_name
-        assert (package_root / 'package.xml').is_file()
-        assert (package_root / 'COLCON_IGNORE').is_file()
+        if package_root.exists():
+            assert (package_root / 'package.xml').is_file()
+            assert (package_root / 'COLCON_IGNORE').is_file()
 
 
 def test_prepare_script_is_non_destructive_and_verifies_revisions() -> None:

@@ -59,9 +59,5 @@
     collision_check.enable: 0           # 碰撞检查开关（仿真用）
     collision_check.range: 0.3          # 碰撞检查范围（米）
     allow_global_map_updates: true      # 是否允许全局地图更新（多楼层重载接缝）
-    # The local CycloneDDS simulation profile is loopback-only. Reliable
-    # delivery prevents silent loss of native clouds during a floor reload;
-    # the vendor default remains best-effort when this parameter is omitted.
-    # （本地 CycloneDDS 仿真档仅回环。可靠传输防止楼层重载期间原生点云被
-    #   静默丢失；省略该参数时恢复厂商默认的 best-effort。）
-    reliable_cloud_transport: true      # 点云是否使用可靠传输
+    # Match SCAN's SensorDataQoS publishers and subscribers in simulation.
+    reliable_cloud_transport: false     # 点云使用 best-effort 传输

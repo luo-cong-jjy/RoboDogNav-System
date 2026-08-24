@@ -19,8 +19,8 @@
 #include <vector>                 // 标准容器：std::vector（动态数组）
 #include <rclcpp/rclcpp.hpp>      // ROS2 C++ 客户端库：rclcpp::Time 时间类型等
 
-#include <bspline_opt/uniform_bspline.h>    // 均匀 B 样条：UniformBspline（局部轨迹表示）
-#include <traj_utils/polynomial_traj.h>     // 多项式轨迹：PolynomialTraj（全局 min-snap 轨迹）
+#include <bspline_opt/uniform_bspline.h>
+#include "m20_trajectory/polynomial_traj.h"
 
 using std::vector;    // 引入 std::vector 简写
 
@@ -32,7 +32,7 @@ namespace scan_planner    // 扫描规划器命名空间
   {
   private:
   public:
-    PolynomialTraj global_traj_;              // 全局参考轨迹（多项式轨迹，min-snap 生成）
+    m20_trajectory::PolynomialTraj global_traj_;
     vector<UniformBspline> local_traj_;       // 局部轨迹及其导数：[0]=位置 [1]=速度 [2]=加速度
 
     double global_duration_;                  // 全局轨迹总时长 [s]
@@ -50,7 +50,7 @@ namespace scan_planner    // 扫描规划器命名空间
     bool localTrajReachTarget() { return fabs(local_end_time_ - global_duration_) < 0.1; }
 
     // 设置全局轨迹：保存轨迹并重置局部轨迹相关的所有时间状态
-    void setGlobalTraj(const PolynomialTraj &traj, const rclcpp::Time &time)
+    void setGlobalTraj(const m20_trajectory::PolynomialTraj &traj, const rclcpp::Time &time)
     {
       global_traj_ = traj;              // 保存全局轨迹
       global_traj_.init();              // 初始化轨迹（更新内部时间参数）

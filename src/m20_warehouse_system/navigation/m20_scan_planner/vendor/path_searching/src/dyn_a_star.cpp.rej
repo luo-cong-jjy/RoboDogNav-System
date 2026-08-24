@@ -1,0 +1,132 @@
+--- src/planner/path_searching/src/dyn_a_star.cpp
++++ src/planner/path_searching/src/dyn_a_star.cpp
+@@ -14,9 +14,11 @@ AStar::~AStar()
+                 delete GridNodeMap_[i][j][k];
+ }
+ 
+-void AStar::initGridMap(GridMap::Ptr occ_map, const Eigen::Vector3i pool_size)
+-{
+-    POOL_SIZE_ = pool_size;
++void AStar::initGridMap(GridMap::Ptr occ_map, const Eigen::Vector3i pool_size)
++{
++    // A* 使用预分配节点池，避免每次碰撞段搜索都动态分配大量 GridNode。
++    // 真实搜索窗口由 start/end 的中点 center_ 和 step_size_ 映射到这个节点池。
++    POOL_SIZE_ = pool_size;
+     CENTER_IDX_ = pool_size / 2;
+ 
+     GridNodeMap_ = new GridNodePtr **[POOL_SIZE_(0)];
+@@ -91,8 +93,8 @@ vector<GridNodePtr> AStar::retrievePath(GridNodePtr current)
+     return path;
+ }
+ 
+-bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d end_pt, Vector3i &start_idx, Vector3i &end_idx)
+-{
++bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d end_pt, Vector3i &start_idx, Vector3i &end_idx)
++{
+     if (!Coord2Index(start_pt, start_idx) || !Coord2Index(end_pt, end_idx))
+         return false;
+ 
+@@ -102,10 +104,11 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d en
+     const double path_yaw = std::atan2(start_to_end(1), start_to_end(0));
+     start_to_end.normalize();
+ 
+-    int occ = checkOccupancy(Index2Coord(start_idx), path_yaw);
+-    if (occ)
+-    {
+-        //ROS_WARN("Start point is insdide an obstacle.");
++    int occ = checkOccupancy(Index2Coord(start_idx), path_yaw);
++    if (occ)
++    {
++        // 碰撞段入口可能仍在膨胀障碍内，沿反方向后退到最近自由栅格再开始搜索。
++        //ROS_WARN("Start point is insdide an obstacle.");
+         do
+         {
+             start_pt -= start_to_end * step_size_;
+@@ -121,10 +124,11 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d en
+         } while (occ);
+     }
+ 
+-    occ = checkOccupancy(Index2Coord(end_idx), path_yaw);
+-    if (occ)
+-    {
+-        //ROS_WARN("End point is insdide an obstacle.");
++    occ = checkOccupancy(Index2Coord(end_idx), path_yaw);
++    if (occ)
++    {
++        // 碰撞段出口同理，沿搜索方向向外推到自由栅格，保证 A* 有合法终点。
++        //ROS_WARN("End point is insdide an obstacle.");
+         do
+         {
+             end_pt += start_to_end * step_size_;
+@@ -143,8 +147,8 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d en
+     return true;
+ }
+ 
+-ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_pt)
+-{
++ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_pt)
++{
+     const auto time_1 = std::chrono::steady_clock::now();
+     ++rounds_;
+ 
+@@ -166,7 +170,9 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+     const Eigen::Vector2d search_xy_delta = search_end.head<2>() - search_start_xy;
+     const double search_xy_len2 = search_xy_delta.squaredNorm();
+ 
+-    auto interpolateZIndexOnSearchPlane = [&](const int x_idx, const int y_idx) -> int {
++    // SCAN-Planner 的局部绕障主要在 XY 平面展开，同时保留起终点的高度变化。
++    // 因此邻居只枚举 XY 8 邻域，Z 由起点到终点的线性高度面插值得到，降低完整 3D 搜索开销。
++    auto interpolateZIndexOnSearchPlane = [&](const int x_idx, const int y_idx) -> int {
+         if (search_xy_len2 < 1e-8)
+             return start_idx(2);
+ 
+@@ -193,8 +199,8 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+ 
+     endPtr->index = end_idx;
+ 
+-    startPtr->index = start_idx;
+-    startPtr->rounds = rounds_;
++    startPtr->index = start_idx;
++    startPtr->rounds = rounds_;
+     startPtr->gScore = 0;
+     startPtr->fScore = getHeu(startPtr, endPtr);
+     startPtr->state = GridNode::OPENSET; //put start node in open set
+@@ -204,8 +210,8 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+     double tentative_gScore;
+ 
+     int num_iter = 0;
+-    while (!openSet_.empty())
+-    {
++    while (!openSet_.empty())
++    {
+         num_iter++;
+         current = openSet_.top();
+         openSet_.pop();
+@@ -213,9 +219,10 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+         // if ( num_iter < 10000 )
+         //     cout << "current=" << current->index.transpose() << endl;
+ 
+-        if (current->index(0) == endPtr->index(0) && current->index(1) == endPtr->index(1) && current->index(2) == endPtr->index(2))
+-        {
+-            // ros::Time time_2 = ros::Time::now();
++        if (current->index(0) == endPtr->index(0) && current->index(1) == endPtr->index(1) && current->index(2) == endPtr->index(2))
++        {
++            // gridPath_ 中保存的是节点指针链，getPath() 会统一转换回世界坐标并反转顺序。
++            // ros::Time time_2 = ros::Time::now();
+             // printf("\033[34mA star iter:%d, time:%.3f\033[0m\n",num_iter, (time_2 - time_1).toSec()*1000);
+             // if((time_2 - time_1).toSec() > 0.1)
+             //     ROS_WARN("Time consume in A star path finding is %f", (time_2 - time_1).toSec() );
+@@ -252,9 +259,10 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
+ 
+                 neighborPtr->rounds = rounds_;
+ 
+-                const double neighbor_yaw = std::atan2(static_cast<double>(dy), static_cast<double>(dx));
+-                if (checkOccupancy(Index2Coord(neighborPtr->index), neighbor_yaw))
+-                {
++                const double neighbor_yaw = std::atan2(static_cast<double>(dy), static_cast<double>(dx));
++                // 碰撞查询使用带航向的双圆柱膨胀模型，因此同一个位置在不同 yaw 下可能结果不同。
++                if (checkOccupancy(Index2Coord(neighborPtr->index), neighbor_yaw))
++                {
+                     continue;
+                 }
+ 

@@ -32,3 +32,10 @@ m20_collision_guard:          # 在线碰撞守卫节点参数段
     footprint_offset: 0.18    # 守卫足迹轴向偏移（米）
     safety_margin: 0.02       # 安全余量（米）：0.28+0.02 -> 有效硬停半径 0.30m
     lookahead_sec: 0.70       # 守卫前瞻时间（秒）：预测碰撞的时间窗
+    # MuJoCo uses the same nominal footprint as SCAN.  Keep measured lateral
+    # drift uncertainty for the hardware capability profile, not simulation.
+    motion_uncertainty_enabled: false
+    recovery_enabled: false
+    predicted_collision_enabled: false
+    current_shell_escape_enabled: false
+    current_footprint_enabled: false
