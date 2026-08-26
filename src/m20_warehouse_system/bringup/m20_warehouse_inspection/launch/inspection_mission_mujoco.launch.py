@@ -87,6 +87,9 @@ def generate_launch_description() -> LaunchDescription:
     )
     run_acceptance = LaunchConfiguration('run_acceptance')  # 是否运行验收测试
     acceptance_mode = LaunchConfiguration('acceptance_mode')  # 验收模式
+    model_xml_override = LaunchConfiguration('model_xml_override')
+    world_source = LaunchConfiguration('world_source')
+    world_file = LaunchConfiguration('world_file')
 
     return LaunchDescription(
         [
@@ -100,6 +103,9 @@ def generate_launch_description() -> LaunchDescription:
                 ),
             ),
             DeclareLaunchArgument('use_rviz', default_value='true'),  # 默认启动 RViz
+            DeclareLaunchArgument('model_xml_override', default_value=''),
+            DeclareLaunchArgument('world_source', default_value='warehouse'),
+            DeclareLaunchArgument('world_file', default_value=''),
             DeclareLaunchArgument('use_planner', default_value='true'),  # 默认启动规划器
             DeclareLaunchArgument(  # 执行档案
                 'execution_profile',
@@ -245,6 +251,9 @@ def generate_launch_description() -> LaunchDescription:
                 ),
                 launch_arguments={  # 向被包含 launch 传入的参数
                     'system_config': system_config,  # 系统配置
+                    'model_xml_override': model_xml_override,
+                    'world_source': world_source,
+                    'world_file': world_file,
                     'use_rviz': use_rviz,  # 透传：是否启动 RViz
                     'use_planner': use_planner,  # 透传：是否启动规划器
                     'clearance_config': clearance_config,  # 透传：间隙配置

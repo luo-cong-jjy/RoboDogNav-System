@@ -60,6 +60,7 @@ public:
   {
     time_forward_ = declare_parameter<double>("time_forward", 0.8);   // 前瞻时间 [s]（用于期望偏航方向）
     heading_error_threshold_ = declare_parameter<double>("heading_error_threshold", 0.8);   // 偏航误差阈值（超限暂停）[rad]
+    heading_stop_threshold_ = declare_parameter<double>("heading_stop_threshold", 1.35);   // 仅大角度误差原地转向 [rad]
     kp_pos_ = declare_parameter<double>("kp_pos", 0.8);     // 位置比例增益
     kp_yaw_ = declare_parameter<double>("kp_yaw", 1.5);     // 偏航比例增益
     max_vx_ = declare_parameter<double>("max_vx", 0.75);    // 最大前进速度 [m/s]
@@ -68,7 +69,9 @@ public:
     finish_dist_ = declare_parameter<double>("finish_dist", 0.15);   // 终点判定距离 [m]
     trajectory_progress_sync_ = declare_parameter<bool>("trajectory_progress_sync", true);   // 轨迹时钟是否与机体位置投影同步
     projection_samples_ = std::max(8, static_cast<int>(declare_parameter<int>("projection_samples", 60)));   // 位置投影采样点数
-    max_time_ahead_ = std::max(0.0, declare_parameter<double>("max_time_ahead", 0.20));   // 投影时间超前上限 [s]
+    max_time_ahead_ = std::max(0.0, declare_parameter<double>("max_time_ahead", 0.08));   // 投影时间超前上限 [s]
+    min_trajectory_handoff_interval_sec_ = std::max(
+      0.0, declare_parameter<double>("min_trajectory_handoff_interval_sec", 0.60));
     bidirectional_tracking_enabled_ =
       declare_parameter<bool>("bidirectional_tracking_enabled", false);   // 是否启用双向（倒车）跟踪
     reverse_tracking_enter_angle_ =
@@ -271,6 +274,15 @@ private:
       RCLCPP_WARN(get_logger(), "Ignoring invalid B-spline");   // 忽略无效轨迹
       return;
     }
+    const auto receive_time = now();
+    if (receive_traj_ && last_traj_receive_time_.seconds() > 0.0 &&
+        (receive_time - last_traj_receive_time_).seconds() <
+          min_trajectory_handoff_interval_sec_) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 2000,
+        "Deferring trajectory handoff to keep the current motion segment continuous");
+      return;
+    }
     Eigen::MatrixXd points(3, msg->pos_pts.size());   // 位置控制点矩阵（3 × N）
     for (size_t i = 0; i < msg->pos_pts.size(); ++i) {
       points.col(i) << msg->pos_pts[i].x, msg->pos_pts[i].y, msg->pos_pts[i].z;   // 逐列拷贝控制点
@@ -287,7 +299,8 @@ private:
     // 的最近点会跳过起始切向，导致速度方向瞬间改变、首段锯齿和跟踪滞后。
     // 后续控制循环仍会用投影结果限制轨迹时钟，避免执行进度漂移。
     exec_time_ = 0.0;
-    last_update_time_ = now();                         // 更新时间戳
+    last_update_time_ = receive_time;                   // 更新时间戳
+    last_traj_receive_time_ = receive_time;
     receive_traj_ = true;                              // 标记已收到轨迹
     const Eigen::Vector3d initial_position = traj_[0].evaluateDeBoorT(0.0);   // 轨迹起点
     updateTrackingDirection(estimateDesiredYaw(0.0, initial_position));   // 评估跟踪方向
@@ -338,7 +351,7 @@ private:
     const double tracking_yaw = trackingYaw(forward_yaw);   // 实际跟踪偏航角（倒车/正向）
     const double yaw_error = normalizeAngle(tracking_yaw - odom_yaw_);   // 偏航误差
     const double yaw_command = std::clamp(kp_yaw_ * yaw_error, -max_vyaw_, max_vyaw_);   // P 控制：偏航角速度指令
-    if (std::abs(yaw_error) > heading_error_threshold_) {   // 偏航误差过大：暂停执行先转身
+    if (std::abs(yaw_error) > heading_stop_threshold_) {   // 仅在接近反向时暂停平移
       publishExecutionFrozen(true);          // 发布冻结
       publishStop(yaw_command);              // 只发转角指令（不前进）
       last_update_time_ = current_time;
@@ -356,7 +369,9 @@ private:
       exec_time_ = std::min(traj_duration_, exec_time_ + dt);   // 随时间推进
       if (trajectory_progress_sync_) {       // 启用位置投影同步
         const double projected_time = projectTimeToCurrentPose();   // 机体在轨迹上的投影时刻
-        exec_time_ = std::min(exec_time_, projected_time + max_time_ahead_);   // 防止超前投影过多
+        // 不允许轨迹时钟长期领先机体投影；重规划或转弯后落后时立即
+        // 将参考时刻拉回到当前位置附近，避免控制器追逐已经错过的轨迹。
+        exec_time_ = std::min(exec_time_, projected_time + max_time_ahead_);
       }
     }
     last_update_time_ = current_time;        // 更新时间戳
@@ -366,11 +381,14 @@ private:
     const Eigen::Vector2d vel_world = clampNorm(       // 期望世界系速度（轨迹速度 + P×位置误差），限幅
       Eigen::Vector2d(vel_des.x(), vel_des.y()) + kp_pos_ * pos_error,
       std::max(max_vx_, max_vy_));
+    // 中等航向误差连续降速，避免在“前进/原地转向”两种模式间抖动。
+    const double heading_scale = std::clamp(
+      1.0 - (std::abs(yaw_error) / std::max(heading_stop_threshold_, 1e-3)), 0.25, 1.0);
     const double c = std::cos(odom_yaw_);    // 机体偏航角余弦
     const double s = std::sin(odom_yaw_);    // 机体偏航角正弦
     geometry_msgs::msg::Twist command;
-    command.linear.x = std::clamp(c * vel_world.x() + s * vel_world.y(), -max_vx_, max_vx_);   // 坐标变换：世界系 -> 机体系 x，限幅
-    command.linear.y = std::clamp(-s * vel_world.x() + c * vel_world.y(), -max_vy_, max_vy_);   // 坐标变换：世界系 -> 机体系 y，限幅
+    command.linear.x = heading_scale * std::clamp(c * vel_world.x() + s * vel_world.y(), -max_vx_, max_vx_);   // 坐标变换：世界系 -> 机体系 x，限幅
+    command.linear.y = heading_scale * std::clamp(-s * vel_world.x() + c * vel_world.y(), -max_vy_, max_vy_);   // 坐标变换：世界系 -> 机体系 y，限幅
     command.angular.z = yaw_command;         // 偏航角速度指令
     if (exec_time_ >= traj_duration_ && pos_error.norm() < finish_dist_) {   // 轨迹结束且已到终点
       command = geometry_msgs::msg::Twist(); // 下发全零指令（停车）
@@ -386,6 +404,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr execution_hold_sub_;   // 外部保持订阅器
   rclcpp::TimerBase::SharedPtr cmd_timer_;   // 控制定时器
   bool receive_traj_{false};                 // 是否已收到轨迹
+  rclcpp::Time last_traj_receive_time_{0, 0, RCL_ROS_TIME};
   bool have_odom_{false};                    // 是否已收到里程计
   std::vector<UniformBspline> traj_;         // 轨迹及其导数：[0]位置 [1]速度 [2]加速度
   double traj_duration_{0.0};                // 当前轨迹总时长 [s]
@@ -401,11 +420,12 @@ private:
   double reverse_tracking_yaw_{0.0};         // 进入倒车时刻的机体朝向 [rad]
   std::string last_tracking_direction_;      // 上次跟踪方向字符串
   rclcpp::Time last_update_time_{0, 0, RCL_ROS_TIME};   // 上次控制时刻
-  double time_forward_, heading_error_threshold_, kp_pos_, kp_yaw_;   // 前瞻时间/偏航阈值/P 增益
+  double time_forward_, heading_error_threshold_, heading_stop_threshold_, kp_pos_, kp_yaw_;   // 前瞻时间/偏航阈值/P 增益
   double max_vx_, max_vy_, max_vyaw_, finish_dist_;   // 速度限幅与终点距离
   bool trajectory_progress_sync_{true};      // 轨迹时钟是否与位置投影同步
   int projection_samples_{60};               // 位置投影采样点数
-  double max_time_ahead_{0.20};              // 投影时间超前上限 [s]
+  double max_time_ahead_{0.08};              // 投影时间超前上限 [s]
+  double min_trajectory_handoff_interval_sec_{0.60};
   double reverse_tracking_enter_angle_, reverse_tracking_exit_angle_;   // 倒车进入/退出角度 [rad]
   double reverse_tracking_min_hold_sec_;     // 倒车最短保持时间 [s]
   double reverse_tracking_entry_alignment_, reverse_tracking_exit_alignment_;   // 倒车进入/退出对齐角 [rad]

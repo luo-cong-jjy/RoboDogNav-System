@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Adapt the shared MuJoCo body pose to the navigation odometry contract."""
+
+import rclpy
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
+from tf2_ros import TransformBroadcaster
+from geometry_msgs.msg import TransformStamped
+
+
+class MujocoOdomAdapter(Node):
+    def __init__(self) -> None:
+        super().__init__('m20_mujoco_odom_adapter')
+        self.declare_parameter('input_topic', '/m20/sim/body_pose')
+        self.declare_parameter('output_topic', '/odom')
+        self.declare_parameter('odom_frame', 'odom')
+        self.declare_parameter('base_frame', 'base_link')
+        self.declare_parameter('publish_tf', True)
+        self._pub = self.create_publisher(
+            Odometry, str(self.get_parameter('output_topic').value), 10)
+        self._tf = TransformBroadcaster(self)
+        self.create_subscription(
+            Odometry, str(self.get_parameter('input_topic').value),
+            self._callback, 20)
+
+    def _callback(self, source: Odometry) -> None:
+        output = Odometry()
+        output.header = source.header
+        output.header.frame_id = str(self.get_parameter('odom_frame').value)
+        output.child_frame_id = str(self.get_parameter('base_frame').value)
+        output.pose = source.pose
+        output.twist = source.twist
+        self._pub.publish(output)
+        if not bool(self.get_parameter('publish_tf').value):
+            return
+        transform = TransformStamped()
+        transform.header = output.header
+        transform.child_frame_id = output.child_frame_id
+        transform.transform.translation.x = output.pose.pose.position.x
+        transform.transform.translation.y = output.pose.pose.position.y
+        transform.transform.translation.z = output.pose.pose.position.z
+        transform.transform.rotation = output.pose.pose.orientation
+        self._tf.sendTransform(transform)
+
+
+def main() -> None:
+    rclpy.init()
+    node = MujocoOdomAdapter()
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

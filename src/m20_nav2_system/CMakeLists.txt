@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.8)  # 声明最低 CMake 版本要求（3.8）
 project(m20_nav2_system)  # 工程名：m20_nav2_system（必须与包名/package.xml 一致）
 
+
 # Gazebo Classic's package config emits an internal FindPkgConfig developer
 # warning with newer CMake versions. It is unrelated to this package.
 # （抑制第三方 CMake 开发警告：新版 CMake 下 Gazebo Classic 的包配置会
@@ -61,6 +62,14 @@ install(PROGRAMS  # 安装 Python 脚本（安装时自动赋予可执行权限�
   scripts/m20_standing_joint_state_publisher  # 站立形态关节状态发布脚本
   scripts/pcd/grid_astar_planner scripts/pcd/lifecycle_configure_activate  # PCD 栅格 A* 规划器、生命周期配置/激活脚本
   scripts/pcd/pcd_to_occupancy_grid scripts/pcd/pcd_slice_publisher  # PCD 转占用栅格脚本、PCD 切片发布脚本
+  scripts/m20_grid_lidar_simulator  # 后端无关的二维栅格雷达模拟器
+  scripts/m20_mujoco_odom_adapter  # MuJoCo body pose 到 Nav2 odom/TF 的适配
+  scripts/m20_factory_scene_markers  # 同源 SDF 障碍物的 RViz 三维显示
+  scripts/m20_nav2_goal_bridge  # RViz PoseStamped 到 Nav2 action 的显式桥接
+  scripts/gazebo_world_to_mujoco_geoms.py  # SDF 静态碰撞到 MuJoCo 几何转换器
+  scripts/gazebo_world_to_nav2_map.py  # 同一 SDF 静态碰撞生成 Nav2/RViz 栅格地图
+  scripts/build_m20_mujoco_factory_world.py  # 注入官方 M20 MJCF 模板
+  scripts/validate_m20_mujoco_factory_world.py  # 生成 MJCF 资产校验器
   DESTINATION lib/${PROJECT_NAME})  # 全部安装到 lib/m20_nav2_system
 
 ament_package()  # 生成 ament 包元数据：导出 share 目录、生成包索引（必须在所有 install 之后调用）

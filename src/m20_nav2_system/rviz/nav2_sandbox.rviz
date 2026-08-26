@@ -108,11 +108,29 @@ Visualization Manager:
       Name: Inspection Goal
       Topic:
         Value: /m20_factory_inspection/current_goal_marker
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Factory 3D Obstacles
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /m20/factory/static_obstacles
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Dynamic Workers
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /m20/factory/dynamic_obstacles
     - Alpha: 0.45
       Class: rviz_default_plugins/Map
       Color Scheme: costmap
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Local Costmap
       Topic:
         Value: /local_costmap/costmap
@@ -120,7 +138,7 @@ Visualization Manager:
       Class: rviz_default_plugins/Map
       Color Scheme: costmap
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Global Costmap
       Topic:
         Value: /global_costmap/costmap
@@ -139,7 +157,7 @@ Visualization Manager:
         Value: /initialpose
     - Class: rviz_default_plugins/SetGoal
       Topic:
-        Value: /m20_nav2/goal_pose_raw
+        Value: /m20_nav2/goal_pose
   Value: true
 Window Geometry:
   Height: 900

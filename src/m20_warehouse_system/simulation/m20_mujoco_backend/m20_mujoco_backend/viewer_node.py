@@ -63,6 +63,10 @@ class M20MujocoViewer(Node):
         self.declare_parameter('pose_topic', '/m20/sim/body_pose')
         self.declare_parameter('joint_states_topic', '/joint_states')
         self.declare_parameter('follow_body', 'base_link')
+        # Keep the viewer camera free by default.  A continuously forced
+        # top-down follow camera is useful for demos but makes diagnosing
+        # GLFW/HiDPI rendering issues difficult.
+        self.declare_parameter('follow_camera', False)
         self.declare_parameter('distance', 4.0)
         self.declare_parameter('azimuth', 90.0)
         self.declare_parameter('elevation', -89.0)
@@ -85,6 +89,9 @@ class M20MujocoViewer(Node):
         self._low_cost_render = bool(
             self.get_parameter('low_cost_render').value
         )
+        self._follow_camera = bool(
+            self.get_parameter('follow_camera').value
+        )
         if self._low_cost_render:
             # These settings affect only the read-only display replica.  The
             # physical model keeps its original contacts and materials.
@@ -92,7 +99,9 @@ class M20MujocoViewer(Node):
             # 物理模型保持原有接触与材质不变。
             self._model.light_castshadow[:] = 0
             self._model.mat_reflectance[:] = 0.0
-            self._model.vis.quality.shadowsize = 0
+            # Zero-sized shadow buffers trigger incomplete/black regions on
+            # some WSLg OpenGL implementations; keep the smallest valid size.
+            self._model.vis.quality.shadowsize = 1
             self._model.vis.quality.offsamples = 0
         self._data = mujoco.MjData(self._model)
         # 冷启动位姿：自由关节 qpos 布局为 [x, y, z, quat(wxyz), 关节角×16]。
@@ -182,10 +191,11 @@ class M20MujocoViewer(Node):
         if not glfw.init():
             raise RuntimeError('GLFW initialization failed')
         glfw.window_hint(glfw.SAMPLES, 0)
+        glfw.window_hint(glfw.DOUBLEBUFFER, glfw.TRUE)
         self._window = glfw.create_window(
             960,
             720,
-            'M20 MuJoCo - top-down follow',
+            'M20 MuJoCo - free camera',
             None,
             None,
         )
@@ -221,9 +231,9 @@ class M20MujocoViewer(Node):
             self.get_parameter('azimuth').value
         )
         self._camera.elevation = max(
-            -89.0,
+            -75.0,
             min(
-                89.0,
+                75.0,
                 float(self.get_parameter('elevation').value),
             ),
         )
@@ -343,9 +353,15 @@ class M20MujocoViewer(Node):
         if self._dirty:
             mujoco.mj_forward(self._model, self._data)
             self._dirty = False
-        self._camera.lookat[:] = self._data.xpos[self._body_id]
+        if self._follow_camera:
+            self._camera.lookat[:] = self._data.xpos[self._body_id]
         width, height = glfw.get_framebuffer_size(self._window)
         viewport = mujoco.MjrRect(0, 0, width, height)
+        mujoco.mjr_setBuffer(mujoco.mjtFramebuffer.mjFB_WINDOW, self._render_context)
+        # Explicitly clear the complete window framebuffer.  On WSLg and
+        # other HiDPI GLFW backends, relying on mjr_render's implicit clear
+        # can leave stale/black strips when the framebuffer is resized.
+        mujoco.mjr_rectangle(viewport, 0.58, 0.58, 0.58, 1.0)
         mujoco.mjv_updateScene(
             self._model,
             self._data,

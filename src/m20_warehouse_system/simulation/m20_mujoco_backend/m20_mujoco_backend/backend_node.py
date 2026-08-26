@@ -49,7 +49,7 @@ from drdds.msg import (
     JointsDataValue,
     MetaType,
 )
-from geometry_msgs.msg import PoseStamped, TransformStamped
+from geometry_msgs.msg import PoseStamped
 import mujoco
 import numpy as np
 from nav_msgs.msg import Odometry, Path
@@ -59,7 +59,6 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Bool, String
-from tf2_ros import TransformBroadcaster
 
 # 从 dynamics.py 引入坐标换算与 PD 律等纯数值工具。
 from .dynamics import (
@@ -432,7 +431,6 @@ class M20MujocoBackend(Node):
             latched,
         )
         # TF 广播（world → base_link）与轨迹容器。
-        self._tf = TransformBroadcaster(self)
         self._path = Path()
         self._path.header.frame_id = self._map_frame
         # ---------- 内嵌 viewer（仅遗留直跑模式） ----------
@@ -850,7 +848,18 @@ class M20MujocoBackend(Node):
         imu.data.acc_z = float(acceleration[2])
         self._imu_pub.publish(imu)
 
-        # ---------- 3) 就绪后：里程计 / TF / 关节状态 ----------
+        # Publish joint states even while the backend is standing up so RViz
+        # can render the complete URDF immediately.  Odometry/TF remain gated
+        # until the physical body is stable.
+        joint_state = JointState()
+        joint_state.header.stamp = stamp
+        joint_state.name = list(JOINT_NAMES)
+        joint_state.position = raw_position.tolist()
+        joint_state.velocity = raw_velocity.tolist()
+        joint_state.effort = self._last_torque.tolist()
+        self._joint_state_pub.publish(joint_state)
+
+        # ---------- 3) 就绪后：里程计 / TF ----------
         if not self._ready:
             return
 
@@ -873,24 +882,6 @@ class M20MujocoBackend(Node):
         odometry.twist.twist.angular.z = float(angular_velocity_body[2])
         self._body_pose_pub.publish(odometry)
 
-        # 发布 world → base_link 的 TF（与 Odometry 同头/同时刻）。
-        transform = TransformStamped()
-        transform.header = odometry.header
-        transform.child_frame_id = self._base_frame
-        transform.transform.translation.x = float(position[0])
-        transform.transform.translation.y = float(position[1])
-        transform.transform.translation.z = float(position[2])
-        transform.transform.rotation = odometry.pose.pose.orientation
-        self._tf.sendTransform(transform)
-
-        # 标准 /joint_states：原始（MuJoCo）坐标系下的位置/速度/力矩。
-        joint_state = JointState()
-        joint_state.header.stamp = stamp
-        joint_state.name = list(JOINT_NAMES)
-        joint_state.position = raw_position.tolist()
-        joint_state.velocity = raw_velocity.tolist()
-        joint_state.effort = self._last_torque.tolist()
-        self._joint_state_pub.publish(joint_state)
 
     def _publish_path(self) -> None:
         # 轨迹发布（10Hz）：把机身位置追加到 /quad_0/path，

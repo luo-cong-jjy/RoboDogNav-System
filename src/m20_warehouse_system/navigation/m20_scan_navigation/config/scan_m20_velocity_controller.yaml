@@ -15,4 +15,4 @@ closed_loop_controller:       # 闭环控制器节点参数段
     # （让时间参数化的参考点贴近实测的 M20 移动进度。）
     trajectory_progress_sync: true   # 是否启用轨迹进度同步
     projection_samples: 60           # 轨迹投影采样点数
-    max_time_ahead: 0.20             # 参考点允许超前当前时间的最多秒数（s）
+    max_time_ahead: 0.08             # 参考点允许超前当前时间的最多秒数（s）

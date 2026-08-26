@@ -20,6 +20,8 @@
   <build_depend>builtin_interfaces</build_depend>
   <!-- 构建期依赖：geometry_msgs（几何消息，Point、Pose、Twist 等） -->
   <build_depend>geometry_msgs</build_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <exec_depend>nav2_msgs</exec_depend>
   <!-- 构建期依赖：nav_msgs（导航消息，Odometry、OccupancyGrid 等） -->
   <build_depend>nav_msgs</build_depend>
   <!-- 构建期依赖：rclcpp（ROS2 C++ 客户端库，编写节点/插件必需） -->
@@ -58,6 +60,8 @@
   <exec_depend>robot_state_publisher</exec_depend>
   <!-- 运行期依赖：rviz2（可视化工具） -->
   <exec_depend>rviz2</exec_depend>
+  <!-- Optional shared MuJoCo navigation backend; Gazebo remains independent. -->
+  <exec_depend>m20_warehouse_inspection</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>  <!-- 构建类型：ament_cmake -->

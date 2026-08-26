@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Forward RViz PoseStamped goals to Nav2's NavigateToPose action."""
+import rclpy
+from geometry_msgs.msg import PoseStamped
+from nav2_msgs.action import NavigateToPose
+from nav_msgs.msg import OccupancyGrid
+from visualization_msgs.msg import MarkerArray
+import math
+from rclpy.action import ActionClient
+from rclpy.node import Node
+
+
+class Nav2GoalBridge(Node):
+    def __init__(self):
+        super().__init__('m20_nav2_goal_bridge')
+        self.declare_parameter('input_topic', '/m20_nav2/goal_pose')
+        self._client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+        self._map = None
+        self._dynamic = []
+        self.create_subscription(OccupancyGrid, '/map', self._map_callback, 1)
+        self.create_subscription(MarkerArray, '/m20/factory/dynamic_obstacles', self._dynamic_callback, 10)
+        self.create_subscription(PoseStamped,
+            str(self.get_parameter('input_topic').value), self._on_goal, 10)
+        self.get_logger().info('RViz goal bridge ready: PoseStamped -> NavigateToPose')
+
+    def _on_goal(self, message):
+        if not self._client.wait_for_server(timeout_sec=2.0):
+            self.get_logger().error('NavigateToPose action server is unavailable')
+            return
+        message.header.stamp = self.get_clock().now().to_msg()
+        message = self._adjust_goal(message)
+        goal = NavigateToPose.Goal()
+        goal.pose = message
+        self.get_logger().info(
+            f'sending Nav2 goal ({message.pose.position.x:.3f}, '
+            f'{message.pose.position.y:.3f})')
+        future = self._client.send_goal_async(goal)
+        future.add_done_callback(self._on_response)
+
+    def _map_callback(self, message):
+        self._map = message
+
+    def _dynamic_callback(self, message):
+        self._dynamic = [(m.pose.position.x, m.pose.position.y,
+                          max(0.25, m.scale.x * 0.5))
+                         for m in message.markers]
+
+    def _adjust_goal(self, message):
+        grid = self._map
+        if grid is None:
+            return message
+        info = grid.info
+        def free(x, y):
+            gx, gy = int((x-info.origin.position.x)/info.resolution), int((y-info.origin.position.y)/info.resolution)
+            return 0 <= gx < info.width and 0 <= gy < info.height and 0 <= grid.data[gy*info.width+gx] < 50
+        x, y = message.pose.position.x, message.pose.position.y
+        def dynamic_clear(px, py):
+            return all(math.hypot(px-cx, py-cy) > radius + 0.55
+                       for cx, cy, radius in self._dynamic)
+        if free(x, y) and dynamic_clear(x, y):
+            return message
+        for radius in range(1, 13):
+            for dx in range(-radius, radius+1):
+                for dy in range(-radius, radius+1):
+                    if abs(dx) != radius and abs(dy) != radius:
+                        continue
+                    candidate = (x + dx*info.resolution, y + dy*info.resolution)
+                    if free(*candidate) and dynamic_clear(*candidate):
+                        message.pose.position.x, message.pose.position.y = candidate
+                        self.get_logger().warn(f'goal occupied; adjusted to ({candidate[0]:.3f}, {candidate[1]:.3f})')
+                        return message
+        return message
+
+    def _on_response(self, future):
+        handle = future.result()
+        if not handle.accepted:
+            self.get_logger().error('NavigateToPose goal was rejected')
+            return
+        self.get_logger().info('NavigateToPose goal accepted')
+        result = handle.get_result_async()
+        result.add_done_callback(lambda done: self.get_logger().info(
+            f'NavigateToPose finished with status={done.result().status}'))
+
+
+def main():
+    rclpy.init()
+    node = Nav2GoalBridge()
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

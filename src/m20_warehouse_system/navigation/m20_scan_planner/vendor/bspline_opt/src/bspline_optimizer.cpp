@@ -1,4 +1,12 @@
 #include "bspline_opt/bspline_optimizer.h"
+
+namespace {
+ rclcpp::Clock & throttleClock()
+{
+  static rclcpp::Clock clock(RCL_STEADY_TIME);
+  return clock;
+}
+}
 #include "bspline_opt/gradient_descent_optimizer.h"
 #include <algorithm>
 #include <chrono>
@@ -148,7 +156,8 @@ namespace scan_planner
       }
       else
       {
-        RCLCPP_ERROR(rclcpp::get_logger("bspline_opt"), "A-star failed; aborting optimization");
+        RCLCPP_ERROR_THROTTLE(rclcpp::get_logger("bspline_opt"), throttleClock(), 2000,
+                              "A-star failed; postponing optimization until the local map is valid");
         return a_star_paths;
       }
     }
@@ -776,8 +785,8 @@ namespace scan_planner
         }
         if (j >= cps_.size) // fail to get the obs free point
         {
-          RCLCPP_WARN(rclcpp::get_logger("bspline_opt"),
-                      "Trajectory terminal point is in an obstacle; skip this plan");
+          RCLCPP_WARN_THROTTLE(rclcpp::get_logger("bspline_opt"), throttleClock(), 2000,
+                               "Trajectory terminal point is occupied; postponing this plan");
 
           force_stop_type_ = STOP_FOR_ERROR;
           return false;

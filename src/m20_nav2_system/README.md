@@ -1,5 +1,58 @@
 # M20 Nav2 System
 
+本包保留两条可选仿真链路：
+
+- Gazebo：`factory_navigation.launch.py`，现有四轮模型、雷达和 Nav2 链路保持不变。
+- MuJoCo：`m20_mujoco_navigation.launch.py`，复用 `m20_warehouse_inspection` 的官方
+  M20 MJCF/ONNX 运动层、MuJoCo odom/TF，以及基于 PCD 的 CPU ray-casting 感知。
+
+MuJoCo 后端接入当前二维 Nav2 的桥接入口为
+`m20_mujoco_sensor_bridge.launch.py`：它把 `/m20/sim/body_pose` 适配为 `/odom` 和
+`odom -> base_link` TF，并根据 `/map` 栅格生成标准 `/scan`。该桥接不参与 Gazebo 默认
+启动链路，Gazebo 仍使用自身的雷达和里程计插件。
+雷达固定坐标系为 `base_scan`，桥接入口同时发布 `base_link -> base_scan` 静态 TF。
+
+推荐默认启动命令已经包含 MuJoCo viewer 和 RViz，无需追加参数：
+
+```bash
+ros2 launch m20_nav2_system m20_mujoco_navigation.launch.py
+```
+
+MuJoCo 入口不会复制官方策略或修改 Gazebo 模型。使用前需先构建并安装
+`m20_warehouse_inspection` 及其 `m20_mujoco_backend` 依赖；`system_config` 应指向该包
+使用的 system YAML。两条入口互不替换，默认的 Gazebo 调试流程仍按下文命令运行。
+
+桥接的独立检查命令（需在已 source ROS 2 和工作空间的终端执行）：
+
+```bash
+ros2 launch m20_nav2_system m20_mujoco_sensor_bridge.launch.py
+ros2 topic echo /scan --once
+ros2 topic echo /odom --once
+```
+
+工厂静态碰撞场景生成与校验：
+
+```bash
+ros2 launch m20_nav2_system generate_factory_mujoco_world.launch.py
+```
+
+该命令从 `worlds/factory_environment.world` 提取地面、围墙和 5 排工作台，注入官方
+M20 MJCF，并检查 16 个执行器、浮动基座、IMU 与静态几何数量。Gazebo world 中的动态
+worker 代理及其 waypoint 插件尚未迁移到 MuJoCo；在动态障碍物迁移完成前，MuJoCo 入口
+只用于静态工厂场景和运动层验证。
+
+MuJoCo backend 也支持在启动时直接从 Gazebo SDF 生成场景：
+
+```bash
+ros2 launch m20_nav2_system m20_mujoco_navigation.launch.py \
+  world_source:=factory_sdf \
+  world_file:=/path/to/m20_nav2_system/worlds/factory_environment.world
+```
+
+该模式会在 backend launch 内生成并加载官方 M20 MJCF。当前仅转换静态 box/cylinder
+碰撞体；Gazebo world 中由 waypoint 插件驱动的动态 worker 仍未迁移。
+转换器会在终端明确打印被跳过的动态模型名称，避免将静态场景结果误认为完整动态场景。
+
 ROS 2 Humble / Gazebo Classic 集成包，提供 M20 自由导航仿真、独立巡检任务和 PCD 点云地图验证。
 
 ## 正式入口

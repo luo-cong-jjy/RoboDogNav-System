@@ -98,6 +98,7 @@ def _runtime_actions(context):
                 profile.intent_parameters(),  # 注入能力配置的意图参数
                 native_command_parameters,    # scan_native 覆盖参数（可能为空）
                 {
+                    'input_topic': LaunchConfiguration('input_topic'),
                     'require_backend_ready': require_backend_ready,
                     'backend_ready_topic': backend_ready_topic,
                     'backend_fault_topic': backend_fault_topic,
@@ -108,7 +109,10 @@ def _runtime_actions(context):
             package='m20_sdk_deploy',
             executable='rl_deploy_cmdvel',
             output='screen',
-            parameters=[config, profile.sdk_parameters()],  # 注入 SDK 限幅参数
+            parameters=[config, profile.sdk_parameters(), {
+                'cmd_vel_topic': LaunchConfiguration('sdk_cmd_vel_topic'),
+                'debug_print': LaunchConfiguration('sdk_debug_print'),
+            }],  # 注入 SDK 限幅与最终 Twist 入口
             condition=IfCondition(LaunchConfiguration('start_sdk')),
         ),
     ]
@@ -130,6 +134,19 @@ def generate_launch_description() -> LaunchDescription:
                     'Start m20_sdk_deploy/rl_deploy_cmdvel. Enable only when '
                     'a MuJoCo, Gazebo joint bridge, or real M20 backend is live.'
                 ),
+            ),
+            DeclareLaunchArgument(
+                'input_topic', default_value='/m20/control/cmd_vel_safe',
+                description='Twist input consumed by the locomotion manager.',
+            ),
+            DeclareLaunchArgument(
+                'sdk_cmd_vel_topic',
+                default_value='/m20/locomotion/cmd_vel_sdk',
+                description='Final Twist topic consumed by the official SDK.',
+            ),
+            DeclareLaunchArgument(
+                'sdk_debug_print', default_value='false',
+                description='Print the SDK command/state gate once per second.',
             ),
             DeclareLaunchArgument(  # 是否要求后端就绪
                 'require_backend_ready',

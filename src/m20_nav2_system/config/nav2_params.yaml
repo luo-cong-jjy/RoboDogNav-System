@@ -134,8 +134,8 @@ controller_server:                 # 局部控制器节点（RPP 受控纯追踪
       regulated_linear_scaling_min_radius: 0.9   # 触发减速的最小转弯半径（米）
       regulated_linear_scaling_min_speed: 0.10   # 减速后的最小速度（m/s）
       allow_reversing: false           # 是否允许倒车
-      use_rotate_to_heading: false     # 是否先原地转向目标朝向
-      rotate_to_heading_min_angle: 1.57 # 触发原地转向的最小角度差（弧度）
+      use_rotate_to_heading: false     # 周期重规划下避免原地对齐参考方向反复翻转
+      rotate_to_heading_min_angle: 1.57 # 关闭时不参与控制；保留Nav2兼容参数
       max_angular_accel: 1.5           # 最大角加速度（rad/s^2）
       max_robot_pose_search_dist: 10.0 # 在路径上搜索机器人位姿的最大距离（米）
       use_interpolation: true          # 是否插值计算前瞻点
@@ -159,6 +159,9 @@ local_costmap:                     # 局部代价地图（odom 系滚动窗口�
         plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
         observation_sources: scan
+        obstacle_min_range: 0.05
+        obstacle_max_range: 20.0
+        observation_persistence: 0.8
         scan:
           topic: /scan                 # 激光扫描话题
           qos_profile: sensor_data     # QoS 配置：传感器数据（best_effort 等）
@@ -172,7 +175,7 @@ local_costmap:                     # 局部代价地图（odom 系滚动窗口�
           obstacle_min_range: 0.1      # 障碍标记最小距离（米）
       inflation_layer:                 # 膨胀层
         plugin: nav2_costmap_2d::InflationLayer
-        inflation_radius: 0.55         # 膨胀半径（米）
+        inflation_radius: 0.75         # 膨胀半径（米）
         cost_scaling_factor: 4.0       # 代价衰减系数
       always_send_full_costmap: true
 
@@ -196,6 +199,9 @@ global_costmap:                    # 全局代价地图（map 系）
         plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
         observation_sources: scan
+        obstacle_min_range: 0.05
+        obstacle_max_range: 20.0
+        observation_persistence: 0.8
         scan:
           topic: /scan
           qos_profile: sensor_data
@@ -209,7 +215,7 @@ global_costmap:                    # 全局代价地图（map 系）
           obstacle_min_range: 0.1
       inflation_layer:                 # 膨胀层
         plugin: nav2_costmap_2d::InflationLayer
-        inflation_radius: 0.65         # 膨胀半径（米）
+        inflation_radius: 0.85         # 膨胀半径（米）
         cost_scaling_factor: 3.5       # 代价衰减系数
       always_send_full_costmap: true
 

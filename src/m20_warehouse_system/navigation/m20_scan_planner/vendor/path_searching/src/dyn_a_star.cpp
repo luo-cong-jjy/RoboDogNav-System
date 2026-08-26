@@ -1,4 +1,13 @@
 #include "path_searching/dyn_a_star.h"
+
+namespace {
+// rclcpp has no global get_clock(); keep one ROS clock for throttle macros.
+ rclcpp::Clock & throttleClock()
+{
+  static rclcpp::Clock clock(RCL_STEADY_TIME);
+  return clock;
+}
+}
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -134,7 +143,8 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d en
             occ = checkOccupancy(Index2Coord(end_idx), path_yaw);
             if (occ == -1)
             {
-                RCLCPP_WARN(rclcpp::get_logger("path_searching"), "[Astar] End point outside the map region.");
+                RCLCPP_WARN_THROTTLE(rclcpp::get_logger("path_searching"), throttleClock(), 2000,
+                                     "[Astar] End point outside the map region; waiting for a valid local map.");
                 return false;
             }
         } while (occ);
@@ -155,8 +165,8 @@ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d
     Vector3i start_idx, end_idx;
     if (!ConvertToIndexAndAdjustStartEndPoints(start_pt, end_pt, start_idx, end_idx))
     {
-        RCLCPP_ERROR(rclcpp::get_logger("path_searching"),
-                     "Unable to handle the initial or end point, force return!");
+        RCLCPP_ERROR_THROTTLE(rclcpp::get_logger("path_searching"), throttleClock(), 2000,
+                              "Unable to handle the initial or end point; postponing this plan.");
         return ASTAR_RET::INIT_ERR;
     }
 

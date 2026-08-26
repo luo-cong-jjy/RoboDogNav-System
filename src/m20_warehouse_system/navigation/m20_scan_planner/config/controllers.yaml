@@ -3,6 +3,7 @@ closed_loop_controller:
     use_sim_time: false
     time_forward: 0.8
     heading_error_threshold: 0.8
+    heading_stop_threshold: 1.35
     kp_pos: 0.8
     kp_yaw: 1.5
     max_vx: 0.75

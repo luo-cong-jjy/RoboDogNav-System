@@ -204,6 +204,7 @@ class LocomotionManager(Node):
         self._last_command_ns = 0        # 最近一次指令时间戳（ns）
         self._last_adaptation_ns = 0     # 最近一次适配更新时间戳（ns）
         self._last_intent = None         # 最近发布的意图（避免重复发布）
+        self._intent_started_ns = 0
         self._timeout_zero_sent = False  # 超时零指令是否已发送
         self._require_backend_ready = bool(  # 是否要求后端就绪
             self.get_parameter('require_backend_ready').value
@@ -286,11 +287,17 @@ class LocomotionManager(Node):
             )
         )
         self._last_adaptation_ns = now_ns
-        self._rolling_adapter.reset()
         intent, constrained = constrain_for_intent(
             command,
             self._intent_parameters,
         )
+        if (self._last_intent == MotionIntent.COORDINATED_TURN and
+            intent != MotionIntent.COORDINATED_TURN and
+            self._intent_started_ns > 0 and
+            (now_ns - self._intent_started_ns) / 1e9 <
+              self._intent_parameters.turn_min_hold_sec):
+            intent = MotionIntent.COORDINATED_TURN
+            constrained = (constrained[0], 0.0, constrained[2])
         self._last_command_ns = now_ns
         self._timeout_zero_sent = False
         self._publish(intent, constrained)
@@ -367,6 +374,7 @@ class LocomotionManager(Node):
             self._mode_publisher.publish(String(data=intent.value))
             self.get_logger().info(f'motion intent -> {intent.value}')
             self._last_intent = intent
+            self._intent_started_ns = self.get_clock().now().nanoseconds
 
 
 def main(args=None) -> None:

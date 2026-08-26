@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+"""Generate a LaserScan from an OccupancyGrid and robot odometry.
+
+This is a backend-neutral sensor simulator. It is intended for the MuJoCo and
+RViz motion backends; the existing Gazebo sensor chain remains unchanged.
+"""
+
+import math
+import time
+import xml.etree.ElementTree as ET
+from typing import Optional
+
+import rclpy
+from nav_msgs.msg import OccupancyGrid, Odometry
+from rclpy.node import Node
+from sensor_msgs.msg import LaserScan
+
+
+class GridLidarSimulator(Node):
+    def __init__(self) -> None:
+        super().__init__('m20_grid_lidar_simulator')
+        self.declare_parameter('map_topic', '/map')
+        self.declare_parameter('odom_topic', '/odom')
+        self.declare_parameter('scan_topic', '/scan')
+        self.declare_parameter('scan_frame', 'base_scan')
+        self.declare_parameter('publish_rate_hz', 10.0)
+        self.declare_parameter('angle_min', -math.pi)
+        self.declare_parameter('angle_max', math.pi)
+        self.declare_parameter('angle_increment', math.radians(1.0))
+        self.declare_parameter('range_min', 0.05)
+        self.declare_parameter('range_max', 30.0)
+        self.declare_parameter('occupied_threshold', 50)
+        self.declare_parameter('step_fraction', 0.5)
+        self.declare_parameter('world_file', '')
+        self.declare_parameter('dynamic_speed_scale', 0.35)
+
+        self._grid: Optional[OccupancyGrid] = None
+        self._odom: Optional[Odometry] = None
+        self._start_time = time.monotonic()
+        self._dynamic_obstacles = self._load_dynamic_obstacles()
+        self._map_sub = self.create_subscription(
+            OccupancyGrid, str(self.get_parameter('map_topic').value),
+            self._map_callback, 1)
+        self._odom_sub = self.create_subscription(
+            Odometry, str(self.get_parameter('odom_topic').value),
+            self._odom_callback, 10)
+        self._scan_pub = self.create_publisher(
+            LaserScan, str(self.get_parameter('scan_topic').value), 10)
+        period = 1.0 / max(1.0, float(self.get_parameter('publish_rate_hz').value))
+        self.create_timer(period, self._publish_scan)
+
+    def _map_callback(self, msg: OccupancyGrid) -> None:
+        self._grid = msg
+
+    def _odom_callback(self, msg: Odometry) -> None:
+        self._odom = msg
+
+    def _load_dynamic_obstacles(self):
+        path = str(self.get_parameter('world_file').value)
+        if not path:
+            return []
+        result = []
+        root = ET.parse(path).getroot()
+        for model in root.findall('.//world/model'):
+            if model.findtext('static', 'false').strip().lower() == 'true':
+                continue
+            collision = model.find('.//collision/geometry/cylinder')
+            trajectory = model.findtext('.//plugin/trajectory')
+            if collision is None or not trajectory:
+                continue
+            radius = float(collision.findtext('radius', '0'))
+            points = []
+            for waypoint in trajectory.split(';'):
+                values = [float(value) for value in waypoint.split()]
+                if len(values) >= 3:
+                    points.append((values[0], values[1], values[2]))
+            if len(points) >= 2:
+                result.append((radius, points))
+        self.get_logger().info(
+            f'loaded {len(result)} dynamic obstacle trajectories')
+        return result
+
+    def _dynamic_positions(self):
+        elapsed = (time.monotonic() - self._start_time) * float(
+            self.get_parameter('dynamic_speed_scale').value)
+        positions = []
+        for radius, points in self._dynamic_obstacles:
+            period = points[-1][0]
+            current = elapsed % period if period > 0 else 0.0
+            for first, second in zip(points, points[1:]):
+                if first[0] <= current <= second[0]:
+                    span = max(1.0e-6, second[0] - first[0])
+                    ratio = (current - first[0]) / span
+                    positions.append((
+                        first[1] + ratio * (second[1] - first[1]),
+                        first[2] + ratio * (second[2] - first[2]), radius))
+                    break
+        return positions
+
+    @staticmethod
+    def _circle_hit(x, y, cosine, sine, obstacle):
+        cx, cy, radius = obstacle
+        dx, dy = cx - x, cy - y
+        projection = dx * cosine + dy * sine
+        perpendicular_sq = dx * dx + dy * dy - projection * projection
+        radius_sq = radius * radius
+        if projection < 0.0 or perpendicular_sq > radius_sq:
+            return math.inf
+        return max(0.0, projection - math.sqrt(radius_sq - perpendicular_sq))
+
+    @staticmethod
+    def _yaw(q) -> float:
+        return math.atan2(
+            2.0 * (q.w * q.z + q.x * q.y),
+            1.0 - 2.0 * (q.y * q.y + q.z * q.z),
+        )
+
+    def _occupied(self, x: float, y: float) -> bool:
+        grid = self._grid
+        if grid is None:
+            return True
+        info = grid.info
+        gx = int(math.floor((x - info.origin.position.x) / info.resolution))
+        gy = int(math.floor((y - info.origin.position.y) / info.resolution))
+        if gx < 0 or gy < 0 or gx >= info.width or gy >= info.height:
+            return True
+        value = grid.data[gy * info.width + gx]
+        return value < 0 or value >= int(self.get_parameter('occupied_threshold').value)
+
+    def _ray(self, x: float, y: float, angle: float, dynamic) -> float:
+        minimum = float(self.get_parameter('range_min').value)
+        maximum = float(self.get_parameter('range_max').value)
+        resolution = self._grid.info.resolution if self._grid else 0.05
+        step = max(0.01, resolution * float(self.get_parameter('step_fraction').value))
+        cosine, sine = math.cos(angle), math.sin(angle)
+        dynamic_hit = min(
+            (self._circle_hit(x, y, cosine, sine, item) for item in dynamic),
+            default=math.inf)
+        distance = minimum
+        while distance <= maximum:
+            if distance >= dynamic_hit or self._occupied(
+                    x + distance * cosine, y + distance * sine):
+                return distance
+            distance += step
+        return maximum
+
+    def _publish_scan(self) -> None:
+        if self._grid is None or self._odom is None:
+            return
+        angle_min = float(self.get_parameter('angle_min').value)
+        angle_max = float(self.get_parameter('angle_max').value)
+        increment = float(self.get_parameter('angle_increment').value)
+        count = max(1, int(math.floor((angle_max - angle_min) / increment)) + 1)
+        pose = self._odom.pose.pose
+        yaw = self._yaw(pose.orientation)
+        dynamic = self._dynamic_positions()
+        msg = LaserScan()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = str(self.get_parameter('scan_frame').value)
+        msg.angle_min = angle_min
+        msg.angle_max = angle_min + increment * (count - 1)
+        msg.angle_increment = increment
+        msg.range_min = float(self.get_parameter('range_min').value)
+        msg.range_max = float(self.get_parameter('range_max').value)
+        msg.scan_time = 1.0 / max(1.0, float(self.get_parameter('publish_rate_hz').value))
+        msg.time_increment = msg.scan_time / count
+        msg.ranges = [self._ray(pose.position.x, pose.position.y, yaw + angle, dynamic)
+                      for angle in (angle_min + i * increment for i in range(count))]
+        self._scan_pub.publish(msg)
+
+
+def main() -> None:
+    rclpy.init()
+    node = GridLidarSimulator()
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

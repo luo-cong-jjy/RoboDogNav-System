@@ -1,5 +1,9 @@
 # M20 MuJoCo backend
 
+The backend launch accepts `world_source:=factory_sdf` with `world_file:=...` to
+load a static factory SDF converted to the official M20 MJCF. The default
+`world_source:=warehouse` path and its JSON-based world generator are unchanged.
+
 This isolated ROS 2 package makes the official 16-actuator M20 MJCF model the
 execution backend for the warehouse system. It does not implement navigation:
 the existing SCAN planner still produces safe body velocity commands, the

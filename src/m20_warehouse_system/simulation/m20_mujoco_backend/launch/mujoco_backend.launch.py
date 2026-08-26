@@ -31,6 +31,7 @@
 from pathlib import Path
 
 import yaml
+import subprocess
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -65,16 +66,37 @@ def _runtime_actions(context):
     description_share = Path(
         get_package_share_directory('m20_official_description')
     )
-    # 生成世界（原子写、字节确定、带 MuJoCo 加载校验）。
-    output_path = cached_world_path(system_config)
-    report = generate_world(
-        system_config=system_config,
-        package_root=package_root,
-        robot_template=backend_share / 'models' / 'm20_robot.xml',
-        mesh_directory=description_share / 'meshes',
-        output_path=output_path,
-        validate_model=True,
-    )
+    # 默认生成 warehouse world；显式 override 时加载外部已校验 MJCF。
+    override = LaunchConfiguration('model_xml_override').perform(context).strip()
+    world_source = LaunchConfiguration('world_source').perform(context).strip()
+    if world_source == 'factory_sdf':
+        sdf = Path(LaunchConfiguration('world_file').perform(context)).expanduser().resolve()
+        extractor = LaunchConfiguration('sdf_extractor').perform(context).strip()
+        builder = LaunchConfiguration('mjcf_builder').perform(context).strip()
+        if not extractor or not builder:
+            raise RuntimeError('factory_sdf requires sdf_extractor and mjcf_builder')
+        output_path = Path('/tmp/m20_factory_m20.xml')
+        geoms_path = Path('/tmp/m20_factory_geoms.xml')
+        subprocess.run(['python3', extractor, str(sdf), str(geoms_path)], check=True)
+        subprocess.run(['python3', builder, str(backend_share / 'models' / 'm20_robot.xml'), str(geoms_path), str(output_path), '--meshdir', str(description_share / 'meshes')], check=True)
+        override = str(output_path)
+    if override:
+        override_path = Path(override).expanduser().resolve()
+        if not override_path.is_file():
+            raise FileNotFoundError(f'MuJoCo override world does not exist: {override_path}')
+        class Report:
+            output_path = str(override_path)
+        report = Report()
+    else:
+        output_path = cached_world_path(system_config)
+        report = generate_world(
+            system_config=system_config,
+            package_root=package_root,
+            robot_template=backend_share / 'models' / 'm20_robot.xml',
+            mesh_directory=description_share / 'meshes',
+            output_path=output_path,
+            validate_model=True,
+        )
     # 读取系统配置中的 F1 初始位姿，作为冷启动默认值。
     with system_config.open('r', encoding='utf-8') as stream:
         system = yaml.safe_load(stream)
@@ -121,6 +143,9 @@ def _runtime_actions(context):
                     'real_time_factor': LaunchConfiguration(
                         'real_time_factor'
                     ),
+                    'parking_brake_enabled': LaunchConfiguration(
+                        'parking_brake_enabled'
+                    ),
                 },
             ],
         ),
@@ -143,6 +168,7 @@ def _runtime_actions(context):
                     'distance': LaunchConfiguration('viewer_distance'),
                     'azimuth': LaunchConfiguration('viewer_azimuth'),
                     'elevation': LaunchConfiguration('viewer_elevation'),
+                    'follow_camera': LaunchConfiguration('viewer_follow_camera'),
                     'max_fps': LaunchConfiguration('viewer_max_fps'),
                     'initial_x': initial_component('initial_x', 0),
                     'initial_y': initial_component('initial_y', 1),
@@ -167,6 +193,14 @@ def generate_launch_description() -> LaunchDescription:
                 'system_config',
                 description='Absolute warehouse system YAML path.',
             ),
+            DeclareLaunchArgument(
+                'model_xml_override', default_value='',
+                description='Optional pre-generated MJCF; skips world generation.',
+            ),
+            DeclareLaunchArgument('world_source', default_value='warehouse'),
+            DeclareLaunchArgument('world_file', default_value=''),
+            DeclareLaunchArgument('sdf_extractor', default_value=''),
+            DeclareLaunchArgument('mjcf_builder', default_value=''),
             DeclareLaunchArgument(
                 'package_root',
                 default_value='',
@@ -197,8 +231,13 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 'viewer_elevation',
-                default_value='-89.0',
-                description='Initial near-vertical camera elevation in degrees.',
+                default_value='-35.0',
+                description='Initial free-camera elevation in degrees.',
+            ),
+            DeclareLaunchArgument(
+                'viewer_follow_camera',
+                default_value='false',
+                description='Continuously follow the robot body with the camera.',
             ),
             DeclareLaunchArgument(
                 'viewer_max_fps',
@@ -206,6 +245,11 @@ def generate_launch_description() -> LaunchDescription:
                 description='Maximum isolated viewer wall-clock frame rate.',
             ),
             DeclareLaunchArgument('real_time_factor', default_value='1.0'),
+            DeclareLaunchArgument(
+                'parking_brake_enabled',
+                default_value='true',
+                description='Apply the project-side wheel parking brake.',
+            ),
             DeclareLaunchArgument(
                 'initial_x',
                 default_value='',
