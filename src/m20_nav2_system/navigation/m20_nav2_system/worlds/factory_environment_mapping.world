@@ -1,0 +1,140 @@
+<?xml version="1.0"?>
+<!-- ============================================================
+     文件：factory_environment_mapping.world
+     用途：M20 使用 slam_toolbox 建图的纯静态 Gazebo 世界。
+           - 26m × 26m 地面 + 四面围墙，内部布置 5 排工作台
+             （desk_row_1~5，间距 4m）构成东西向巡检走廊；
+           - 灯光使用内置方向光（避免在线拉取模型库）；
+           - 只包含地面、围墙和 5 排固定工作台；
+           - 不包含动态障碍模型、actor 或运动插件，避免瞬时障碍被
+             slam_toolbox 固化进保存地图。
+     ============================================================ -->
+<sdf version="1.6">
+  <world name="factory_environment">
+    <!-- Direct Light to prevent online fetching -->
+    <!-- ==================== sun：方向光 ==================== -->
+    <!-- 内置方向光：从 (-0.5, 0.1, -0.9) 方向照射，开阴影，
+         衰减范围 1000m，避免依赖在线 sun 模型。 -->
+    <light name="sun" type="directional">
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground -->
+    <!-- ==================== ground：地面 ==================== -->
+    <!-- 静态地面：26m × 26m × 0.05m，整体位于 (10, 10) 中心，
+         使场地有效范围约为 x/y ∈ [0, 20]（与巡检点坐标对齐）。 -->
+    <model name="ground">
+      <static>true</static>
+      <link name="ground_link">
+        <collision name="collision">
+          <geometry><box><size>26 26 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>26 26 0.05</size></box></geometry>
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.6 0.6 0.6 1</diffuse>
+          </material>
+        </visual>
+      </link>
+      <pose>10 10 -0.025 0 0 0</pose>
+    </model>
+
+    <!-- Walls -->
+    <!-- ==================== 四面围墙 ==================== -->
+    <!-- 北墙（y=22）、南墙（y=-2）、西墙（x=-2）、东墙（x=22）：
+         均为 24m 长 × 0.25m 厚 × 3.0m 高的静态墙体，围成
+         [0,20]×[0,20] 的有效导航区域。 -->
+    <model name="north_wall">
+      <static>true</static>
+      <pose>10 22 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>24 0.25 3.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>24 0.25 3.0</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="south_wall">
+      <static>true</static>
+      <pose>10 -2 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>24 0.25 3.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>24 0.25 3.0</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="west_wall">
+      <static>true</static>
+      <pose>-2 10 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.25 24 3.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.25 24 3.0</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="east_wall">
+      <static>true</static>
+      <pose>22 10 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.25 24 3.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.25 24 3.0</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- 5 Rows of Desks/Machines with 4m spacing -->
+    <!-- ==================== 5 排工作台（desk_row_1~5） ==================== -->
+    <!-- 静态设备排：每排 16m × 1.2m × 1.2m，位于 x=10 沿 y 方向
+         每 4m 一排（y=18/14/10/6/2），将场地分割成
+         y=4/8/12/16/20 五条东西向巡检通道。 -->
+    <model name="desk_row_1">
+      <static>true</static>
+      <pose>10 18 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="desk_row_2">
+      <static>true</static>
+      <pose>10 14 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="desk_row_3">
+      <static>true</static>
+      <pose>10 10 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="desk_row_4">
+      <static>true</static>
+      <pose>10 6 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+    <model name="desk_row_5">
+      <static>true</static>
+      <pose>10 2 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>16 1.2 1.2</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>16 1.2 1.2</size></box></geometry><material><ambient>0.4 0.5 0.6 1</ambient><diffuse>0.4 0.5 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- 建图世界到此结束：禁止加入动态或临时障碍。 -->
+
+  </world>
+</sdf>

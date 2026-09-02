@@ -1,0 +1,46 @@
+m20_locomotion_manager:          # 运动管理节点：安全 Twist 到后端指令的适配与门控
+  ros__parameters:
+    input_topic: /m20/control/cmd_vel_safe           # 安全 Twist 输入（经碰撞防护后）
+    output_topic: /m20/locomotion/cmd_vel_sdk        # 输出给后端的指令
+    mode_topic: /m20/locomotion/mode                 # 运动模式话题
+    backend_ready_topic: /m20/locomotion/backend_ready  # 后端就绪话题
+    backend_fault_topic: /m20/locomotion/backend_fault  # 后端故障话题
+    safety_state_topic: /m20/control/safety_state       # 安全状态话题
+    require_backend_ready: true                        # 必须等待后端就绪才允许运动
+    rolling_navigation_enabled: false                  # 滚动导航关闭（避免双重变换）
+    allow_manual_lateral: true                         # 允许手动侧向
+    command_timeout_sec: 0.30                          # 指令超时（超时停车）[s]
+
+m20_direct_ros_backend:          # 直连 ROS 后端：直接与 M20 硬件话题通信
+  ros__parameters:
+    input_topic: /m20/locomotion/cmd_vel_sdk        # 输入指令
+    e_stop_topic: /m20/control/e_stop               # 急停话题
+    ready_topic: /m20/locomotion/backend_ready      # 就绪发布话题
+    fault_topic: /m20/locomotion/backend_fault      # 故障发布话题
+    status_topic: /m20/locomotion/backend_status    # 后端状态
+    measured_twist_topic: /m20/locomotion/measured_twist  # 实测 twist
+    enable_service: /m20/hardware/enable_motion     # 使能运动服务
+    nav_cmd_topic: /NAV_CMD                         # M20 导航指令话题（供应商）
+    motion_info_topic: /MOTION_INFO                 # 运动信息话题（供应商）
+    motion_state_topic: /MOTION_STATE               # 运动状态话题（供应商）
+    gait_topic: /GAIT                               # 步态话题（供应商）
+    hard_estop_topic: /HES_STATUS                   # 硬件急停状态话题
+    # Recorded M20-PRO endpoints are RELIABLE/VOLATILE for motion topics and
+    # RELIABLE/TRANSIENT_LOCAL for HES_STATUS; the node mirrors that contract.
+    # The guide recommends at least 10 Hz and separately advises keeping
+    # 20 Hz; 300 ms freshness stays below the documented 500 ms watchdog.
+    # （M20-PRO 记录端点：运动话题为 RELIABLE/VOLATILE，HES_STATUS 为
+    #   RELIABLE/TRANSIENT_LOCAL；节点镜像该契约。指南建议至少 10 Hz 并另行
+    #   建议保持 20 Hz；300 ms 新鲜度低于文档中的 500 ms 看门狗）
+    command_rate_hz: 20.0                            # 指令发送频率 [Hz]
+    command_timeout_sec: 0.30                        # 指令超时 [s]
+    status_timeout_sec: 1.25                         # 状态超时 [s]
+    # The factory HES topic is documented at 1 Hz. Missing status is unsafe.
+    # （工厂 HES 话题文档为 1 Hz；状态缺失不安全）
+    hard_estop_timeout_sec: 2.50                     # 硬件急停状态超时 [s]
+    state_command_period_sec: 1.0                    # 状态命令周期 [s]
+    requested_gait: 12290                            # 请求步态（0x3002 agile-flat）
+    auto_enable_motion: false                        # 不自动使能运动（人工确认）
+    lie_down_on_disable: false                       # 失能时是否卧倒
+    command_ownership_confirmed: false               # 指令所有权未确认（安全开关）
+    subthreshold_policy: zero                        # 低于阈值指令归零策略

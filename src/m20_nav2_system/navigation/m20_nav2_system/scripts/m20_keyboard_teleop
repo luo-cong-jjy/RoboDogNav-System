@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""Small keyboard teleop for Gazebo SLAM commissioning."""
+import select
+import sys
+import termios
+import tty
+
+import rclpy
+from geometry_msgs.msg import Twist
+from rclpy.node import Node
+
+
+class KeyboardTeleop(Node):
+    def __init__(self):
+        super().__init__("m20_keyboard_teleop")
+        self.pub = self.create_publisher(Twist, "/cmd_vel", 10)
+        self.timer = self.create_timer(0.1, self.tick)
+        self.step = 0.05
+        self.turn_step = 0.12
+        self.cmd = Twist()
+        self.input = sys.stdin
+        if not self.input.isatty():
+            try:
+                self.input = open("/dev/tty", "r")
+            except OSError as exc:
+                raise RuntimeError("keyboard teleop requires a terminal; run it in a separate terminal") from exc
+        self.settings = termios.tcgetattr(self.input)
+        tty.setcbreak(self.input.fileno())
+        self.get_logger().info("keyboard: w/s forward-back, q/e turn; each press changes speed; space stop, x exit")
+
+    def tick(self):
+        key = ""
+        if select.select([self.input], [], [], 0.0)[0]:
+            key = self.input.read(1).lower()
+        if key == "w": self.cmd.linear.x = min(0.45, self.cmd.linear.x + self.step)
+        elif key == "s": self.cmd.linear.x = max(-0.30, self.cmd.linear.x - self.step)
+        elif key == "q": self.cmd.angular.z = min(0.8, self.cmd.angular.z + self.turn_step)
+        elif key == "e": self.cmd.angular.z = max(-0.8, self.cmd.angular.z - self.turn_step)
+        elif key == "r":
+            self.cmd.linear.x = self.cmd.angular.z = 0.0
+        elif key == " ":
+            self.cmd = Twist()
+        elif key == "x":
+            self.cmd = Twist()
+            self.pub.publish(self.cmd)
+            rclpy.shutdown()
+            return
+        self.pub.publish(self.cmd)
+
+    def close(self):
+        self.pub.publish(Twist())
+        termios.tcsetattr(self.input, termios.TCSADRAIN, self.settings)
+        if self.input is not sys.stdin:
+            self.input.close()
+
+
+def main():
+    rclpy.init()
+    node = KeyboardTeleop()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, EOFError):
+        pass
+    finally:
+        node.close()
+        node.destroy_node()
+        if rclpy.ok(): rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

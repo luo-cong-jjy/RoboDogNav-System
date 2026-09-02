@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""Publish SDF factory collisions as latched RViz 3-D markers."""
+import math
+import time
+import xml.etree.ElementTree as ET
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from visualization_msgs.msg import Marker, MarkerArray
+
+
+def vector(text, count=6):
+    values = [float(value) for value in (text or '').split()]
+    return (values + [0.0] * count)[:count]
+
+
+class FactorySceneMarkers(Node):
+    def __init__(self):
+        super().__init__('m20_factory_scene_markers')
+        self.declare_parameter('world_file', '')
+        self.declare_parameter('frame_id', 'map')
+        self.declare_parameter('dynamic_speed_scale', 0.35)
+        qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                         durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self._publisher = self.create_publisher(
+            MarkerArray, '/m20/factory/static_obstacles', qos)
+        self._dynamic_publisher = self.create_publisher(
+            MarkerArray, '/m20/factory/dynamic_obstacles', 10)
+        self._dynamic = []
+        self._markers = self._load()
+        self.create_timer(0.1, self._publish)
+        self._publish()
+
+    def _load(self):
+        path = str(self.get_parameter('world_file').value)
+        root = ET.parse(path).getroot()
+        result = MarkerArray()
+        marker_id = 0
+        for model in root.findall('.//world/model'):
+            is_static = model.findtext(
+                'static', 'false').strip().lower() == 'true'
+            if not is_static:
+                cylinder = model.find('.//collision/geometry/cylinder')
+                trajectory = model.findtext('.//plugin/trajectory')
+                if cylinder is not None and trajectory:
+                    points = []
+                    for waypoint in trajectory.split(';'):
+                        values = [float(value) for value in waypoint.split()]
+                        if len(values) >= 4:
+                            points.append((values[0], values[1], values[2], values[3]))
+                    self._dynamic.append((
+                        float(cylinder.findtext('radius', '0')),
+                        float(cylinder.findtext('length', '0')), points))
+                continue
+            name = model.attrib.get('name', '')
+            mx, my, mz, mr, mp, myaw = vector(model.findtext('pose'))
+            for collision in model.findall('.//collision'):
+                geometry = collision.find('geometry')
+                if geometry is None:
+                    continue
+                cx, cy, cz, cr, cp, cyaw = vector(collision.findtext('pose'))
+                marker = Marker()
+                marker.header.frame_id = str(self.get_parameter('frame_id').value)
+                marker.ns = 'factory_static_obstacles'
+                marker.id = marker_id
+                marker.action = Marker.ADD
+                marker.pose.position.x = mx + cx
+                marker.pose.position.y = my + cy
+                marker.pose.position.z = mz + cz
+                roll, pitch, yaw = mr + cr, mp + cp, myaw + cyaw
+                cr2, sr2 = math.cos(roll / 2), math.sin(roll / 2)
+                cp2, sp2 = math.cos(pitch / 2), math.sin(pitch / 2)
+                cy2, sy2 = math.cos(yaw / 2), math.sin(yaw / 2)
+                marker.pose.orientation.w = cr2 * cp2 * cy2 + sr2 * sp2 * sy2
+                marker.pose.orientation.x = sr2 * cp2 * cy2 - cr2 * sp2 * sy2
+                marker.pose.orientation.y = cr2 * sp2 * cy2 + sr2 * cp2 * sy2
+                marker.pose.orientation.z = cr2 * cp2 * sy2 - sr2 * sp2 * cy2
+                box = geometry.find('box/size')
+                cylinder = geometry.find('cylinder')
+                if box is not None:
+                    marker.type = Marker.CUBE
+                    marker.scale.x, marker.scale.y, marker.scale.z = vector(box.text, 3)
+                elif cylinder is not None:
+                    marker.type = Marker.CYLINDER
+                    radius = float(cylinder.findtext('radius', '0'))
+                    marker.scale.x = marker.scale.y = 2.0 * radius
+                    marker.scale.z = float(cylinder.findtext('length', '0'))
+                else:
+                    continue
+                if name == 'ground':
+                    marker.color.r = marker.color.g = marker.color.b = 0.62
+                    marker.color.a = 0.55
+                else:
+                    marker.color.r, marker.color.g = 0.32, 0.42
+                    marker.color.b, marker.color.a = 0.52, 0.82
+                result.markers.append(marker)
+                marker_id += 1
+        self.get_logger().info(
+            f'loaded {marker_id} static markers and '
+            f'{len(self._dynamic)} dynamic trajectories from {path}')
+        return result
+
+    def _dynamic_markers(self):
+        result = MarkerArray()
+        elapsed = time.time() * float(
+            self.get_parameter('dynamic_speed_scale').value)
+        for marker_id, (radius, length, points) in enumerate(self._dynamic):
+            if len(points) < 2:
+                continue
+            current = elapsed % points[-1][0]
+            pose = points[0][1:]
+            for first, second in zip(points, points[1:]):
+                if first[0] <= current <= second[0]:
+                    ratio = (current - first[0]) / max(
+                        1.0e-6, second[0] - first[0])
+                    pose = tuple(first[index] + ratio * (
+                        second[index] - first[index]) for index in range(1, 4))
+                    break
+            marker = Marker()
+            marker.header.frame_id = str(self.get_parameter('frame_id').value)
+            marker.ns = 'factory_dynamic_obstacles'
+            marker.id = marker_id
+            marker.type = Marker.CYLINDER
+            marker.action = Marker.ADD
+            marker.pose.position.x, marker.pose.position.y, marker.pose.position.z = pose
+            marker.pose.orientation.w = 1.0
+            marker.scale.x = marker.scale.y = 2.0 * radius
+            marker.scale.z = length
+            marker.color.r, marker.color.g = 0.90, 0.12
+            marker.color.b, marker.color.a = 0.10, 0.75
+            result.markers.append(marker)
+        return result
+
+    def _publish(self):
+        stamp = self.get_clock().now().to_msg()
+        for marker in self._markers.markers:
+            marker.header.stamp = stamp
+        self._publisher.publish(self._markers)
+        dynamic = self._dynamic_markers()
+        for marker in dynamic.markers:
+            marker.header.stamp = stamp
+        self._dynamic_publisher.publish(dynamic)
+
+
+def main():
+    rclpy.init()
+    node = FactorySceneMarkers()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        # Ctrl-C is the normal launch shutdown path, not a marker failure.
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,394 @@
+#!/usr/bin/env python3
+"""Generate a LaserScan from an OccupancyGrid and robot odometry.
+
+This is a backend-neutral sensor simulator. It is intended for the MuJoCo and
+RViz motion backends; the existing Gazebo sensor chain remains unchanged.
+"""
+
+import copy
+import math
+import time
+import xml.etree.ElementTree as ET
+from typing import Optional
+
+import rclpy
+from nav_msgs.msg import OccupancyGrid, Odometry
+from rclpy.node import Node
+from sensor_msgs.msg import LaserScan
+from visualization_msgs.msg import Marker, MarkerArray
+
+
+class GridLidarSimulator(Node):
+    def __init__(self) -> None:
+        super().__init__('m20_grid_lidar_simulator')
+        self.declare_parameter('map_topic', '/map')
+        self.declare_parameter('odom_topic', '/odom')
+        self.declare_parameter('scan_topic', '/scan')
+        self.declare_parameter('predicted_scan_topic', '/scan_predicted')
+        self.declare_parameter(
+            'predicted_marker_topic', '/m20/factory/predicted_obstacles')
+        self.declare_parameter('scan_frame', 'base_scan')
+        self.declare_parameter('publish_rate_hz', 10.0)
+        self.declare_parameter('angle_min', -math.pi)
+        self.declare_parameter('angle_max', math.pi)
+        self.declare_parameter('angle_increment', math.radians(1.0))
+        self.declare_parameter('range_min', 0.05)
+        self.declare_parameter('range_max', 30.0)
+        self.declare_parameter('occupied_threshold', 50)
+        self.declare_parameter('step_fraction', 0.5)
+        self.declare_parameter('world_file', '')
+        self.declare_parameter('dynamic_speed_scale', 0.35)
+        self.declare_parameter('dynamic_prediction_horizon', 7.0)
+        self.declare_parameter('dynamic_prediction_max_horizon', 8.0)
+        self.declare_parameter('dynamic_prediction_samples', 8)
+        self.declare_parameter('dynamic_prediction_lead_time', 3.5)
+        self.declare_parameter('dynamic_prediction_tail_time', 0.25)
+        self.declare_parameter('robot_prediction_radius', 0.68)
+        self.declare_parameter('dynamic_prediction_margin', 0.35)
+        self.declare_parameter('prediction_base_distance', 2.5)
+        self.declare_parameter('prediction_reaction_time', 7.0)
+        self.declare_parameter('prediction_max_distance', 9.0)
+
+        self._grid: Optional[OccupancyGrid] = None
+        self._odom: Optional[Odometry] = None
+        self._dynamic_obstacles = self._load_dynamic_obstacles()
+        self._map_sub = self.create_subscription(
+            OccupancyGrid, str(self.get_parameter('map_topic').value),
+            self._map_callback, 1)
+        self._odom_sub = self.create_subscription(
+            Odometry, str(self.get_parameter('odom_topic').value),
+            self._odom_callback, 10)
+        self._scan_pub = self.create_publisher(
+            LaserScan, str(self.get_parameter('scan_topic').value), 10)
+        self._predicted_scan_pub = self.create_publisher(
+            LaserScan,
+            str(self.get_parameter('predicted_scan_topic').value),
+            10,
+        )
+        self._predicted_marker_pub = self.create_publisher(
+            MarkerArray,
+            str(self.get_parameter('predicted_marker_topic').value),
+            10,
+        )
+        period = 1.0 / max(1.0, float(self.get_parameter('publish_rate_hz').value))
+        self.create_timer(period, self._publish_scan)
+
+    def _map_callback(self, msg: OccupancyGrid) -> None:
+        self._grid = msg
+
+    def _odom_callback(self, msg: Odometry) -> None:
+        self._odom = msg
+
+    def _load_dynamic_obstacles(self):
+        path = str(self.get_parameter('world_file').value)
+        if not path:
+            return []
+        result = []
+        root = ET.parse(path).getroot()
+        for model in root.findall('.//world/model'):
+            if model.findtext('static', 'false').strip().lower() == 'true':
+                continue
+            collision = model.find('.//collision/geometry/cylinder')
+            trajectory = model.findtext('.//plugin/trajectory')
+            if collision is None or not trajectory:
+                continue
+            radius = float(collision.findtext('radius', '0'))
+            points = []
+            for waypoint in trajectory.split(';'):
+                values = [float(value) for value in waypoint.split()]
+                if len(values) >= 3:
+                    points.append((values[0], values[1], values[2]))
+            if len(points) >= 2:
+                result.append((radius, points))
+        self.get_logger().info(
+            f'loaded {len(result)} dynamic obstacle trajectories')
+        return result
+
+    def _dynamic_positions(self):
+        elapsed = time.time() * float(
+            self.get_parameter('dynamic_speed_scale').value)
+        positions = []
+        for radius, points in self._dynamic_obstacles:
+            period = points[-1][0]
+            current = elapsed % period if period > 0 else 0.0
+            for first, second in zip(points, points[1:]):
+                if first[0] <= current <= second[0]:
+                    span = max(1.0e-6, second[0] - first[0])
+                    ratio = (current - first[0]) / span
+                    positions.append((
+                        first[1] + ratio * (second[1] - first[1]),
+                        first[2] + ratio * (second[2] - first[2]), radius))
+                    break
+        return positions
+
+    def _predicted_dynamic_positions(self):
+        """Return relevant samples along each obstacle's future trajectory."""
+        if not self._dynamic_obstacles or self._odom is None:
+            return []
+
+        horizon = max(0.0, float(
+            self.get_parameter('dynamic_prediction_horizon').value))
+        max_horizon = max(horizon, float(
+            self.get_parameter('dynamic_prediction_max_horizon').value))
+        samples = max(1, int(
+            self.get_parameter('dynamic_prediction_samples').value))
+        speed_scale = float(
+            self.get_parameter('dynamic_speed_scale').value)
+        elapsed = time.time() * speed_scale
+        pose = self._odom.pose.pose
+        twist = self._odom.twist.twist
+        robot_yaw = self._yaw(pose.orientation)
+        robot_vx = (
+            twist.linear.x * math.cos(robot_yaw)
+            - twist.linear.y * math.sin(robot_yaw)
+        )
+        robot_vy = (
+            twist.linear.x * math.sin(robot_yaw)
+            + twist.linear.y * math.cos(robot_yaw)
+        )
+        robot_radius = float(
+            self.get_parameter('robot_prediction_radius').value)
+        result = []
+
+        for radius, points in self._dynamic_obstacles:
+            period = points[-1][0]
+            if period <= 0.0:
+                continue
+            phase = elapsed % period
+            active = next(
+                ((first, second) for first, second in zip(points, points[1:])
+                 if first[0] <= phase <= second[0]),
+                None,
+            )
+            if active is None:
+                continue
+            first, second = active
+            span = max(1.0e-6, second[0] - first[0])
+            ratio = (phase - first[0]) / span
+            obstacle_x = first[1] + ratio * (second[1] - first[1])
+            obstacle_y = first[2] + ratio * (second[2] - first[2])
+            obstacle_vx = (second[1] - first[1]) / span * speed_scale
+            obstacle_vy = (second[2] - first[2]) / span * speed_scale
+            dx = obstacle_x - pose.position.x
+            dy = obstacle_y - pose.position.y
+            relative_vx = obstacle_vx - robot_vx
+            relative_vy = obstacle_vy - robot_vy
+            relative_speed_sq = (
+                relative_vx * relative_vx + relative_vy * relative_vy)
+            if relative_speed_sq < 1.0e-5:
+                continue
+
+            relative_speed = math.sqrt(relative_speed_sq)
+            activation_distance = min(
+                float(self.get_parameter('prediction_max_distance').value),
+                float(self.get_parameter('prediction_base_distance').value)
+                + relative_speed * float(
+                    self.get_parameter('prediction_reaction_time').value),
+            )
+            edge_distance = math.hypot(dx, dy) - radius - robot_radius
+            if edge_distance > activation_distance:
+                continue
+
+            closest_time = -(
+                dx * relative_vx + dy * relative_vy) / relative_speed_sq
+            # Retain a short forward tail after the closest point. Dropping it
+            # made a crossing obstacle disappear from the planner too early.
+            if closest_time < -0.50 or closest_time > max_horizon:
+                continue
+            closest_time = max(0.0, closest_time)
+            lead_time = max(0.0, float(
+                self.get_parameter('dynamic_prediction_lead_time').value))
+            tail_time = max(0.0, float(
+                self.get_parameter('dynamic_prediction_tail_time').value))
+            window_start = max(0.20, closest_time - lead_time)
+            window_end = min(max_horizon, closest_time + tail_time)
+            for index in range(samples + 1):
+                future_time = window_start + (
+                    window_end - window_start) * index / samples
+                future_phase = (elapsed + future_time * speed_scale) % period
+                for future_first, future_second in zip(points, points[1:]):
+                    if future_first[0] <= future_phase <= future_second[0]:
+                        future_span = max(
+                            1.0e-6, future_second[0] - future_first[0])
+                        future_ratio = (
+                            future_phase - future_first[0]) / future_span
+                        result.append((
+                            future_first[1] + future_ratio * (
+                                future_second[1] - future_first[1]),
+                            future_first[2] + future_ratio * (
+                                future_second[2] - future_first[2]),
+                            radius,
+                        ))
+                        break
+        return result
+
+    @staticmethod
+    def _circle_hit(x, y, cosine, sine, obstacle):
+        cx, cy, radius = obstacle
+        dx, dy = cx - x, cy - y
+        projection = dx * cosine + dy * sine
+        perpendicular_sq = dx * dx + dy * dy - projection * projection
+        radius_sq = radius * radius
+        if projection < 0.0 or perpendicular_sq > radius_sq:
+            return math.inf
+        return max(0.0, projection - math.sqrt(radius_sq - perpendicular_sq))
+
+    @staticmethod
+    def _yaw(q) -> float:
+        return math.atan2(
+            2.0 * (q.w * q.z + q.x * q.y),
+            1.0 - 2.0 * (q.y * q.y + q.z * q.z),
+        )
+
+    def _occupied(self, x: float, y: float) -> bool:
+        grid = self._grid
+        if grid is None:
+            return True
+        info = grid.info
+        gx = int(math.floor((x - info.origin.position.x) / info.resolution))
+        gy = int(math.floor((y - info.origin.position.y) / info.resolution))
+        if gx < 0 or gy < 0 or gx >= info.width or gy >= info.height:
+            return True
+        value = grid.data[gy * info.width + gx]
+        return value < 0 or value >= int(self.get_parameter('occupied_threshold').value)
+
+    def _ray(self, x: float, y: float, angle: float, dynamic) -> float:
+        minimum = float(self.get_parameter('range_min').value)
+        maximum = float(self.get_parameter('range_max').value)
+        resolution = self._grid.info.resolution if self._grid else 0.05
+        step = max(0.01, resolution * float(self.get_parameter('step_fraction').value))
+        cosine, sine = math.cos(angle), math.sin(angle)
+        dynamic_hit = self._dynamic_range(x, y, cosine, sine, dynamic)
+        distance = minimum
+        while distance <= maximum:
+            if distance >= dynamic_hit or self._occupied(
+                    x + distance * cosine, y + distance * sine):
+                return distance
+            distance += step
+        return maximum
+
+    @staticmethod
+    def _dynamic_range(x: float, y: float, cosine: float, sine: float,
+                       dynamic) -> float:
+        """Return the nearest dynamic hit along an oriented ray."""
+        return min(
+            (GridLidarSimulator._circle_hit(
+                x, y, cosine, sine, item) for item in dynamic),
+            default=math.inf,
+        )
+
+    def _publish_scan(self) -> None:
+        if self._grid is None or self._odom is None:
+            return
+        angle_min = float(self.get_parameter('angle_min').value)
+        angle_max = float(self.get_parameter('angle_max').value)
+        increment = float(self.get_parameter('angle_increment').value)
+        count = max(1, int(math.floor((angle_max - angle_min) / increment)) + 1)
+        pose = self._odom.pose.pose
+        yaw = self._yaw(pose.orientation)
+        dynamic = self._dynamic_positions()
+        msg = LaserScan()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = str(self.get_parameter('scan_frame').value)
+        msg.angle_min = angle_min
+        msg.angle_max = angle_min + increment * (count - 1)
+        msg.angle_increment = increment
+        msg.range_min = float(self.get_parameter('range_min').value)
+        msg.range_max = float(self.get_parameter('range_max').value)
+        msg.scan_time = 1.0 / max(1.0, float(self.get_parameter('publish_rate_hz').value))
+        msg.time_increment = msg.scan_time / count
+        msg.ranges = [self._ray(pose.position.x, pose.position.y, yaw + angle, dynamic)
+                      for angle in (angle_min + i * increment for i in range(count))]
+        self._scan_pub.publish(msg)
+        predicted = self._predicted_dynamic_positions()
+        predicted_msg = copy.copy(msg)
+        # The static map is identical for both scans. Reuse measured ranges
+        # and add only future dynamic-obstacle hits to avoid a second full
+        # occupancy-grid traversal on every timer callback.
+        predicted_msg.ranges = [
+            min(
+                measured,
+                self._dynamic_range(
+                    pose.position.x,
+                    pose.position.y,
+                    math.cos(yaw + angle),
+                    math.sin(yaw + angle),
+                    predicted,
+                ),
+            )
+            for measured, angle in zip(
+                msg.ranges,
+                (angle_min + i * increment for i in range(count)),
+            )
+        ]
+        self._predicted_scan_pub.publish(predicted_msg)
+        self._publish_predicted_markers(predicted)
+
+    def _publish_predicted_markers(self, predicted) -> None:
+        """Expose the exact /scan_predicted samples in RViz."""
+        markers = MarkerArray()
+        stamp = self.get_clock().now().to_msg()
+        clear = Marker()
+        clear.header.frame_id = 'map'
+        clear.header.stamp = stamp
+        clear.ns = 'm20_predicted_dynamic_obstacles'
+        clear.action = Marker.DELETEALL
+        markers.markers.append(clear)
+
+        if predicted:
+            line = Marker()
+            line.header.frame_id = 'map'
+            line.header.stamp = stamp
+            line.ns = 'm20_predicted_dynamic_obstacles'
+            line.id = 0
+            line.type = Marker.LINE_STRIP
+            line.action = Marker.ADD
+            line.pose.orientation.w = 1.0
+            line.scale.x = 0.035
+            line.color.r = 1.0
+            line.color.g = 0.85
+            line.color.b = 0.05
+            line.color.a = 0.85
+            from geometry_msgs.msg import Point
+            for x, y, _ in predicted:
+                line.points.append(Point(x=float(x), y=float(y), z=0.035))
+            markers.markers.append(line)
+            for index, (x, y, radius) in enumerate(predicted, start=1):
+                marker = Marker()
+                marker.header.frame_id = 'map'
+                marker.header.stamp = stamp
+                marker.ns = 'm20_predicted_dynamic_obstacles'
+                marker.id = index
+                marker.type = Marker.CYLINDER
+                marker.action = Marker.ADD
+                marker.pose.position.x = float(x)
+                marker.pose.position.y = float(y)
+                marker.pose.position.z = 0.04
+                marker.pose.orientation.w = 1.0
+                marker.scale.x = marker.scale.y = 2.0 * float(radius)
+                marker.scale.z = 0.08
+                marker.color.r = 1.0
+                marker.color.g = 0.85
+                marker.color.b = 0.05
+                marker.color.a = 0.45
+                markers.markers.append(marker)
+        self._predicted_marker_pub.publish(markers)
+
+
+def main() -> None:
+    rclpy.init()
+    node = GridLidarSimulator()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        # Ctrl-C is the normal launch shutdown path; avoid a traceback and
+        # let launch report this sensor process as a clean exit.
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

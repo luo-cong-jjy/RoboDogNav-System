@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <!-- ============================================================
      文件：package.xml
-     用途：m20_mujoco_backend 的 ROS2 包清单（format 3）。
+     用途：m20_nav2_backend 的 ROS2 包清单（format 3）。
            - 描述：M20 的 MuJoCo 动力学后端与同源仓库碰撞世界生成器；
            - 构建工具：ament_cmake / ament_cmake_python；
-           - 运行依赖：drdds（SDK 消息）、m20_official_description
+           - 运行依赖：drdds（SDK 消息）、m20_nav2_description
              （网格模型）、常用 ROS 接口消息与 Python 库；
            - 测试依赖：pytest、flake8、lint、pep257。
      ============================================================ -->
 <package format="3">
-  <name>m20_mujoco_backend</name>
+  <name>m20_nav2_backend</name>
   <version>0.1.0</version>
   <description>
     MuJoCo dynamics backend and same-source warehouse collision world for M20.
@@ -27,7 +27,7 @@
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
-  <exec_depend>m20_official_description</exec_depend>
+  <exec_depend>m20_nav2_description</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <!-- Python 运行库：numpy（数值）、pip（mujoco 安装）、yaml（配置解析）。 -->
   <exec_depend>python3-numpy</exec_depend>

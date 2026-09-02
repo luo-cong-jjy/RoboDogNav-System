@@ -1,0 +1,47 @@
+m20_locomotion_manager:          # 运动管理节点：安全 Twist 到后端指令的适配与门控
+  ros__parameters:
+    input_topic: /m20/control/cmd_vel_safe           # 安全 Twist 输入
+    output_topic: /m20/locomotion/cmd_vel_sdk        # 输出给后端的指令
+    mode_topic: /m20/locomotion/mode                 # 运动模式话题
+    backend_ready_topic: /m20/locomotion/backend_ready  # 后端就绪话题
+    backend_fault_topic: /m20/locomotion/backend_fault  # 后端故障话题
+    safety_state_topic: /m20/control/safety_state       # 安全状态话题
+    require_backend_ready: true                        # 必须等待后端就绪
+    # The autonomous candidate was adapted before collision prediction.
+    # （自主候选指令已在碰撞预测前适配完成）
+    rolling_navigation_enabled: false                  # 滚动导航关闭
+    allow_manual_lateral: true                         # 允许手动侧向
+    command_timeout_sec: 0.30                          # 指令超时 [s]
+
+m20_basic_server_backend:        # basic_server 后端：通过 UDP/TCP 连接 M20 AOS
+  ros__parameters:
+    robot_host: 10.21.31.103    # 机器人 AOS 地址
+    udp_port: 30000             # UDP 端口（高速指令通道）
+    tcp_port: 30001             # TCP 端口（状态/控制通道）
+    input_topic: /m20/locomotion/cmd_vel_sdk        # 输入指令
+    e_stop_topic: /m20/control/e_stop               # 急停话题
+    ready_topic: /m20/locomotion/backend_ready      # 就绪发布话题
+    fault_topic: /m20/locomotion/backend_fault      # 故障发布话题
+    status_topic: /m20/locomotion/backend_status    # 后端状态
+    measured_twist_topic: /m20/locomotion/measured_twist  # 实测 twist
+    enable_service: /m20/hardware/enable_motion     # 使能运动服务
+    command_rate_hz: 20.0                            # 指令频率 [Hz]
+    # Shorter than the M20 firmware's documented 500 ms stop watchdog.
+    # （比 M20 固件文档的 500 ms 停车看门狗更短）
+    command_timeout_sec: 0.30                        # 指令超时 [s]
+    status_timeout_sec: 1.25                         # 状态超时 [s]
+    connect_retry_sec: 2.0                           # 连接重试间隔 [s]
+    requested_control_usage_mode: 1                  # 请求的控制使用模式
+    # 0x3002: agile-flat gait recommended for autonomous navigation.
+    # （0x3002：agile-flat 步态，自主导航推荐）
+    requested_gait: 12290                            # 请求步态 ID
+    auto_enable_motion: false                        # 不自动使能运动
+    lie_down_on_disable: false                       # 失能时不卧倒
+    # Must be explicitly acknowledged after the onboard planner and
+    # autonomous charging command sources have been stopped.
+    # （必须在车载规划器与自主充电指令源停止后显式确认）
+    command_ownership_confirmed: false               # 指令所有权确认（安全开关）
+    # Never enlarge a command after footprint collision prediction. Values
+    # below the official non-zero interval are safely reduced to zero.
+    # （碰撞预测后绝不放大指令；低于官方非零区间的值安全归零）
+    subthreshold_policy: zero                        # 低于阈值指令归零

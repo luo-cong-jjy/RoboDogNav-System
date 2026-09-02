@@ -1,0 +1,6 @@
+# Minimal standalone backend configuration for the M20 Nav2 factory scene.
+# The SDF launch path only needs the cold-start pose; navigation maps remain
+# owned by m20_nav2_system.
+floors:
+  F1:
+    initial_pose: [0.0, 0.0, 0.0]

@@ -1,0 +1,293 @@
+#!/usr/bin/env python3
+"""Filter Nav2 velocity commands using tracked dynamic-obstacle TTC."""
+
+import math
+
+import rclpy
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import OccupancyGrid, Odometry
+from rclpy.node import Node
+from visualization_msgs.msg import MarkerArray
+
+
+class DynamicSafetyFilter(Node):
+    def __init__(self):
+        super().__init__('m20_dynamic_safety_filter')
+        self.declare_parameter('input_topic', '/cmd_vel')
+        self.declare_parameter('output_topic', '/cmd_vel_safe')
+        self.declare_parameter('robot_radius', 0.40)
+        self.declare_parameter('contact_robot_radius', 0.32)
+        self.declare_parameter('warning_ttc', 0.9)
+        self.declare_parameter('stop_ttc', 0.35)
+        self.declare_parameter('contact_stop_clearance', 0.0)
+        self.declare_parameter('contact_release_clearance', 0.08)
+        self.declare_parameter('prediction_horizon', 5.0)
+        self.declare_parameter('prediction_margin', 0.18)
+        self.declare_parameter('risk_steering_gain', 1.10)
+        self.declare_parameter('max_yaw_rate', 0.65)
+        self.declare_parameter('evasion_ttc', 3.0)
+        self.declare_parameter('evasion_min_yaw_rate', 0.22)
+        self.declare_parameter('evasion_yaw_rate', 0.60)
+        self.declare_parameter('evasion_min_forward', 0.30)
+        self.declare_parameter('evasion_turn_hold_sec', 0.85)
+        self.declare_parameter('evasion_release_ttc', 3.4)
+        self.declare_parameter('risk_base_distance', 1.20)
+        self.declare_parameter('risk_reaction_time', 2.0)
+        self.declare_parameter('risk_max_distance', 3.50)
+        self.declare_parameter('velocity_filter_alpha', 0.35)
+        self.declare_parameter('command_timeout', 0.30)
+
+        self._odom = None
+        self._map = None
+        self._tracks = {}
+        self._command = Twist()
+        self._command_stamp = None
+        self._last_log = 0.0
+        self._contact_stopped = False
+        self._evasion_turn = 0.0
+        self._evasion_turn_since = 0.0
+        self._publisher = self.create_publisher(
+            Twist, str(self.get_parameter('output_topic').value), 10)
+        self.create_subscription(
+            Twist, str(self.get_parameter('input_topic').value),
+            self._command_callback, 10)
+        self.create_subscription(Odometry, '/odom', self._odom_callback, 20)
+        self.create_subscription(OccupancyGrid, '/map', self._map_callback, 1)
+        self._obstacle_subscription = self.create_subscription(
+            MarkerArray, '/m20/factory/dynamic_obstacles',
+            self._obstacle_callback, 20)
+        self.create_timer(0.025, self._publish_safe_command)
+        self.get_logger().info('dynamic safety filter: /cmd_vel -> /cmd_vel_safe')
+
+    def _now(self):
+        return self.get_clock().now().nanoseconds * 1.0e-9
+
+    def _command_callback(self, message):
+        self._command = message
+        self._command_stamp = self._now()
+
+    def _odom_callback(self, message):
+        self._odom = message
+
+    def _map_callback(self, message):
+        self._map = message
+
+    def _obstacle_callback(self, message):
+        now = self._now()
+        alpha = float(self.get_parameter('velocity_filter_alpha').value)
+        updated = {}
+        for index, marker in enumerate(message.markers):
+            key = (marker.ns, marker.id if marker.id else index)
+            x, y = marker.pose.position.x, marker.pose.position.y
+            radius = max(0.05, 0.5 * max(marker.scale.x, marker.scale.y))
+            previous = self._tracks.get(key)
+            vx = vy = 0.0
+            if previous is not None:
+                dt = now - previous[5]
+                if 0.01 <= dt <= 0.5:
+                    measured_vx = (x - previous[0]) / dt
+                    measured_vy = (y - previous[1]) / dt
+                    vx = alpha * measured_vx + (1.0 - alpha) * previous[3]
+                    vy = alpha * measured_vy + (1.0 - alpha) * previous[4]
+            updated[key] = (x, y, radius, vx, vy, now)
+        self._tracks = updated
+
+    @staticmethod
+    def _yaw(orientation):
+        return math.atan2(
+            2.0 * (orientation.w * orientation.z +
+                   orientation.x * orientation.y),
+            1.0 - 2.0 * (orientation.y * orientation.y +
+                         orientation.z * orientation.z))
+
+    def _risk(self):
+        if self._odom is None or not self._tracks:
+            return math.inf, math.inf, math.inf, 0.0
+        pose = self._odom.pose.pose
+        yaw = self._yaw(pose.orientation)
+        command = self._command
+        robot_vx = command.linear.x * math.cos(yaw)
+        robot_vy = command.linear.x * math.sin(yaw)
+        robot_radius = float(self.get_parameter('robot_radius').value)
+        margin = float(self.get_parameter('prediction_margin').value)
+        horizon = float(self.get_parameter('prediction_horizon').value)
+        best_ttc, best_predicted_clearance, best_turn = math.inf, math.inf, 0.0
+        current_clearance = math.inf
+        for x, y, radius, vx, vy, _ in self._tracks.values():
+            dx, dy = x - pose.position.x, y - pose.position.y
+            relative_vx, relative_vy = vx - robot_vx, vy - robot_vy
+            speed_sq = relative_vx * relative_vx + relative_vy * relative_vy
+            combined = robot_radius + radius
+            distance = math.hypot(dx, dy)
+            current_clearance = min(current_clearance, distance - combined)
+            if distance <= combined:
+                lateral = -math.sin(yaw) * dx + math.cos(yaw) * dy
+                return (0.0, distance - combined, current_clearance,
+                        (-1.0 if lateral >= 0.0 else 1.0))
+            if speed_sq < 1.0e-5:
+                continue
+            relative_speed = math.sqrt(speed_sq)
+            activation_distance = min(
+                float(self.get_parameter('risk_max_distance').value),
+                float(self.get_parameter('risk_base_distance').value) +
+                relative_speed * float(
+                    self.get_parameter('risk_reaction_time').value))
+            if distance - combined > activation_distance:
+                continue
+            t_closest = max(0.0, min(
+                horizon,
+                -(dx * relative_vx + dy * relative_vy) / speed_sq))
+            closest = math.hypot(
+                dx + relative_vx * t_closest,
+                dy + relative_vy * t_closest)
+            clearance = closest - combined
+            if clearance <= margin and t_closest < best_ttc:
+                encounter_x = dx + relative_vx * t_closest
+                encounter_y = dy + relative_vy * t_closest
+                lateral = (-math.sin(yaw) * encounter_x +
+                           math.cos(yaw) * encounter_y)
+                if abs(lateral) < 0.05:
+                    best_turn = (1.0 if self._command.angular.z >= 0.0 else -1.0)
+                else:
+                    best_turn = -1.0 if lateral > 0.0 else 1.0
+                best_ttc, best_predicted_clearance = t_closest, clearance
+        return best_ttc, best_predicted_clearance, current_clearance, best_turn
+
+    def _map_free(self, x, y):
+        if self._map is None:
+            return True
+        info = self._map.info
+        radius = float(self.get_parameter('robot_radius').value)
+        for angle_index in range(12):
+            angle = angle_index * math.pi / 6.0
+            px = x + radius * math.cos(angle)
+            py = y + radius * math.sin(angle)
+            gx = int(math.floor((px - info.origin.position.x) / info.resolution))
+            gy = int(math.floor((py - info.origin.position.y) / info.resolution))
+            if gx < 0 or gy < 0 or gx >= info.width or gy >= info.height:
+                return False
+            value = self._map.data[gy * info.width + gx]
+            if value < 0 or value >= 50:
+                return False
+        return True
+
+    def _turn_is_free(self, direction, yaw_rate):
+        """Check a short maximum-yaw arc against the static occupancy map."""
+        if self._odom is None or self._map is None:
+            return True
+        pose = self._odom.pose.pose
+        x, y, yaw = pose.position.x, pose.position.y, self._yaw(pose.orientation)
+        speed = max(0.22, min(0.45, abs(self._command.linear.x)))
+        yaw_rate = direction * yaw_rate
+        dt = 0.10
+        for _ in range(12):
+            yaw += yaw_rate * dt
+            x += speed * math.cos(yaw) * dt
+            y += speed * math.sin(yaw) * dt
+            if not self._map_free(x, y):
+                return False
+        return True
+
+    def _publish_safe_command(self):
+        now = self._now()
+        timeout = float(self.get_parameter('command_timeout').value)
+        if self._command_stamp is None or now - self._command_stamp > timeout:
+            self._publisher.publish(Twist())
+            return
+        output = Twist()
+        output.linear.x = self._command.linear.x
+        output.linear.y = self._command.linear.y
+        output.linear.z = self._command.linear.z
+        output.angular.x = self._command.angular.x
+        output.angular.y = self._command.angular.y
+        output.angular.z = self._command.angular.z
+        ttc, predicted_clearance, current_clearance, turn = self._risk()
+        warning = float(self.get_parameter('warning_ttc').value)
+        stop = float(self.get_parameter('stop_ttc').value)
+        evasion_ttc = float(self.get_parameter('evasion_ttc').value)
+        now = self._now()
+        hold_sec = float(self.get_parameter('evasion_turn_hold_sec').value)
+        release_ttc = float(self.get_parameter('evasion_release_ttc').value)
+        if turn and ttc < evasion_ttc:
+            if self._evasion_turn == 0.0:
+                self._evasion_turn = turn
+                self._evasion_turn_since = now
+            elif (turn != self._evasion_turn and
+                  now - self._evasion_turn_since >= hold_sec):
+                # Do not reverse on a noisy crossing; switch only after the
+                # previous arc has been held for the configured duration.
+                self._evasion_turn = turn
+                self._evasion_turn_since = now
+            turn = self._evasion_turn
+            min_yaw = float(self.get_parameter('evasion_min_yaw_rate').value)
+            max_evasion_yaw = float(
+                self.get_parameter('evasion_yaw_rate').value)
+            # Begin with a gentle arc and continuously increase steering as
+            # TTC approaches the velocity-reduction threshold.
+            urgency = max(0.0, min(
+                1.0, (evasion_ttc - ttc) /
+                max(0.1, evasion_ttc - warning)))
+            evasion_yaw = min_yaw + urgency * (max_evasion_yaw - min_yaw)
+            if (not self._turn_is_free(turn, evasion_yaw) and
+                    self._turn_is_free(-turn, evasion_yaw)):
+                turn = -turn
+            if self._turn_is_free(turn, evasion_yaw):
+                output.angular.z = turn * max(abs(output.angular.z), evasion_yaw)
+                # Nav2 may temporarily command zero linear velocity when its
+                # real-obstacle layer sees the approaching worker. Keep a
+                # verified forward arc so avoidance is continuous rather than
+                # alternating between stop and turn.
+                output.linear.x = max(
+                    output.linear.x,
+                    float(self.get_parameter('evasion_min_forward').value))
+        elif self._evasion_turn and ttc > release_ttc:
+            self._evasion_turn = 0.0
+            self._evasion_turn_since = 0.0
+        if math.isfinite(ttc) and abs(output.angular.z) > 0.02:
+            gain = float(self.get_parameter('risk_steering_gain').value)
+            max_yaw = float(self.get_parameter('max_yaw_rate').value)
+            output.angular.z = max(
+                -max_yaw, min(max_yaw, output.angular.z * gain))
+        # Contact detection uses the tighter physical body envelope. The
+        # larger planning radius remains active for predictive avoidance.
+        contact_robot_radius = float(
+            self.get_parameter('contact_robot_radius').value)
+        current_physical_clearance = current_clearance + float(
+            self.get_parameter('robot_radius').value) - contact_robot_radius
+        contact_stop = float(
+            self.get_parameter('contact_stop_clearance').value)
+        contact_release = float(
+            self.get_parameter('contact_release_clearance').value)
+        if self._contact_stopped:
+            self._contact_stopped = current_physical_clearance <= contact_release
+        elif current_physical_clearance <= contact_stop:
+            self._contact_stopped = True
+        if self._contact_stopped:
+            output = Twist()
+            if now - self._last_log > 1.0:
+                self.get_logger().warn(
+                    f'contact stop: current={current_physical_clearance:.2f}m, '
+                    f'predicted={predicted_clearance:.2f}m, TTC={ttc:.2f}s')
+                self._last_log = now
+        elif ttc < warning:
+            # TTC is predictive: preserve motion and steering so the robot can
+            # finish the evasive arc. Only physical-envelope contact may stop.
+            scale = max(0.70, min(1.0, (ttc - stop) / (warning - stop)))
+            output.linear.x *= scale
+            output.linear.y *= scale
+        self._publisher.publish(output)
+
+
+def main():
+    rclpy.init()
+    node = DynamicSafetyFilter()
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

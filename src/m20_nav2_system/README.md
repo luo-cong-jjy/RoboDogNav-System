@@ -1,89 +1,253 @@
 # M20 Nav2 System
 
-本包保留两条可选仿真链路：
+本包提供 M20 Pro 的二维导航仿真与后续实机接入基础。导航层统一使用 Nav2、RViz、二维栅格地图、代价地图和动态避障；底层可选择 Gazebo、MuJoCo 或 AOS 实机后端。
 
-- Gazebo：`factory_navigation.launch.py`，现有四轮模型、雷达和 Nav2 链路保持不变。
-- MuJoCo：`m20_mujoco_navigation.launch.py`，复用 `m20_warehouse_inspection` 的官方
-  M20 MJCF/ONNX 运动层、MuJoCo odom/TF，以及基于 PCD 的 CPU ray-casting 感知。
+## 仿真与实机边界
 
-MuJoCo 后端接入当前二维 Nav2 的桥接入口为
-`m20_mujoco_sensor_bridge.launch.py`：它把 `/m20/sim/body_pose` 适配为 `/odom` 和
-`odom -> base_link` TF，并根据 `/map` 栅格生成标准 `/scan`。该桥接不参与 Gazebo 默认
-启动链路，Gazebo 仍使用自身的雷达和里程计插件。
-雷达固定坐标系为 `base_scan`，桥接入口同时发布 `base_link -> base_scan` 静态 TF。
-
-推荐默认启动命令已经包含 MuJoCo viewer 和 RViz，无需追加参数：
-
-```bash
-ros2 launch m20_nav2_system m20_mujoco_navigation.launch.py
-```
-
-MuJoCo 入口不会复制官方策略或修改 Gazebo 模型。使用前需先构建并安装
-`m20_warehouse_inspection` 及其 `m20_mujoco_backend` 依赖；`system_config` 应指向该包
-使用的 system YAML。两条入口互不替换，默认的 Gazebo 调试流程仍按下文命令运行。
-
-桥接的独立检查命令（需在已 source ROS 2 和工作空间的终端执行）：
-
-```bash
-ros2 launch m20_nav2_system m20_mujoco_sensor_bridge.launch.py
-ros2 topic echo /scan --once
-ros2 topic echo /odom --once
-```
-
-工厂静态碰撞场景生成与校验：
-
-```bash
-ros2 launch m20_nav2_system generate_factory_mujoco_world.launch.py
-```
-
-该命令从 `worlds/factory_environment.world` 提取地面、围墙和 5 排工作台，注入官方
-M20 MJCF，并检查 16 个执行器、浮动基座、IMU 与静态几何数量。Gazebo world 中的动态
-worker 代理及其 waypoint 插件尚未迁移到 MuJoCo；在动态障碍物迁移完成前，MuJoCo 入口
-只用于静态工厂场景和运动层验证。
-
-MuJoCo backend 也支持在启动时直接从 Gazebo SDF 生成场景：
-
-```bash
-ros2 launch m20_nav2_system m20_mujoco_navigation.launch.py \
-  world_source:=factory_sdf \
-  world_file:=/path/to/m20_nav2_system/worlds/factory_environment.world
-```
-
-该模式会在 backend launch 内生成并加载官方 M20 MJCF。当前仅转换静态 box/cylinder
-碰撞体；Gazebo world 中由 waypoint 插件驱动的动态 worker 仍未迁移。
-转换器会在终端明确打印被跳过的动态模型名称，避免将静态场景结果误认为完整动态场景。
-
-ROS 2 Humble / Gazebo Classic 集成包，提供 M20 自由导航仿真、独立巡检任务和 PCD 点云地图验证。
-
-## 正式入口
-
-| 模块 | 命令 | 说明 |
-| --- | --- | --- |
-| 自由导航仿真 | `ros2 launch m20_nav2_system factory_navigation.launch.py` | Gazebo、机器人、雷达、Nav2、RViz |
-| 巡检任务 | `ros2 launch m20_nav2_system factory_inspection_mission.launch.py` | 向已运行的 Nav2 发送巡检目标 |
-| PCD 验证 | `ros2 launch m20_nav2_system pcd_validation.launch.py` | PCD 切片、栅格化和 costmap 验证 |
-
-巡检任务不会由仿真入口自动启动，必须在自由导航确认正常后单独启动。
-
-## 目录结构
+导航层保持一套实现，后端按启动入口切换，不移动现有目录或复制第二套导航代码：
 
 ```text
-m20_nav2_system/
-├── launch/       # 正式仿真、巡检、Nav2、雷达和 PCD 入口
-├── config/       # Nav2、雷达、巡检和 PCD 参数
-├── maps/
-│   ├── factory/  # 仿真/Nav2 默认工厂栅格地图
-│   └── pcd/
-│       ├── raw/  # 原始 PCD；默认使用 t100ipro_2026-07-14-11-56-57.pcd
-│       └── grids/# PCD 生成的 PGM/YAML 与 A* 输出
-├── models/       # Gazebo URDF、可视化 URDF 和网格
-├── rviz/         # RViz 配置
-├── scripts/      # 正式运行节点
-│   └── pcd/      # PCD 专用工具
-├── src/          # Gazebo 插件和 C++ 测试节点
-├── worlds/       # Gazebo 世界
-└── docs/         # 接口、设计和 PCD 文档
+RViz / Nav2 / 地图 / 代价地图 / 动态避障
+                    |
+       /scan  /odom  /tf  /cmd_vel
+                    |
+       +------------+-------------+
+       |                          |
+   Gazebo / MuJoCo             AOS 实机
+   模拟传感器与运动层          真实雷达、LIO、官方 SDK
 ```
+
+| 场景 | 启动入口 | 后端 |
+| --- | --- | --- |
+| Gazebo 仿真 | `factory_navigation.launch.py` | Gazebo 机器人、已保存二维地图、AMCL、Nav2 和 RViz |
+| Gazebo 实时建图导航 | `factory_slam_navigation.launch.py` | Gazebo 2D 雷达、slam_toolbox 和 Nav2，RViz目标点驱动 |
+| Gazebo 已保存地图导航 | `factory_saved_map_navigation.launch.py` | Gazebo 传感器 + 保存的二维地图 + AMCL + Nav2，RViz目标点驱动 |
+| MuJoCo 仿真 | `m20_mujoco_navigation.launch.py` | 官方 M20 运动层与模拟传感器 |
+| MuJoCo 仅查看 | `m20_mujoco_viewer_only.launch.py` | 运动模型和工厂场景显示 |
+| AOS 实机 | `m20_hardware_navigation.launch.py` | 真实雷达、LIO、官方 SDK |
+
+实机入口只替换后端，不替换 Nav2 的 `/cmd_vel` 接口。任何时刻只能有一个节点发布 `/JOINTS_CMD`；实机启动时必须关闭 MuJoCo、模拟雷达和模拟 odom。
+
+## AOS 实机部署步骤
+
+### 背部主机部署边界
+
+不要把整个工作空间的 `src`、`build` 或 `install` 目录复制到 AOS。当前源码按
+ROS 包边界部署：必须包为 `m20_nav2_system`、`m20_nav2_description` 和
+`m20_nav2_locomotion`；若采用 MuJoCo 已验证的 RL 后端，再额外部署官方
+`M20_sdk_deploy` 及其 `drdds` 依赖。`m20_nav2_backend` 仅用于 MuJoCo，不部署
+到实机。Gazebo world、Gazebo 插件、MuJoCo viewer 和模拟雷达也不属于实机运行集。
+
+可用 `hardware.repos` 作为依赖清单模板导入厂商消息包；其中仓库地址和版本必须
+替换为 AOS 实际批准的版本，不能盲目使用 `main` 分支。AOS 上建议关闭 Gazebo
+插件构建：
+
+```bash
+colcon build --symlink-install --cmake-args -DBUILD_GAZEBO_PLUGINS=OFF
+```
+
+这样导航包仍保留同一套 launch、地图、Nav2 配置和接口，但不会在背部主机编译
+四轮 Gazebo 插件。仿真开发机保持默认 `BUILD_GAZEBO_PLUGINS=ON`。
+
+### 实机阶段 1：真实环境建图
+
+先启动 AOS 官方传感器和里程计节点，确认它们发布 `/scan`、`/odom` 以及
+`odom -> base_link` TF。随后只启动本包的建图入口：
+
+```bash
+ros2 launch m20_nav2_system m20_hardware_mapping.launch.py
+```
+
+该入口不启动 Gazebo、MuJoCo、AMCL 或 Nav2；它启动 `slam_toolbox`、RViz，
+以及可选的官方 SDK 速度适配器。AOS 的真实雷达、里程计和 `odom -> base_link`
+TF 由官方传感器/LIO 节点提供。默认 `start_sdk=true`，因此可以通过 `/cmd_vel`
+进行人工运动；若 SDK 已在其他终端启动，应将 `start_sdk:=false`，避免重复连接。
+用 RViz 的 `2D Pose Estimate` 设置初始位姿，驱动机器狗覆盖环境。
+建图完成后，在另一个终端保存地图：
+
+```bash
+ros2 run nav2_map_server map_saver_cli -f /path/to/m20_factory_real
+```
+
+保存得到的 `.yaml` 和 `.pgm` 是阶段 2 的输入。保存前必须确认地图覆盖完整、
+闭环正常且 `map -> odom` 稳定。
+
+实机部署按阶段进行，每一阶段通过后才能进入下一阶段。AOS 上的 ROS 发行版、SDK 授权和网络配置以厂家实际环境为准；开发机通常使用 Humble，AOS 可能使用 Foxy，不能直接混用工作空间的 `install/`。
+
+### 1. 只验证官方 SDK
+
+在 AOS 上单独编译并启动官方 SDK（首次使用前按厂家要求完成固件升级和 SDK 授权）：
+
+```bash
+source /opt/ros/<aos-ros-distro>/setup.bash
+cd ~/sdk_deploy
+colcon build --packages-select m20_sdk_deploy --cmake-args -DBUILD_PLATFORM=arm
+source install/setup.bash
+ros2 run m20_sdk_deploy rl_deploy
+```
+
+确认官方状态话题稳定：
+
+```text
+/IMU 或厂家实际 IMU 话题
+/JOINTS_DATA
+/BATTERY_DATA
+```
+
+此阶段不启动 Nav2，不发布 `/cmd_vel`，不连接自动导航。确认手柄/官方状态机能够安全站立、趴下和退出 SDK 模式后再继续。
+
+官方键盘模式的逐项验收动作如下。每次只短按一次，并在空旷区域进行：
+
+| 按键 | 预期动作 |
+| --- | --- |
+| `z` | 站立/默认姿态 |
+| `c` | 进入强化学习控制模式 |
+| `x` | 趴下 |
+| `w` | 前进 |
+| `s` | 后退 |
+| `a` | 左移 |
+| `d` | 右移 |
+| `q` | 顺时针原地旋转 |
+| `e` | 逆时针原地旋转 |
+
+每次动作都要确认方向正确，松开按键后能够停止；`z -> c -> w/q/e -> x` 应能完整执行。手柄模式下对应为：`L1` 站立、`L2` 进入 RL 控制、`R1` 趴下、`R2` 关节阻尼，左摇杆负责前后，右摇杆负责旋转。当前 Gazebo 差速模型不支持横向平移。必须保留物理急停。
+
+确认官方反馈持续发布：
+
+```bash
+ros2 topic hz /JOINTS_DATA
+ros2 topic hz /IMU_DATA
+ros2 topic echo /BATTERY_DATA --once
+ros2 topic info /JOINTS_CMD -v
+```
+
+### 2. 验证导航速度适配器
+
+使用本地 SDK 扩展编译 `rl_deploy_cmdvel`，并确认它是唯一的 `/JOINTS_CMD` 发布者：
+
+```bash
+ros2 run m20_sdk_deploy rl_deploy_cmdvel
+ros2 topic info /JOINTS_CMD -v
+```
+
+先在空旷区域以人工急停为保障，向 `/cmd_vel` 输入极低速的前进、旋转和停止指令。若出现多个控制源、状态机未授权、速度方向异常或无法立即停止，必须停止部署。
+
+逐项发送以下测试指令。当前 Gazebo 差速模型使用 `linear.x` 前后和 `angular.z` 偏航，`linear.y` 不参与运动；先使用低速值，确认方向后再逐步提高。
+
+```bash
+# 前进、后退
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.05, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: -0.05, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+# 左移、右移
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.0, y: 0.05, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.0, y: -0.05, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+# 逆时针、顺时针原地旋转
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.15}}"
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: -0.15}}"
+
+# 停止
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+```
+
+还要验证命令超时保护：用 `ros2 topic pub -r 10` 连续发送低速指令，按 `Ctrl+C` 停止发布，确认机器人自动回零；不能依赖手动发送零速度才能停下。
+
+### 3. 接入真实雷达、里程计和二维地图定位
+
+Nav2 不默认使用 LIO。使用已有二维栅格地图导航时，本包实机入口启动 Nav2 的 `map_server + AMCL`：AMCL 使用 `/scan`、二维地图和里程计完成全局定位，并发布 `map -> odom`。底盘侧仍必须提供连续的 `/odom` 和 `odom -> base_link`；它们可以来自 AOS 自带里程计、轮速/IMU 融合、LIO 或其他状态估计器，并不限定算法。
+
+如果是边建图边导航，可改用 SLAM Toolbox 等二维 SLAM，由 SLAM 节点建立地图并提供全局定位，此时不再同时启动 AMCL。LIO 只有在选它作为里程计/定位来源时才需要，不是 Nav2 的默认定位算法。
+
+关闭所有仿真传感器后启动真实雷达驱动和选定的里程计来源，先只检查数据，不放行运动：
+
+```text
+/scan
+/odom
+AMCL: map -> odom
+底盘里程计: odom -> base_link
+机器人描述: base_link -> lidar_link
+```
+
+必须确认坐标系方向、时间戳、雷达 QoS 和初始位姿正确。启动实机入口后，需要在 RViz 使用 `2D Pose Estimate` 给 AMCL 初始位姿，直到粒子云收敛且机器人移动时在地图中的姿态稳定。实机地图应使用实测/验证过的地图，不能使用 Gazebo 或 MuJoCo 的模拟地图作为最终地图。
+
+### 4. 接入 Nav2
+
+启动实机 Nav2 配置时，只保留真实输入和统一速度接口：
+
+```text
+真实雷达 -> /scan
+真实里程计 -> /odom 与 odom -> base_link TF
+AMCL       -> map -> odom TF
+Nav2      -> /cmd_vel
+/cmd_vel  -> 安全过滤 -> rl_deploy_cmdvel
+```
+
+启动顺序应为：真实传感器与定位、地图服务、Nav2、RViz、速度安全层，最后由人工确认后解除运动锁。初次测试限制线速度和角速度，并安排物理急停人员。
+
+### 5. 停止与回退
+
+退出时先取消导航目标并发布零速度，再按官方流程退出 SDK 模式；不要直接杀掉唯一的运动节点。发现 TF 丢失、雷达停止、定位跳变、命令超时或 `/JOINTS_CMD` 出现竞争时，立即进入软急停并回到第 1 步重新验证。
+
+## 启动入口
+
+实机专用入口（不启动 Gazebo、MuJoCo 或模拟传感器；`start_sdk` 默认关闭）：
+
+```bash
+ros2 launch m20_nav2_system m20_hardware_navigation.launch.py \
+  map:=/path/to/verified_real_map.yaml
+```
+
+确认真实 `/scan`、`/odom` 和 TF 稳定、急停有效后，再显式加入
+`start_sdk:=true` 放行官方 `rl_deploy_cmdvel`。真实设备话题可用
+`scan_topic:=...` 和 `odom_topic:=...` 覆盖。
+
+```bash
+# Gazebo：默认使用已保存地图 + AMCL，验证完整导航链路
+ros2 launch m20_nav2_system factory_navigation.launch.py
+
+# 建图完成后，将地图直接保存为本包资产
+mkdir -p src/m20_nav2_system/navigation/m20_nav2_system/maps/factory
+ros2 run nav2_map_server map_saver_cli \
+  -f src/m20_nav2_system/navigation/m20_nav2_system/maps/factory/m20_factory_slam
+
+# Gazebo + 官方 slam_toolbox 实时建图 + Nav2（不读取预置地图）
+ros2 launch m20_nav2_system factory_slam_navigation.launch.py
+# 上述入口默认同时启动键盘控制；如需关闭键盘节点：
+# ros2 launch m20_nav2_system factory_slam_navigation.launch.py use_keyboard:=false
+
+# Gazebo + 已保存地图 + AMCL + Nav2（验证建图后的完整导航）
+ros2 launch m20_nav2_system factory_saved_map_navigation.launch.py
+
+# MuJoCo：官方 M20 运动层 + 模拟传感器 + Nav2 + RViz
+ros2 launch m20_nav2_system m20_mujoco_navigation.launch.py
+
+# 仅查看 MuJoCo 运动模型和工厂场景
+ros2 launch m20_nav2_system m20_mujoco_viewer_only.launch.py
+
+# Nav2 已运行后启动巡检任务
+ros2 launch m20_nav2_system factory_inspection_mission.launch.py
+```
+
+Gazebo 和 MuJoCo 是互斥后端，不能同时启动。MuJoCo Viewer 只用于运动层观察，不参与 Nav2 规划；动态障碍物的权威轨迹由场景模拟器发布，Viewer 仅镜像显示。
+
+## 统一接口
+
+```text
+传感器输入：/scan
+定位输入：  /odom
+坐标变换：  map -> odom -> base_link -> base_scan
+导航输出：  /cmd_vel
+```
+
+仿真时 `/scan` 和 `/odom` 由 MuJoCo/栅格模拟桥提供；实机时替换为真实雷达和 LIO，不修改 Nav2。实机速度必须经过安全过滤后再进入 `rl_deploy_cmdvel`，最终由官方 SDK 发布 `/JOINTS_CMD`。任何时刻只能存在一个 `/JOINTS_CMD` 发布者。
 
 ## 构建
 
@@ -94,136 +258,48 @@ colcon build --packages-select m20_nav2_system --symlink-install
 source install/setup.bash
 ```
 
-需要时可指定日志目录：
+## MuJoCo 工厂场景
+
+`worlds/factory_environment.world` 是原 MuJoCo 验证场景，也是 Gazebo 保存地图导航
+共用的唯一动态工厂场景定义。启动 MuJoCo 时会自动转换并加载：
+
+- 静态围墙和工作台：参与 MuJoCo 碰撞并在 Viewer 中显示。
+- 动态障碍物：以可移动 mocap 圆柱显示，位置与 RViz/雷达模拟器同步；数量、尺寸、轨迹
+  和时间尺度与 Gazebo 一致。
+- 官方 M20 地面：保留 MJCF 自带棋盘格地面，避免重复地面造成渲染冲突。
+
+也可以单独生成并校验场景：
 
 ```bash
-export ROS_LOG_DIR=/tmp/m20_ros_log
-mkdir -p "$ROS_LOG_DIR"
+ros2 launch m20_nav2_system generate_factory_mujoco_world.launch.py
 ```
 
-## 自由导航仿真
+## 地图与代价地图
 
-默认使用轻量 2D 雷达，Gazebo 直接发布 `/scan`：
+默认地图位于 `maps/factory/`。PCD 相关工具位于 `scripts/pcd/`，可将实测点云切片、投影为二维占用栅格，并用 A* 做离线连通性检查。Nav2 参数位于 `config/nav2_params.yaml`，MuJoCo/栅格桥参数位于 `config/m20_grid_lidar_simulator.yaml` 和对应 launch 文件。
 
-```bash
-ros2 launch m20_nav2_system factory_navigation.launch.py
+## 实机接入边界
+
+实机部署不启动以下仿真节点：
+
+```text
+m20_mujoco_backend
+m20_mujoco_viewer
+m20_grid_lidar_simulator
+m20_mujoco_odom_adapter
+m20_factory_scene_markers
 ```
 
-启动顺序为 Gazebo/机器人/雷达、Nav2、RViz。雷达模式：
+替换为 AOS 官方 SDK、真实雷达、真实 LIO 和实机 odom/TF。建议先验证 `/scan`、`/odom` 与完整 TF 树，再以低速、人工急停和命令超时保护接入 Nav2。
 
-Gazebo GUI 默认关闭，以避免 WSL/远程 OpenGL 环境出现黑屏；需要查看 Gazebo 窗口时显式设置
-`use_gazebo_gui:=true`。
-
-```bash
-# 默认 2D
-ros2 launch m20_nav2_system factory_navigation.launch.py lidar_mode:=2d
-
-# 3D PointCloud2，经转换节点生成 /scan
-ros2 launch m20_nav2_system factory_navigation.launch.py lidar_mode:=3d
-```
-
-常用参数：
-
-```bash
-ros2 launch m20_nav2_system factory_navigation.launch.py \
-  launch_rviz:=true spawn_delay:=6.0 nav2_delay:=10.0 rviz_delay:=20.0
-```
-
-检查导航是否就绪：
+## 故障排查
 
 ```bash
 ros2 topic hz /scan
 ros2 topic echo /odom --once
+ros2 topic echo /tf --once
 ros2 lifecycle get /bt_navigator
 ros2 lifecycle get /controller_server
-ros2 action list | grep navigate
 ```
 
-## 巡检任务
-
-确认 Nav2 已进入 `active` 后，另开终端执行：
-
-```bash
-source /opt/ros/humble/setup.bash
-source ~/robodog_nav_system/install/setup.bash
-ros2 launch m20_nav2_system factory_inspection_mission.launch.py
-```
-
-该入口只启动巡检 action 客户端，不会重复启动 Gazebo、Nav2 或 RViz。巡检点位配置位于：
-
-```text
-config/factory_inspection_midpoints.yaml
-```
-
-## PCD 地图验证
-
-PCD 工具统一位于 `scripts/pcd/`：
-
-- `pcd_to_occupancy_grid`：将 PCD 投影为 PGM/YAML 栅格地图。
-- `pcd_slice_publisher`：对大型 PCD 做高度/距离切片并发布 PointCloud2。
-- `grid_astar_planner`：离线检查栅格连通性和 A* 路径。
-- `lifecycle_configure_activate`：PCD 验证场景的 lifecycle 辅助节点。
-
-离线转换示例：
-
-```bash
-python3 src/m20_nav2_system/scripts/pcd/pcd_to_occupancy_grid
-```
-
-不带参数时使用 `maps/pcd/raw/t100ipro_2026-07-14-11-56-57.pcd`，并在
-`maps/pcd/grids/` 自动生成包含时间戳、高度范围、距离范围和分辨率的文件名。也可以显式指定输入和输出：
-
-```bash
-python3 src/m20_nav2_system/scripts/pcd/pcd_to_occupancy_grid \
-  --pcd /path/to/map.pcd --output /tmp/m20_map
-```
-
-启动验证：
-
-```bash
-ros2 launch m20_nav2_system pcd_validation.launch.py
-ros2 launch m20_nav2_system pcd_to_nav2_costmap.launch.py
-ros2 launch m20_nav2_system pcd_nav2_planner.launch.py
-```
-
-指定点云：
-
-```bash
-ros2 launch m20_nav2_system pcd_validation.launch.py pcd_path:=/path/to/map.pcd
-```
-
-## 接口约定
-
-```text
-2D lidar                         -> /scan
-3D lidar                         -> /LIDAR/POINTS -> /scan
-Gazebo drive plugin              -> /odom, /tf
-Nav2 controller                  -> /cmd_vel
-TF chain                         -> map -> odom -> base_link -> lidar_link
-```
-
-真机接入时，Nav2 输出应先经过限速、急停、命令超时和人工接管等安全层，再连接运动 SDK。
-
-## 故障排查
-
-找不到包或启动旧代码：
-
-```bash
-source /opt/ros/humble/setup.bash
-colcon build --packages-select m20_nav2_system --symlink-install
-source install/setup.bash
-```
-
-RViz 不显示机器人或雷达：
-
-```bash
-ros2 topic info /scan -v
-ros2 topic echo /tf --once
-ros2 topic echo /robot_description --once
-```
-
-确认 `/scan` 使用兼容的 `Best Effort` QoS，并确认 TF 链完整。Nav2 action 不存在时，检查
-`/bt_navigator`、`/planner_server` 和 `/controller_server` 是否均为 `active`。
-
-不同项目需要通信时使用相同 `ROS_DOMAIN_ID`；需要隔离仿真时使用不同 domain，避免同时启动
-两套同名 Nav2 容器或两套巡检任务。
+RViz 不显示机器人时检查 `/robot_description` 和 `map -> odom -> base_link`；地图不显示时检查地图服务是否 active 以及 RViz Fixed Frame 是否为 `map`。详细接口约定见本包 `docs/` 目录。

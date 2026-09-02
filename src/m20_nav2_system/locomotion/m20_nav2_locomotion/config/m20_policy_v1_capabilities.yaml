@@ -1,0 +1,92 @@
+# Versioned platform capability profile for the official M20 MuJoCo policy.
+# Values come from the 2026-07-31 cold-start turn matrix and closed-loop
+# single-obstacle validation. Planning clearance remains in m20_scan_navigation.
+# （官方 M20 MuJoCo 策略的版本化平台能力配置；数值来自 2026-07-31 冷启动
+#   转弯矩阵与闭环单障碍验证；规划净空参数在 m20_scan_navigation 中）
+schema_version: 1              # 配置模式版本
+profile_id: m20_policy_v1      # 配置档 ID：官方策略 v1
+
+body:                          # 机身尺寸
+  length_m: 0.82               # 长度 [m]
+  width_m: 0.51                # 宽度 [m]
+  height_m: 0.57               # 高度 [m]
+
+command:                       # 指令运动极限
+  max_forward_mps: 0.45        # 最大前向速度 [m/s]
+  max_side_mps: 0.20           # 最大侧向速度 [m/s]
+  max_yaw_radps: 0.65          # 最大偏航角速度 [rad/s]
+  supports_autonomous_lateral: false  # 不支持自主横向运动
+  # Negative vx is a validated SDK command and avoids unnecessary 180-degree
+  # body sweeps when the local B-spline initially lies behind the chassis.
+  # （负 vx 是已验证的 SDK 指令，可避免局部 B 样条初始位于车体后方时
+  #   不必要的 180° 车身扫掠）
+  supports_reverse_tracking: true    # 支持倒车跟踪
+
+turn:                          # 转弯参数
+  # The deployed policy does not provide repeatable zero-radius yaw. High
+  # curvature requests are projected into the validated rolling interval.
+  # （部署的策略不提供可重复的零半径偏航；高曲率请求被投影到已验证的
+  #   滚动转弯区间）
+  supports_zero_radius_yaw: false    # 不支持零半径原地偏航
+  stable_min_forward_mps: 0.35       # 转弯稳定前向下限 [m/s]
+  stable_max_forward_mps: 0.45       # 转弯稳定前向上限 [m/s]
+
+tracking:                      # 轨迹跟踪参数
+  deadband_linear_mps: 0.01    # 线性死区 [m/s]
+  deadband_yaw_radps: 0.02     # 偏航死区 [rad/s]
+  lateral_threshold_mps: 0.05  # 侧向判定阈值 [m/s]
+  turn_yaw_threshold_radps: 0.25  # 转弯判定偏航阈值 [rad/s]
+  in_place_linear_threshold_mps: 0.08  # 原地判定线性阈值 [m/s]
+  turn_curvature_threshold: 1.20       # 转弯曲率阈值
+  curvature_speed_floor_mps: 0.05      # 高曲率速度下限 [m/s]
+  lateral_max_forward_mps: 0.10        # 侧向前向上限 [m/s]
+  course_yaw_gain: 1.20                # 航向增益
+  turn_course_enter_rad: 0.25          # 进入转弯航向偏差 [rad]
+  turn_course_exit_rad: 0.08           # 退出转弯航向偏差 [rad]
+  turn_yaw_exit_radps: 0.20            # 退出转弯偏航角速度 [rad/s]
+  turn_min_hold_sec: 0.50              # 转弯最小保持 [s]
+  cruise_yaw_deadband_radps: 0.02      # 巡航偏航死区 [rad/s]
+  cruise_yaw_filter_time_constant_sec: 0.12  # 巡航偏航滤波时间常数 [s]
+  output_linear_accel_mps2: 1.0        # 输出线加速度限制 [m/s²]
+  output_yaw_accel_radps2: 1.2         # 输出偏航角加速度限制 [rad/s²]
+  reverse_tracking_enter_angle_rad: 2.10  # 倒车进入角度 [rad]
+  reverse_tracking_exit_angle_rad: 1.75   # 倒车退出角度 [rad]
+  reverse_tracking_min_hold_sec: 0.80     # 倒车最小保持 [s]
+  # Reverse tracking is reserved for a nearly straight path behind the body.
+  # Curved reverse motion can be stable from a cold start but accumulated
+  # wheel-leg state made it unsafe in a six-goal sequence.
+  # （倒车跟踪仅用于车体后方近似直线路径；曲线倒车冷启动虽可稳定，
+  #   但轮腿状态累积在六目标序列中被证明不安全）
+  reverse_tracking_entry_alignment_rad: 0.20  # 倒车进入对齐角 [rad]
+  reverse_tracking_exit_alignment_rad: 0.35   # 倒车退出对齐角 [rad]
+
+reverse_compensation:          # 倒车补偿（MuJoCo 策略经验值）
+  speed_offset_mps: 0.19       # 速度偏移 [m/s]
+  speed_gain: 1.32             # 速度增益
+  yaw_offset_radps: 0.15       # 偏航偏移 [rad/s]
+  yaw_gain: 1.00               # 偏航增益
+
+measured_drift:                # 实测漂移补偿
+  positive_yaw_lateral_mps: 0.15   # 正偏航侧向漂移 [m/s]
+  negative_yaw_lateral_mps: 0.10   # 负偏航侧向漂移 [m/s]
+  opposite_lateral_uncertainty_mps: 0.05  # 反向侧向不确定性 [m/s]
+
+recovery:                      # 卡阻恢复（有界逃逸，非替代导航器）
+  forward_speed_mps: 0.35      # 恢复前向速度 [m/s]
+  lookahead_sec: 0.90          # 前视时间 [s]
+  minimum_yaw_radps: 0.20      # 最小偏航角速度 [rad/s]
+  clear_confirm_sec: 0.30      # 清除确认时间 [s]
+  # A brief planner-clear sample may only end the active escape command.  The
+  # whole obstacle episode is rearmed after this longer continuous clear time.
+  # （短暂的规划清除采样仅结束当前逃逸指令；整个障碍事件在更长的
+  #   持续清除时间后重新武装）
+  rearm_clear_sec: 1.50        # 重新武装清除时间 [s]
+  # Recovery is a bounded escape action, never an alternate navigator.
+  # （恢复是有界逃逸动作，绝不是替代导航器）
+  max_active_sec: 6.0          # 恢复最大持续时间 [s]
+  max_displacement_m: 0.75     # 最大位移 [m]
+  progress_timeout_sec: 1.50   # 进度超时 [s]
+  minimum_progress_m: 0.03     # 最小进度 [m]
+
+feedback:                      # 反馈源
+  measurement_source: external_odometry_base_link_twist  # 外部里程计 base_link twist

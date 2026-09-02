@@ -1,0 +1,17 @@
+Required ROS packages on AOS:
+  m20_nav2_system
+  m20_nav2_description
+  m20_nav2_locomotion
+  nav2_bringup
+  slam_toolbox
+  rviz2 (optional headless)
+  vendor AOS sensor/LIO packages providing /scan, /odom and TF
+
+Optional RL backend:
+  M20_sdk_deploy
+  drdds (AOS-approved version)
+
+Simulation-only (do not deploy):
+  m20_nav2_backend
+  Gazebo plugins/worlds
+  MuJoCo viewer and simulated sensor nodes

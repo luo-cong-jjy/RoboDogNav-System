@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!--
+  Compatibility entry point. It intentionally adds no links, sensors, joints,
+  geometry, or kinematic changes to the official Deep Robotics M20 model.
+  （兼容入口点：有意不添加任何 link/传感器/关节/几何/运动学修改，
+    仅作为 xacro 兼容入口，直接包含官方模型）
+-->
+<robot name="M20" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- 引入官方 M20 URDF 作为唯一内容 -->
+  <xacro:include filename="$(find m20_nav2_description)/urdf/m20_official.urdf"/>
+</robot>

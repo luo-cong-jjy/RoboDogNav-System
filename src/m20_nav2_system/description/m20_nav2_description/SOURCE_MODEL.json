@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/DeepRoboticsLab/deep_robotics_model.git",
+  "revision": "6113c62da96295e8d53abbc079af5296bf4649f8",
+  "source_urdf": "M20/M20_urdf/urdf/M20.urdf",
+  "source_mesh_directory": "M20/M20_urdf/meshes",
+  "license": "BSD-3-Clause",
+  "wrapper_changes": [
+    "Removed the MuJoCo-only compiler element from the ROS-facing derived URDF",
+    "Rewrote relative mesh paths to package://m20_nav2_description/meshes",
+    "The compatibility xacro includes the ROS-facing official URDF without adding links or geometry"
+  ]
+}

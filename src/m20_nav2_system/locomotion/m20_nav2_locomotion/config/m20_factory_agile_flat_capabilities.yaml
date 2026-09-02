@@ -1,0 +1,102 @@
+# ============================================================================
+# 【中文注释】本文件职责说明（中文注释工程新增，原代码未改动）
+# 文件名：m20_factory_agile_flat_capabilities.yaml
+# 所属：m20_nav2_locomotion —— M20 运动控制能力配置文件
+# 核心职责：M20 工厂"敏捷平地步态"（0x3002）的保守启动能力配置。
+#   - 指令上限低于厂商协议上限，直到空载实机通过分阶段验收流程；
+#   - 不复制 MuJoCo ONNX 策略的倒车补偿/漂移实测值到真实配置；
+#   - 用于 official_locomotion.launch.py（真实硬件后端）。
+# ============================================================================
+# Conservative bring-up profile for the M20 factory agile-flat gait (0x3002).
+# The command maxima stay below the vendor protocol maxima until an unloaded
+# real robot has passed the staged acceptance procedure.
+# 【中文注释】M20 工厂敏捷平地步态(0x3002)的保守启动配置；
+# 指令上限低于厂商协议上限，直到空载实机通过分阶段验收。
+schema_version: 1  # 配置 schema 版本号
+profile_id: m20_factory_agile_flat_v1  # 配置文件唯一标识
+
+body:  # 机身几何尺寸（米）
+  length_m: 0.82   # 机身长度
+  width_m: 0.506   # 机身宽度
+  height_m: 0.57   # 机身高度
+
+command:  # 运动指令上限
+  max_forward_mps: 0.45  # 最大前进速度（m/s）
+  max_side_mps: 0.20     # 最大横向速度（m/s）
+  max_yaw_radps: 0.65    # 最大偏航角速度（rad/s）
+  # Cmd25 supports Y, but autonomous lateral motion stays disabled until
+  # lateral tracking and stopping have been measured on the physical robot.
+  # 【中文注释】Cmd25 支持 Y 轴，但在实机测得横向跟踪与停止特性之前，
+  # 自主横向运动保持禁用。
+  supports_autonomous_lateral: false  # 是否支持自主横向运动
+  supports_reverse_tracking: false    # 是否支持倒车跟踪
+
+turn:  # 转弯参数
+  # The factory interface accepts yaw with X=Y=0. Physical swept clearance
+  # still requires an unloaded real-robot validation before production use.
+  # 【中文注释】工厂接口接受 X=Y=0 时的偏航指令；物理扫掠净空仍需
+  # 空载实机验证后才能用于生产。
+  supports_zero_radius_yaw: true  # 支持零半径原地偏航
+  stable_min_forward_mps: 0.0     # 最低稳定滚动速度（0 → 允许原地转向）
+  stable_max_forward_mps: 0.45    # 最高稳定滚动速度
+
+tracking:  # 跟踪/滞回参数
+  deadband_linear_mps: 0.01        # 线速度死区
+  deadband_yaw_radps: 0.02         # 偏航死区
+  lateral_threshold_mps: 0.05      # 横向意图阈值
+  turn_yaw_threshold_radps: 0.25   # 转弯偏航阈值
+  in_place_linear_threshold_mps: 0.08  # 原地转向前向速度阈值
+  turn_curvature_threshold: 1.20   # 转弯曲率阈值
+  curvature_speed_floor_mps: 0.05  # 曲率计算速度下限
+  lateral_max_forward_mps: 0.10    # 横移最大前向速度
+  course_yaw_gain: 1.20            # 航向误差增益
+  turn_course_enter_rad: 0.25      # 进入转弯航向误差
+  turn_course_exit_rad: 0.12       # 退出转弯航向误差（抗抖滞回）
+  turn_yaw_exit_radps: 0.20        # 退出转弯偏航阈值
+  turn_min_hold_sec: 1.00          # 转弯滞回最短保持
+  cruise_yaw_deadband_radps: 0.02  # 巡航偏航死区
+  cruise_yaw_filter_time_constant_sec: 0.20  # 巡航偏航滤波时间常数
+  output_linear_accel_mps2: 1.00   # 输出线加速度限幅
+  output_yaw_accel_radps2: 1.20    # 输出偏航角加速度限幅
+  reverse_tracking_enter_angle_rad: 2.10  # 进入倒车跟踪角度（滞回上限）
+  reverse_tracking_exit_angle_rad: 1.75   # 退出倒车跟踪角度（滞回下限）
+  reverse_tracking_min_hold_sec: 0.80     # 倒车跟踪最短保持时间
+  reverse_tracking_entry_alignment_rad: 0.20  # 进入倒车跟踪对齐角
+  reverse_tracking_exit_alignment_rad: 0.35   # 退出倒车跟踪对齐角
+
+# Disabled reverse tracking still needs a complete schema. No empirical
+# compensation from the MuJoCo ONNX policy is copied into this real profile.
+# 【中文注释】即使禁用倒车跟踪也保留完整 schema；不把 MuJoCo ONNX 策略的
+# 经验补偿复制到真实配置中。
+reverse_compensation:  # 倒车死区补偿（真实配置全部取默认直通值）
+  speed_offset_mps: 0.0   # 倒车速度补偿偏移
+  speed_gain: 1.0         # 倒车速度补偿增益
+  yaw_offset_radps: 0.0   # 倒车偏航补偿偏移
+  yaw_gain: 1.0           # 倒车偏航补偿增益
+
+# Factory-gait drift is unknown until measured. Zeros avoid pretending that
+# MuJoCo policy drift measurements apply to the physical controller.
+# 【中文注释】工厂步态漂移在实测之前未知；置零避免把 MuJoCo 策略的漂移测量
+# 冒充为物理控制器的真实漂移。
+measured_drift:  # 实测横向漂移模型
+  positive_yaw_lateral_mps: 0.0     # 正偏航横向漂移
+  negative_yaw_lateral_mps: 0.0     # 负偏航横向漂移
+  opposite_lateral_uncertainty_mps: 0.0  # 反向横移不确定性
+
+recovery:  # 逃逸恢复动作参数
+  forward_speed_mps: 0.20      # 恢复前进速度
+  lookahead_sec: 0.90          # 恢复前视时间
+  minimum_yaw_radps: 0.35      # 恢复最低偏航角速度
+  clear_confirm_sec: 0.30      # 障碍清除确认时间
+  rearm_clear_sec: 1.50        # 重新布防连续清除时间
+  max_active_sec: 4.0          # 恢复动作最大持续时间
+  max_displacement_m: 0.50     # 恢复最大位移
+  progress_timeout_sec: 1.50   # 恢复进展超时
+  minimum_progress_m: 0.03     # 恢复最小进展距离
+
+feedback:  # 速度反馈来源
+  # basic_server MotionStatus and ROS /MOTION_INFO expose the same measured
+  # body-frame X/Y/Yaw contract to the common TwistStamped adapter.
+  # 【中文注释】basic_server 的 MotionStatus 与 ROS /MOTION_INFO 通过公共
+  # TwistStamped 适配器暴露相同的机体坐标系 X/Y/Yaw 实测约定。
+  measurement_source: factory_motion_status  # 测量来源：工厂运动状态
