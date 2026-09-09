@@ -65,16 +65,19 @@ install(FILES README.md ${CMAKE_CURRENT_SOURCE_DIR}/../../hardware_dependencies.
   DESTINATION share/${PROJECT_NAME})  # 安装到 share/m20_nav2_system
 
 install(PROGRAMS  # 安装 Python 脚本（安装时自动赋予可执行权限）
-  scripts/factory_inspection_nav2_mission scripts/goal_pose_restamper  # 巡检任务脚本、目标点时间戳重写脚本
-  scripts/m20_standing_joint_state_publisher  # 站立形态关节状态发布脚本
+  scripts/factory_inspection_nav2_mission scripts/factory_inspection_nav2_mission_gazebo
+  scripts/factory_inspection_nav2_mission_mujoco
+  scripts/goal_pose_restamper scripts/goal_pose_restamper_gazebo  # 目标点时间戳重写脚本
+  scripts/m20_standing_joint_state_publisher scripts/m20_standing_joint_state_publisher_gazebo  # 站立形态关节状态发布脚本
   scripts/pcd/grid_astar_planner scripts/pcd/lifecycle_configure_activate  # PCD 栅格 A* 规划器、生命周期配置/激活脚本
   scripts/pcd/pcd_to_occupancy_grid scripts/pcd/pcd_slice_publisher  # PCD 转占用栅格脚本、PCD 切片发布脚本
   scripts/m20_grid_lidar_simulator  # 后端无关的二维栅格雷达模拟器
+  scripts/m20_gazebo_dynamic_obstacle_tracker  # Gazebo 实测扫描动态障碍跟踪与预测
   scripts/m20_mujoco_odom_adapter  # MuJoCo body pose 到 Nav2 odom/TF 的适配
   scripts/m20_factory_scene_markers  # 同源 SDF 障碍物的 RViz 三维显示
   scripts/m20_nav2_goal_bridge  # RViz PoseStamped 到 Nav2 action 的显式桥接
   scripts/m20_dynamic_safety_filter  # 动态障碍 TTC 速度安全过滤器
-  scripts/m20_keyboard_teleop  # Gazebo SLAM 建图时的基础键盘速度控制
+  scripts/m20_keyboard_teleop scripts/m20_keyboard_teleop_gazebo  # Gazebo SLAM 建图时的基础键盘速度控制
   scripts/gazebo_world_to_mujoco_geoms.py  # SDF 静态碰撞到 MuJoCo 几何转换器
   scripts/build_m20_mujoco_factory_world.py  # 注入官方 M20 MJCF 模板
   scripts/validate_m20_mujoco_factory_world.py  # 生成 MJCF 资产校验器

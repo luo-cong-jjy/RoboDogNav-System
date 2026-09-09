@@ -4,7 +4,9 @@
 
 ## 仿真与实机边界
 
-导航层保持一套实现，后端按启动入口切换，不移动现有目录或复制第二套导航代码：
+导航层遵守同一套接口和 Nav2 行为约定；两个仿真后端的输入、模型、场景、参数、RViz
+配置和项目自有辅助脚本分别维护。这样可以比较相同规划算法，同时不会让 Gazebo
+改动悄悄改变已验收的 MuJoCo 运动验证：
 
 ```text
 RViz / Nav2 / 地图 / 代价地图 / 动态避障
@@ -19,10 +21,10 @@ RViz / Nav2 / 地图 / 代价地图 / 动态避障
 
 | 场景 | 启动入口 | 后端 |
 | --- | --- | --- |
-| Gazebo 仿真 | `factory_navigation.launch.py` | Gazebo 机器人、已保存二维地图、AMCL、Nav2 和 RViz |
-| Gazebo 实时建图导航 | `factory_slam_navigation.launch.py` | Gazebo 2D 雷达、slam_toolbox 和 Nav2，RViz目标点驱动 |
-| Gazebo 已保存地图导航 | `factory_saved_map_navigation.launch.py` | Gazebo 传感器 + 保存的二维地图 + AMCL + Nav2，RViz目标点驱动 |
-| MuJoCo 仿真 | `m20_mujoco_navigation.launch.py` | 官方 M20 运动层与模拟传感器 |
+| Gazebo 仿真 | `factory_navigation.launch.py` | Gazebo 四轮模型、Gazebo 世界/传感器、Gazebo Nav2 参数与 RViz |
+| Gazebo 实时建图导航 | `factory_slam_navigation.launch.py` | Gazebo 2D 雷达、Gazebo 专属 slam_toolbox/Nav2 配置和键盘建图 |
+| Gazebo 已保存地图导航 | `factory_saved_map_navigation.launch.py` | Gazebo 传感器 + 保存二维地图 + AMCL + Nav2 |
+| MuJoCo 仿真 | `m20_mujoco_navigation.launch.py` | 官方 M20 运动层、MuJoCo 场景、代码模拟传感器与 MuJoCo Nav2 配置 |
 | MuJoCo 仅查看 | `m20_mujoco_viewer_only.launch.py` | 运动模型和工厂场景显示 |
 | AOS 实机 | `m20_hardware_navigation.launch.py` | 真实雷达、LIO、官方 SDK |
 
@@ -232,11 +234,17 @@ ros2 launch m20_nav2_system m20_mujoco_navigation.launch.py
 # 仅查看 MuJoCo 运动模型和工厂场景
 ros2 launch m20_nav2_system m20_mujoco_viewer_only.launch.py
 
-# Nav2 已运行后启动巡检任务
-ros2 launch m20_nav2_system factory_inspection_mission.launch.py
+# Nav2 已运行后启动巡检任务（按后端选择其专属任务脚本）
+# Gazebo：使用 /clock
+ros2 launch m20_nav2_system factory_inspection_mission_gazebo.launch.py
+# MuJoCo：使用墙上时钟
+ros2 launch m20_nav2_system factory_inspection_mission_mujoco.launch.py
 ```
 
-Gazebo 和 MuJoCo 是互斥后端，不能同时启动。MuJoCo Viewer 只用于运动层观察，不参与 Nav2 规划；动态障碍物的权威轨迹由场景模拟器发布，Viewer 仅镜像显示。
+Gazebo 和 MuJoCo 是互斥后端，不能同时启动。MuJoCo Viewer 只用于运动层观察，不参与 Nav2 规划。
+Gazebo 的动态避障只使用 Gazebo 雷达 `/scan`、保存地图 `/map`、`/odom` 和 TF 做在线
+聚类与速度估计；它不读取 Gazebo world 中的运动轨迹。MuJoCo 仍保留独立的代码模拟雷达
+和场景轨迹，用于运动层验证，两个预测话题不互通。
 
 ## 统一接口
 
@@ -247,7 +255,10 @@ Gazebo 和 MuJoCo 是互斥后端，不能同时启动。MuJoCo Viewer 只用于
 导航输出：  /cmd_vel
 ```
 
-仿真时 `/scan` 和 `/odom` 由 MuJoCo/栅格模拟桥提供；实机时替换为真实雷达和 LIO，不修改 Nav2。实机速度必须经过安全过滤后再进入 `rl_deploy_cmdvel`，最终由官方 SDK 发布 `/JOINTS_CMD`。任何时刻只能存在一个 `/JOINTS_CMD` 发布者。
+仿真时 Gazebo 由 Gazebo 插件提供 `/scan`、`/odom` 和底盘 TF，MuJoCo 由其独立的
+代码雷达/里程计桥提供；实机时替换为真实雷达和 LIO，不修改 Nav2。实机速度必须经过
+安全过滤后再进入 `rl_deploy_cmdvel`，最终由官方 SDK 发布 `/JOINTS_CMD`。任何时刻只能
+存在一个 `/JOINTS_CMD` 发布者。
 
 ## 构建
 
@@ -260,12 +271,13 @@ source install/setup.bash
 
 ## MuJoCo 工厂场景
 
-`worlds/factory_environment.world` 是原 MuJoCo 验证场景，也是 Gazebo 保存地图导航
-共用的唯一动态工厂场景定义。启动 MuJoCo 时会自动转换并加载：
+`worlds/factory_environment_mujoco.world` 是 MuJoCo 验证场景；Gazebo 使用
+`factory_environment_gazebo.world`（动态导航）和 `factory_environment_gazebo_mapping.world`
+（纯静态建图），三者不互相引用。启动 MuJoCo 时会自动转换并加载：
 
 - 静态围墙和工作台：参与 MuJoCo 碰撞并在 Viewer 中显示。
-- 动态障碍物：以可移动 mocap 圆柱显示，位置与 RViz/雷达模拟器同步；数量、尺寸、轨迹
-  和时间尺度与 Gazebo 一致。
+- 动态障碍物：以可移动 mocap 圆柱显示，位置与 RViz/雷达模拟器同步；它们是 MuJoCo
+  后端自己的运动验证对象。Gazebo 的动态障碍由 Gazebo world/plugin 自己驱动。
 - 官方 M20 地面：保留 MJCF 自带棋盘格地面，避免重复地面造成渲染冲突。
 
 也可以单独生成并校验场景：
@@ -276,7 +288,12 @@ ros2 launch m20_nav2_system generate_factory_mujoco_world.launch.py
 
 ## 地图与代价地图
 
-默认地图位于 `maps/factory/`。PCD 相关工具位于 `scripts/pcd/`，可将实测点云切片、投影为二维占用栅格，并用 A* 做离线连通性检查。Nav2 参数位于 `config/nav2_params.yaml`，MuJoCo/栅格桥参数位于 `config/m20_grid_lidar_simulator.yaml` 和对应 launch 文件。
+默认地图位于 `maps/factory/`。PCD 相关工具位于 `scripts/pcd/`，可将实测点云切片、投影为二维占用栅格，并用 A* 做离线连通性检查。Gazebo 使用 `config/nav2_params_gazebo.yaml`、`config/slam_toolbox_gazebo.yaml` 和 `rviz/nav2_sandbox_gazebo.rviz`；MuJoCo 使用 `config/nav2_params_mujoco.yaml`、`config/m20_grid_lidar_simulator.yaml` 和 `rviz/nav2_sandbox_mujoco.rviz`。
+
+Gazebo 侧的项目自有辅助脚本也有明确后缀：
+`m20_keyboard_teleop_gazebo`、`m20_standing_joint_state_publisher_gazebo`、
+`goal_pose_restamper_gazebo`、`rslidar_pointcloud_to_scan_gazebo.launch.py` 和
+`factory_inspection_nav2_mission_gazebo`。它们不会被 MuJoCo launch 调用。
 
 ## 实机接入边界
 
@@ -303,3 +320,33 @@ ros2 lifecycle get /controller_server
 ```
 
 RViz 不显示机器人时检查 `/robot_description` 和 `map -> odom -> base_link`；地图不显示时检查地图服务是否 active 以及 RViz Fixed Frame 是否为 `map`。详细接口约定见本包 `docs/` 目录。
+
+Mujoco后端联合仿真：
+终端1：
+cd ~/robodog_nav_system
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+
+ros2 launch m20_nav2_system m20_mujoco_navigation.launch.py
+
+终端2：
+cd ~/robodog_nav_system
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+
+ros2 launch m20_nav2_system factory_inspection_mission_mujoco.launch.py
+
+
+Gazebo建图导航仿真：
+终端1：
+cd ~/robodog_nav_system
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch m20_nav2_system factory_navigation.launch.py
+
+
+终端2：
+cd ~/robodog_nav_system
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch m20_nav2_system factory_inspection_mission_gazebo.launch.py

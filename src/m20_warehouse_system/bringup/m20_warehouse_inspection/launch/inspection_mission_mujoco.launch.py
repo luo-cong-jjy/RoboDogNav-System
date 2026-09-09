@@ -309,6 +309,10 @@ def generate_launch_description() -> LaunchDescription:
                     'locomotion_capability_config': (  # 能力档案
                         locomotion_capability_config
                     ),
+                    # MuJoCo has no hardware gait safety envelope, so use a
+                    # quicker command ramp for responsive physical tracking.
+                    'output_linear_accel': '1.8',
+                    'output_yaw_accel': '2.2',
                     'execution_profile': execution_profile,  # 执行档案
                 }.items(),
             ),

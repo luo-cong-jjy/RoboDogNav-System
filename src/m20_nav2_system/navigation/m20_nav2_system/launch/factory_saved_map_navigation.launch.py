@@ -22,11 +22,8 @@ def generate_launch_description():
         "nav2_map_navigation_m20_factory.launch.py",
     ])
     default_map = str(share / "maps" / "factory" / "m20_factory_slam.yaml")
-    # Saved-map navigation uses the same dynamic world as the MuJoCo chain.
-    # The static-only mapping world is selected only by factory_slam_navigation.
-    # The already-validated MuJoCo factory world is the single dynamic scene
-    # authority for both backends.
-    dynamic_navigation_world = str(share / "worlds" / "factory_environment.world")
+    # Gazebo owns this dynamic world; the other backend has its own world.
+    dynamic_navigation_world = str(share / "worlds" / "factory_environment_gazebo.world")
     return LaunchDescription([
         DeclareLaunchArgument("map", default_value=default_map),
         DeclareLaunchArgument("use_rviz", default_value="true"),
@@ -40,6 +37,7 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(gazebo),
             launch_arguments={
                 "use_sim_time": "true", "gazebo_use_rviz": "false",
+                "enable_dynamic_tracker": "true",
                 "use_gazebo_gui": LaunchConfiguration("use_gazebo_gui"),
                 "world": LaunchConfiguration("world"),
             }.items(),

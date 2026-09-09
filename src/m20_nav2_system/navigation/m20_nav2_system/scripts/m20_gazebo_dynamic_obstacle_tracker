@@ -1,0 +1,475 @@
+#!/usr/bin/env python3
+"""Track moving obstacles from Gazebo's measured LaserScan stream.
+
+This node deliberately has no access to the Gazebo world or obstacle
+trajectories.  It rejects returns that agree with the saved static map, tracks
+the remaining scan clusters in the map frame, estimates their velocity, and
+publishes a short constant-velocity swept prediction for the global costmap.
+The local costmap continues to use the measured ``/scan`` only.
+"""
+
+from dataclasses import dataclass
+import math
+from typing import List, Optional, Tuple
+
+import rclpy
+from geometry_msgs.msg import Point
+from nav_msgs.msg import OccupancyGrid, Odometry
+from rclpy.duration import Duration
+from rclpy.node import Node
+from rclpy.qos import (
+    QoSDurabilityPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
+    qos_profile_sensor_data,
+)
+from rclpy.time import Time
+from sensor_msgs.msg import LaserScan
+from tf2_ros import Buffer, TransformException, TransformListener
+from visualization_msgs.msg import Marker, MarkerArray
+
+
+@dataclass
+class Track:
+    track_id: int
+    x: float
+    y: float
+    radius: float
+    vx: float
+    vy: float
+    last_stamp: float
+    hits: int = 1
+    missed: int = 0
+
+
+class GazeboDynamicObstacleTracker(Node):
+    def __init__(self) -> None:
+        super().__init__('m20_gazebo_dynamic_obstacle_tracker')
+        self.declare_parameter('scan_topic', '/scan')
+        self.declare_parameter('map_topic', '/map')
+        self.declare_parameter('odom_topic', '/odom')
+        self.declare_parameter('predicted_scan_topic', '/scan_predicted_gazebo')
+        self.declare_parameter(
+            'dynamic_marker_topic', '/m20/factory/gazebo_dynamic_obstacles')
+        self.declare_parameter(
+            'predicted_marker_topic', '/m20/factory/gazebo_predicted_obstacles')
+        self.declare_parameter('map_frame', 'map')
+        self.declare_parameter('static_match_radius', 0.16)
+        self.declare_parameter('occupied_threshold', 50)
+        self.declare_parameter('ignore_near_range', 0.35)
+        self.declare_parameter('max_tracking_range', 8.0)
+        self.declare_parameter('cluster_distance', 0.45)
+        self.declare_parameter('cluster_index_gap', 2)
+        self.declare_parameter('min_cluster_points', 2)
+        self.declare_parameter('track_association_distance', 0.9)
+        self.declare_parameter('track_timeout', 0.9)
+        self.declare_parameter('velocity_alpha', 0.45)
+        self.declare_parameter('min_track_hits', 3)
+        self.declare_parameter('min_dynamic_speed', 0.06)
+        self.declare_parameter('robot_radius', 0.68)
+        self.declare_parameter('prediction_margin', 0.15)
+        self.declare_parameter('prediction_max_time', 8.0)
+        self.declare_parameter('prediction_min_time', 1.5)
+        self.declare_parameter('prediction_sample_dt', 0.35)
+        self.declare_parameter('prediction_tail_time', 0.75)
+        self.declare_parameter('prediction_max_distance', 9.0)
+        self.declare_parameter('cluster_radius_padding', 0.08)
+
+        self._map: Optional[OccupancyGrid] = None
+        self._odom: Optional[Odometry] = None
+        self._tracks: List[Track] = []
+        self._next_track_id = 1
+        self._tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
+        self._tf_listener = TransformListener(self._tf_buffer, self)
+
+        self._predicted_scan_pub = self.create_publisher(
+            LaserScan, str(self.get_parameter('predicted_scan_topic').value),
+            qos_profile_sensor_data)
+        self._dynamic_marker_pub = self.create_publisher(
+            MarkerArray,
+            str(self.get_parameter('dynamic_marker_topic').value), 10)
+        self._predicted_marker_pub = self.create_publisher(
+            MarkerArray,
+            str(self.get_parameter('predicted_marker_topic').value), 10)
+        # map_server publishes a latched map.  Transient-local durability is
+        # required when this tracker starts after Nav2/map_server.
+        map_qos = QoSProfile(
+            depth=1,
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.create_subscription(
+            OccupancyGrid, str(self.get_parameter('map_topic').value),
+            self._map_callback, map_qos)
+        self.create_subscription(
+            Odometry, str(self.get_parameter('odom_topic').value),
+            self._odom_callback, 10)
+        self.create_subscription(
+            LaserScan, str(self.get_parameter('scan_topic').value),
+            self._scan_callback, qos_profile_sensor_data)
+        self.get_logger().info(
+            'Gazebo dynamic tracker uses measured scan + static map only: '
+            f"{self.get_parameter('scan_topic').value} -> "
+            f"{self.get_parameter('predicted_scan_topic').value}")
+
+    def _map_callback(self, message: OccupancyGrid) -> None:
+        self._map = message
+
+    def _odom_callback(self, message: Odometry) -> None:
+        self._odom = message
+
+    @staticmethod
+    def _stamp(message: LaserScan) -> float:
+        stamp = message.header.stamp
+        value = float(stamp.sec) + float(stamp.nanosec) * 1.0e-9
+        return value if value > 0.0 else 0.0
+
+    @staticmethod
+    def _rotate_xy(x: float, y: float, q) -> Tuple[float, float]:
+        return (
+            (1.0 - 2.0 * (q.y * q.y + q.z * q.z)) * x
+            + 2.0 * (q.x * q.y - q.z * q.w) * y,
+            2.0 * (q.x * q.y + q.z * q.w) * x
+            + (1.0 - 2.0 * (q.x * q.x + q.z * q.z)) * y,
+        )
+
+    @classmethod
+    def _to_map(cls, x: float, y: float, transform) -> Tuple[float, float]:
+        rx, ry = cls._rotate_xy(x, y, transform.transform.rotation)
+        return (
+            rx + transform.transform.translation.x,
+            ry + transform.transform.translation.y,
+        )
+
+    @classmethod
+    def _from_map(cls, x: float, y: float, transform) -> Tuple[float, float]:
+        dx = x - transform.transform.translation.x
+        dy = y - transform.transform.translation.y
+        q = transform.transform.rotation
+        # Inverse of a unit quaternion rotation is its transpose.
+        return (
+            (1.0 - 2.0 * (q.y * q.y + q.z * q.z)) * dx
+            + 2.0 * (q.x * q.y + q.z * q.w) * dy,
+            2.0 * (q.x * q.y - q.z * q.w) * dx
+            + (1.0 - 2.0 * (q.x * q.x + q.z * q.z)) * dy,
+        )
+
+    def _lookup_scan_transform(self, message: LaserScan):
+        frame = message.header.frame_id or 'base_link'
+        stamp = self._stamp(message)
+        try:
+            return self._tf_buffer.lookup_transform(
+                str(self.get_parameter('map_frame').value), frame,
+                Time(seconds=stamp) if stamp else Time(),
+                timeout=Duration(seconds=0.08))
+        except TransformException:
+            try:
+                return self._tf_buffer.lookup_transform(
+                    str(self.get_parameter('map_frame').value), frame,
+                    Time(), timeout=Duration(seconds=0.02))
+            except TransformException:
+                return None
+
+    def _occupied_in_static_map(self, x: float, y: float) -> bool:
+        grid = self._map
+        if grid is None or grid.info.resolution <= 0.0:
+            return True
+        info = grid.info
+        radius = float(self.get_parameter('static_match_radius').value)
+        cells = max(0, int(math.ceil(radius / info.resolution)))
+        gx = int(math.floor((x - info.origin.position.x) / info.resolution))
+        gy = int(math.floor((y - info.origin.position.y) / info.resolution))
+        if gx < 0 or gy < 0 or gx >= info.width or gy >= info.height:
+            return True
+        threshold = int(self.get_parameter('occupied_threshold').value)
+        for oy in range(-cells, cells + 1):
+            for ox in range(-cells, cells + 1):
+                ix, iy = gx + ox, gy + oy
+                if ix < 0 or iy < 0 or ix >= info.width or iy >= info.height:
+                    continue
+                if math.hypot(ox, oy) * info.resolution > radius:
+                    continue
+                value = grid.data[iy * info.width + ix]
+                if value < 0 or value >= threshold:
+                    return True
+        return False
+
+    def _clusters(self, points):
+        clusters = []
+        current = []
+        previous = None
+        max_gap = int(self.get_parameter('cluster_index_gap').value)
+        max_distance = float(self.get_parameter('cluster_distance').value)
+
+        def flush():
+            nonlocal current
+            if len(current) >= int(self.get_parameter('min_cluster_points').value):
+                clusters.append(current)
+            current = []
+
+        for index, x, y in points:
+            if previous is not None and (
+                    index - previous[0] > max_gap or
+                    math.hypot(x - previous[1], y - previous[2]) > max_distance):
+                flush()
+            current.append((index, x, y))
+            previous = (index, x, y)
+        flush()
+        return clusters
+
+    def _detections(self, message: LaserScan, transform):
+        points = []
+        near = float(self.get_parameter('ignore_near_range').value)
+        far = float(self.get_parameter('max_tracking_range').value)
+        angle = message.angle_min
+        for index, value in enumerate(message.ranges):
+            if math.isfinite(value) and near < value <= min(far, message.range_max):
+                x, y = self._to_map(
+                    value * math.cos(angle), value * math.sin(angle), transform)
+                if not self._occupied_in_static_map(x, y):
+                    points.append((index, x, y))
+            angle += message.angle_increment
+
+        detections = []
+        padding = float(self.get_parameter('cluster_radius_padding').value)
+        for cluster in self._clusters(points):
+            x = sum(point[1] for point in cluster) / len(cluster)
+            y = sum(point[2] for point in cluster) / len(cluster)
+            extent = max(math.hypot(point[1] - x, point[2] - y)
+                         for point in cluster)
+            radius = max(0.10, min(0.50, extent + padding))
+            detections.append((x, y, radius))
+        return detections
+
+    def _update_tracks(self, detections, stamp: float) -> None:
+        association = float(self.get_parameter('track_association_distance').value)
+        alpha = float(self.get_parameter('velocity_alpha').value)
+        matched = set()
+        for x, y, radius in detections:
+            best = None
+            best_distance = association
+            for index, track in enumerate(self._tracks):
+                if index in matched:
+                    continue
+                dt = stamp - track.last_stamp
+                if dt <= 0.0 or dt > 1.5:
+                    continue
+                predicted_x = track.x + track.vx * dt
+                predicted_y = track.y + track.vy * dt
+                distance = math.hypot(x - predicted_x, y - predicted_y)
+                if distance < best_distance:
+                    best, best_distance = index, distance
+            if best is None:
+                self._tracks.append(Track(
+                    self._next_track_id, x, y, radius, 0.0, 0.0, stamp))
+                self._next_track_id += 1
+                matched.add(len(self._tracks) - 1)
+                continue
+            track = self._tracks[best]
+            dt = max(1.0e-3, stamp - track.last_stamp)
+            measured_vx = (x - track.x) / dt
+            measured_vy = (y - track.y) / dt
+            track.vx = alpha * measured_vx + (1.0 - alpha) * track.vx
+            track.vy = alpha * measured_vy + (1.0 - alpha) * track.vy
+            track.x, track.y, track.radius = x, y, radius
+            track.last_stamp = stamp
+            track.hits += 1
+            track.missed = 0
+            matched.add(best)
+
+        timeout = float(self.get_parameter('track_timeout').value)
+        for index, track in enumerate(self._tracks):
+            if index not in matched:
+                track.missed += 1
+        self._tracks = [
+            track for track in self._tracks
+            if stamp - track.last_stamp <= timeout
+        ]
+
+    @staticmethod
+    def _yaw(q) -> float:
+        return math.atan2(
+            2.0 * (q.w * q.z + q.x * q.y),
+            1.0 - 2.0 * (q.y * q.y + q.z * q.z),
+        )
+
+    def _prediction(self, robot_x: float, robot_y: float,
+                    robot_vx: float, robot_vy: float):
+        result = []
+        max_time = float(self.get_parameter('prediction_max_time').value)
+        min_time = float(self.get_parameter('prediction_min_time').value)
+        step = max(0.1, float(self.get_parameter('prediction_sample_dt').value))
+        tail = float(self.get_parameter('prediction_tail_time').value)
+        margin = float(self.get_parameter('prediction_margin').value)
+        robot_radius = float(self.get_parameter('robot_radius').value)
+        max_distance = float(self.get_parameter('prediction_max_distance').value)
+        min_speed = float(self.get_parameter('min_dynamic_speed').value)
+        min_hits = int(self.get_parameter('min_track_hits').value)
+
+        for track in self._tracks:
+            speed_sq = track.vx * track.vx + track.vy * track.vy
+            if track.hits < min_hits or speed_sq < min_speed * min_speed:
+                continue
+            dx, dy = track.x - robot_x, track.y - robot_y
+            relative_vx, relative_vy = track.vx - robot_vx, track.vy - robot_vy
+            relative_speed_sq = relative_vx * relative_vx + relative_vy * relative_vy
+            if relative_speed_sq < 1.0e-5:
+                continue
+            distance = math.hypot(dx, dy)
+            if distance > max_distance:
+                continue
+            closest_time = max(0.0, min(max_time, -(
+                dx * relative_vx + dy * relative_vy) / relative_speed_sq))
+            closest_distance = math.hypot(
+                dx + relative_vx * closest_time,
+                dy + relative_vy * closest_time)
+            combined = robot_radius + track.radius
+            if closest_distance > combined + margin:
+                continue
+            horizon = min(max_time, max(min_time, closest_time + tail))
+            sample_count = max(1, int(math.ceil(horizon / step)))
+            for index in range(sample_count + 1):
+                future = horizon * index / sample_count
+                uncertainty = margin + 0.04 * future
+                result.append((
+                    track.x + track.vx * future,
+                    track.y + track.vy * future,
+                    track.radius + uncertainty,
+                    track.track_id,
+                ))
+        return result
+
+    @staticmethod
+    def _circle_hit(x: float, y: float, cosine: float, sine: float,
+                    circle) -> float:
+        cx, cy, radius, _ = circle
+        dx, dy = cx - x, cy - y
+        projection = dx * cosine + dy * sine
+        perpendicular_sq = dx * dx + dy * dy - projection * projection
+        if projection < 0.0 or perpendicular_sq > radius * radius:
+            return math.inf
+        return max(0.0, projection - math.sqrt(radius * radius - perpendicular_sq))
+
+    def _publish_markers(self, stamp, transform, prediction) -> None:
+        frame = str(self.get_parameter('map_frame').value)
+        actual = MarkerArray()
+        clear = Marker()
+        clear.header.frame_id, clear.header.stamp = frame, stamp
+        clear.ns, clear.action = 'gazebo_dynamic_tracks', Marker.DELETEALL
+        actual.markers.append(clear)
+        for track in self._tracks:
+            marker = Marker()
+            marker.header.frame_id, marker.header.stamp = frame, stamp
+            marker.ns, marker.id = 'gazebo_dynamic_tracks', track.track_id
+            marker.type, marker.action = Marker.CYLINDER, Marker.ADD
+            marker.pose.position.x, marker.pose.position.y = track.x, track.y
+            marker.pose.position.z, marker.pose.orientation.w = track.radius, 1.0
+            marker.scale.x = marker.scale.y = 2.0 * track.radius
+            marker.scale.z = 1.5
+            marker.color.r, marker.color.g = 0.90, 0.12
+            marker.color.b, marker.color.a = 0.10, 0.75
+            actual.markers.append(marker)
+        self._dynamic_marker_pub.publish(actual)
+
+        predicted = MarkerArray()
+        clear = Marker()
+        clear.header.frame_id, clear.header.stamp = frame, stamp
+        clear.ns, clear.action = 'gazebo_predicted_tracks', Marker.DELETEALL
+        predicted.markers.append(clear)
+        line = Marker()
+        line.header.frame_id, line.header.stamp = frame, stamp
+        line.ns, line.id = 'gazebo_predicted_tracks', 0
+        line.type, line.action = Marker.LINE_LIST, Marker.ADD
+        line.pose.orientation.w, line.scale.x = 1.0, 0.035
+        line.color.r, line.color.g, line.color.b, line.color.a = 1.0, 0.85, 0.05, 0.85
+        by_track = {}
+        for x, y, radius, track_id in prediction:
+            by_track.setdefault(track_id, []).append((x, y, radius))
+        marker_id = 1
+        for points in by_track.values():
+            for first, second in zip(points, points[1:]):
+                line.points.extend([
+                    Point(x=first[0], y=first[1], z=0.04),
+                    Point(x=second[0], y=second[1], z=0.04),
+                ])
+            for x, y, radius in points:
+                marker = Marker()
+                marker.header.frame_id, marker.header.stamp = frame, stamp
+                marker.ns, marker.id = 'gazebo_predicted_tracks', marker_id
+                marker.type, marker.action = Marker.CYLINDER, Marker.ADD
+                marker.pose.position.x, marker.pose.position.y = x, y
+                marker.pose.position.z, marker.pose.orientation.w = 0.04, 1.0
+                marker.scale.x = marker.scale.y = 2.0 * radius
+                marker.scale.z = 0.08
+                marker.color.r, marker.color.g, marker.color.b = 1.0, 0.85, 0.05
+                marker.color.a = 0.35
+                predicted.markers.append(marker)
+                marker_id += 1
+        if line.points:
+            predicted.markers.append(line)
+        self._predicted_marker_pub.publish(predicted)
+
+    def _scan_callback(self, message: LaserScan) -> None:
+        if self._map is None or not message.ranges:
+            return
+        transform = self._lookup_scan_transform(message)
+        if transform is None:
+            return
+        stamp_value = self._stamp(message)
+        if stamp_value <= 0.0:
+            stamp_value = self.get_clock().now().nanoseconds * 1.0e-9
+        detections = self._detections(message, transform)
+        self._update_tracks(detections, stamp_value)
+        robot_x = transform.transform.translation.x
+        robot_y = transform.transform.translation.y
+        robot_yaw = self._yaw(transform.transform.rotation)
+        robot_vx = robot_vy = 0.0
+        if self._odom is not None:
+            robot_vx = (
+                self._odom.twist.twist.linear.x * math.cos(robot_yaw)
+                - self._odom.twist.twist.linear.y * math.sin(robot_yaw))
+            robot_vy = (
+                self._odom.twist.twist.linear.x * math.sin(robot_yaw)
+                + self._odom.twist.twist.linear.y * math.cos(robot_yaw))
+        prediction = self._prediction(robot_x, robot_y, robot_vx, robot_vy)
+
+        predicted_scan = LaserScan()
+        predicted_scan.header = message.header
+        predicted_scan.angle_min = message.angle_min
+        predicted_scan.angle_max = message.angle_max
+        predicted_scan.angle_increment = message.angle_increment
+        predicted_scan.time_increment = message.time_increment
+        predicted_scan.scan_time = message.scan_time
+        predicted_scan.range_min = message.range_min
+        predicted_scan.range_max = message.range_max
+        predicted_scan.ranges = list(message.ranges)
+        angle = message.angle_min
+        for index in range(len(predicted_scan.ranges)):
+            cosine, sine = math.cos(angle), math.sin(angle)
+            best = predicted_scan.ranges[index]
+            for circle in prediction:
+                cx, cy = self._from_map(circle[0], circle[1], transform)
+                best = min(best, self._circle_hit(0.0, 0.0, cosine, sine,
+                                                   (cx, cy, circle[2], circle[3])))
+            predicted_scan.ranges[index] = min(
+                best, predicted_scan.range_max)
+            angle += predicted_scan.angle_increment
+        self._predicted_scan_pub.publish(predicted_scan)
+        self._publish_markers(message.header.stamp, transform, prediction)
+
+
+def main() -> None:
+    rclpy.init()
+    node = GazeboDynamicObstacleTracker()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

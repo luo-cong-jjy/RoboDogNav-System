@@ -84,6 +84,18 @@ def _runtime_actions(context):
         if execution_profile == 'scan_native'
         else {}  # 其他模式：由能力配置注入
     )
+    # Physical simulation can use a faster command ramp without changing the
+    # conservative, shared hardware capability profile.  Keep these optional
+    # so hardware launches continue to use the profile values unchanged.
+    motion_ramp_overrides = {}
+    output_linear_accel = LaunchConfiguration(
+        'output_linear_accel'
+    ).perform(context)
+    output_yaw_accel = LaunchConfiguration('output_yaw_accel').perform(context)
+    if output_linear_accel.strip():
+        motion_ramp_overrides['output_linear_accel'] = float(output_linear_accel)
+    if output_yaw_accel.strip():
+        motion_ramp_overrides['output_yaw_accel'] = float(output_yaw_accel)
     require_backend_ready = LaunchConfiguration('require_backend_ready')
     backend_ready_topic = LaunchConfiguration('backend_ready_topic')
     backend_fault_topic = LaunchConfiguration('backend_fault_topic')
@@ -97,6 +109,7 @@ def _runtime_actions(context):
                 config,
                 profile.intent_parameters(),  # 注入能力配置的意图参数
                 native_command_parameters,    # scan_native 覆盖参数（可能为空）
+                motion_ramp_overrides,
                 {
                     'input_topic': LaunchConfiguration('input_topic'),
                     'require_backend_ready': require_backend_ready,
@@ -147,6 +160,22 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument(
                 'sdk_debug_print', default_value='false',
                 description='Print the SDK command/state gate once per second.',
+            ),
+            DeclareLaunchArgument(
+                'output_linear_accel',
+                default_value='',
+                description=(
+                    'Optional locomotion-manager linear command ramp override '
+                    '(m/s^2); empty keeps the capability profile value.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'output_yaw_accel',
+                default_value='',
+                description=(
+                    'Optional locomotion-manager yaw command ramp override '
+                    '(rad/s^2); empty keeps the capability profile value.'
+                ),
             ),
             DeclareLaunchArgument(  # 是否要求后端就绪
                 'require_backend_ready',

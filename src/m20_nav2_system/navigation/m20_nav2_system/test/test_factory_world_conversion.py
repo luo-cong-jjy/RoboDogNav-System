@@ -7,7 +7,7 @@ from pathlib import Path
 PACKAGE = Path(__file__).resolve().parents[1]
 SYSTEM_ROOT = PACKAGE.parents[1]
 SCRIPT = PACKAGE / 'scripts'
-WORLD = PACKAGE / 'worlds' / 'factory_environment.world'
+WORLD = PACKAGE / 'worlds' / 'factory_environment_mujoco.world'
 TEMPLATE = SYSTEM_ROOT / 'backend' / 'm20_nav2_backend' / 'models' / 'm20_robot.xml'
 
 

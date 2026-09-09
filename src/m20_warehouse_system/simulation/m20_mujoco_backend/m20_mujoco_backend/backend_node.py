@@ -49,7 +49,7 @@ from drdds.msg import (
     JointsDataValue,
     MetaType,
 )
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 import mujoco
 import numpy as np
 from nav_msgs.msg import Odometry, Path
@@ -59,6 +59,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Bool, String
+from tf2_ros import TransformBroadcaster
 
 # 从 dynamics.py 引入坐标换算与 PD 律等纯数值工具。
 from .dynamics import (
@@ -183,9 +184,12 @@ class M20MujocoBackend(Node):
         # ---------- 状态判定与坐标系参数 ----------
         # min_base_height：最低机身高度（过低判故障）
         # max_tilt_rad：最大倾斜角（过度倾斜判故障）
+        # latch_faults / pause_on_fault：锁存故障并冻结故障现场
         # standing_ready_height / standing_ready_stable_sec：站立就绪判据
         self.declare_parameter('min_base_height', 0.05)
         self.declare_parameter('max_tilt_rad', 1.20)
+        self.declare_parameter('latch_faults', True)
+        self.declare_parameter('pause_on_fault', True)
         self.declare_parameter('standing_ready_height', 0.55)
         self.declare_parameter('standing_ready_stable_sec', 0.30)
         # map_frame / base_frame：世界系与机体系名称
@@ -280,6 +284,12 @@ class M20MujocoBackend(Node):
         )
         self._max_tilt = float(
             self.get_parameter('max_tilt_rad').value
+        )
+        self._latch_faults = bool(
+            self.get_parameter('latch_faults').value
+        )
+        self._pause_on_fault = bool(
+            self.get_parameter('pause_on_fault').value
         )
         self._standing_ready_height = float(
             self.get_parameter('standing_ready_height').value
@@ -431,6 +441,7 @@ class M20MujocoBackend(Node):
             latched,
         )
         # TF 广播（world → base_link）与轨迹容器。
+        self._tf_broadcaster = TransformBroadcaster(self)
         self._path = Path()
         self._path.header.frame_id = self._map_frame
         # ---------- 内嵌 viewer（仅遗留直跑模式） ----------
@@ -561,6 +572,9 @@ class M20MujocoBackend(Node):
         # 2) 启动保持阶段忽略非激活指令，收到首个激活指令后解除保持；
         # 3) 把 SDK 坐标（位置/速度/前馈）经 sdk_to_raw 换算为 MuJoCo 原始坐标，
         #    并保存 kp/kd 与指令时间戳（用于超时保护）。
+        if self._fault and self._latch_faults:
+            # Do not accept late policy output after a terminal posture fault.
+            return
         if len(message.data.joints_data) != 16:
             self.get_logger().warn(
                 'ignored /JOINTS_CMD with a non-16 joint payload'
@@ -612,7 +626,11 @@ class M20MujocoBackend(Node):
             'LATERAL_MANEUVER',
         }
         brake_active = (
-            self._parking_brake_enabled and mode not in moving_modes
+            self._parking_brake_enabled
+            and (
+                (bool(self._fault) and self._latch_faults)
+                or mode not in moving_modes
+            )
         )
         # 模式与制动状态都没变化时直接返回，避免刷屏。
         if (
@@ -654,6 +672,20 @@ class M20MujocoBackend(Node):
         # 5) 统计障碍接触；6) 关节速度限幅；
         # 7) 故障/就绪更新；8) 按周期发布状态/轨迹/诊断。
         self._enforce_command_timeout(now)
+        if self._fault and self._latch_faults and self._pause_on_fault:
+            # A physical posture fault is terminal for this validation run.
+            # Freeze the first-fault state instead of letting the policy keep
+            # driving a fallen model, while ROS status/diagnostics stay alive.
+            self._last_torque.fill(0.0)
+            self._data.ctrl.fill(0.0)
+            self._steps += 1
+            if self._steps % self._state_every == 0:
+                self._publish_robot_state()
+            if self._steps % self._path_every == 0:
+                self._publish_path()
+            if self._steps % self._diagnostics_every == 0:
+                self._publish_diagnostics()
+            return
         q = self._data.qpos[7:23]
         dq = self._data.qvel[6:22]
         desired_velocity = self._desired_velocity
@@ -717,7 +749,10 @@ class M20MujocoBackend(Node):
         #   - qpos/qvel 出现非有限值 → NONFINITE_STATE
         #   - 机身高度低于 min_base_height → BASE_HEIGHT_LOW
         #   - 横滚/俯仰超过 max_tilt → EXCESSIVE_TILT
-        # 故障置位时清空就绪状态并发布（带日志），恢复时发布清空。
+        # 默认锁存首个物理故障；仿真重启才解除。这样既保留首因，也避免
+        # 临界倾角附近反复“清除/重触发”而让上游在 HOLD 与运动间振荡。
+        if self._fault and self._latch_faults:
+            return
         reason = ''
         if not (
             np.all(np.isfinite(self._data.qpos))
@@ -882,6 +917,16 @@ class M20MujocoBackend(Node):
         odometry.twist.twist.angular.z = float(angular_velocity_body[2])
         self._body_pose_pub.publish(odometry)
 
+        # 广播与 Odometry 同一时刻的动态 TF（world/map -> base_link），
+        # 使 robot_state_publisher 发布的关节树能够连接到 RViz 固定坐标系。
+        transform = TransformStamped()
+        transform.header = odometry.header
+        transform.child_frame_id = self._base_frame
+        transform.transform.translation.x = odometry.pose.pose.position.x
+        transform.transform.translation.y = odometry.pose.pose.position.y
+        transform.transform.translation.z = odometry.pose.pose.position.z
+        transform.transform.rotation = odometry.pose.pose.orientation
+        self._tf_broadcaster.sendTransform(transform)
 
     def _publish_path(self) -> None:
         # 轨迹发布（10Hz）：把机身位置追加到 /quad_0/path，
@@ -930,6 +975,10 @@ class M20MujocoBackend(Node):
         state = {
             'ready': self._ready,
             'fault': self._fault,
+            'fault_latched': bool(self._fault and self._latch_faults),
+            'physics_paused_on_fault': bool(
+                self._fault and self._latch_faults and self._pause_on_fault
+            ),
             'startup_hold': self._startup_hold,
             'locomotion_mode': self._locomotion_mode,
             'parking_brake_active': self._parking_brake_active,

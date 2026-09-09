@@ -1,14 +1,13 @@
 <?xml version="1.0"?>
 <!-- ============================================================
-     文件：factory_environment.world（历史兼容文件）
-     用途：旧版 Gazebo 工厂世界，仅供旧命令回放；当前 Gazebo 入口使用
-           factory_environment_gazebo.world，MuJoCo 入口使用 factory_environment_mujoco.world。
+     文件：factory_environment_gazebo.world
+     用途：M20 Gazebo 保存地图导航与动态避障验证专用工厂世界。
            - 26m × 26m 地面 + 四面围墙，内部布置 5 排工作台
              （desk_row_1~5，间距 4m）构成东西向巡检走廊；
            - 灯光使用内置方向光（避免在线拉取模型库）；
            - 动态人员仅使用 worker_1~5_scan_proxy 半透明红色圆柱，
              带碰撞体并由 libm20_waypoint_obstacle_plugin 沿轨迹运动；
-             它们是旧版 Gazebo 的可见障碍和 /scan 代理。
+             它们是 Gazebo 的可见障碍、/scan 与 Nav2 costmap 看到的移动障碍。
            - 无 <physics> 显式配置（使用 Gazebo 默认物理参数）。
      ============================================================ -->
 <sdf version="1.6">
@@ -144,10 +143,9 @@
       </link>
     </model>
 
-    <!-- Dynamic workers: shared collision and visual cylinders. -->
+    <!-- Dynamic workers: Gazebo collision and visual cylinders. -->
     <!-- 每个 worker_*_scan_proxy 都是唯一的 Gazebo 可视/碰撞对象；SDF 到
-         MJCF 的转换器也只读取 model，因此 MuJoCo Viewer 和 Gazebo 都显示
-         同一批红色圆柱。人物 actor 故意不在本 world 中，避免两边画面不同。 -->
+         本 world 只属于 Gazebo 动态导航链路；其他后端使用各自场景。 -->
 
     <!-- worker_1_scan_proxy：工人 1 的扫描代理（红色半透明圆柱，
          碰撞半径 0.24m、高 1.5m），沿 y=4 通道东西向往返（x=2↔18）。 -->

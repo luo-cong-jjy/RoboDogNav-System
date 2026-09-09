@@ -14,11 +14,10 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     pkg_share = Path(get_package_share_directory("m20_nav2_system"))
-    # Use the verified Nav2 parameter set. MPPI remains available as a
-    # separate profile until its controller lifecycle startup is validated.
-    nav2_params = str(pkg_share / "config" / "nav2_params.yaml")
+    # Gazebo owns this profile; the other backend has its own profile.
+    nav2_params = str(pkg_share / "config" / "nav2_params_gazebo.yaml")
     default_map = str(pkg_share / "maps" / "factory" / "factory_slam_map.yaml")
-    rviz_config = str(pkg_share / "rviz" / "nav2_sandbox.rviz")
+    rviz_config = str(pkg_share / "rviz" / "nav2_sandbox_gazebo.rviz")
     use_sim_time = LaunchConfiguration("use_sim_time")
     use_rviz = LaunchConfiguration("use_rviz")
     params_file = LaunchConfiguration("params_file")

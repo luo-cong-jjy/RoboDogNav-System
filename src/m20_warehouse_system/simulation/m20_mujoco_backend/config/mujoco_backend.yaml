@@ -48,6 +48,11 @@ m20_mujoco_backend:
     # ---------- 状态判定 ----------
     min_base_height: 0.05        # 最低机身高度（m），低于此值判故障
     max_tilt_rad: 1.20           # 最大倾斜角（rad），超过判故障
+    # A fall is terminal for a validation run: keep the first cause and freeze
+    # the failure frame instead of driving the fallen model with new commands.
+    # 倾倒后锁存首个故障并冻结现场，避免自动清故障后继续驱动造成抽搐。
+    latch_faults: true
+    pause_on_fault: true
     standing_ready_height: 0.55  # 站立就绪判定高度（m）
     standing_ready_stable_sec: 0.30 # 站稳持续时间（s）
     # Match the vendored SCAN first-scene contract and RViz fixed frame.

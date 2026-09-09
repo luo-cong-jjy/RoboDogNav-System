@@ -9,4 +9,6 @@ scan_planner_node:            # SCAN 规划器节点参数段
     # Match SCAN trajectory limits to the validated M20 command envelope.
     # （把 SCAN 轨迹限制与已验证的 M20 指令包络对齐。）
     manager.max_vel: 0.45             # 轨迹生成最大速度（m/s）= M20 指令上限
+    manager.max_acc: 0.80              # 提高起步/跟停响应，仍低于 M20 安全包络
     optimization.max_vel: 0.45        # 优化约束最大速度（m/s），与 manager 一致
+    optimization.max_acc: 0.80         # 与 manager 加速度约束保持一致

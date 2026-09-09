@@ -1,0 +1,56 @@
+# =============================================================================
+# factory_inspection_midpoints_gazebo.yaml
+# 所属模块：factory_inspection_nav2_mission_gazebo 节点（Gazebo 巡检任务调度）
+# 用途：定义一条蛇形巡检路线（取每段中点作为巡检点），节点按此配置依次
+#       向 Nav2 的 navigate_to_pose action 下发目标点并跟踪状态。
+# 坐标系：所有坐标基于 map 系；路线范围 x/y ∈ [0, 20] 米。
+# =============================================================================
+factory_inspection_nav2_mission_gazebo:   # Gazebo 巡检任务节点名
+  ros__parameters:
+    use_sim_time: true             # Gazebo 使用 /clock 仿真时间
+    mission_name: factory_snake_midpoints  # 任务名称（仅用于日志/状态显示）
+    action_name: navigate_to_pose  # 调用的 Nav2 action 服务器名
+    frame_id: map                  # 目标点所在坐标系
+
+    status_topic: /m20_factory_inspection/status                # 任务状态发布话题
+    route_marker_topic: /m20_factory_inspection/route_marker    # 整条路线可视化 Marker
+    current_goal_topic: /m20_factory_inspection/current_goal    # 当前目标点话题
+    current_goal_marker_topic: /m20_factory_inspection/current_goal_marker  # 当前目标点 Marker
+
+    start_immediately: true        # 启动后是否立即开始（不等待外部触发）
+    start_delay_sec: 3.0           # 启动前等待时间（秒），等 Nav2 就绪
+    start_index: 1                 # 从第几个点开始（0 基；1 = 跳过起点直接从路径开始）
+    loop_route: false              # 是否循环巡检（false = 跑完即结束）
+    default_dwell_sec: 1.0         # 默认到点停留时长（秒），未单独指定时使用
+    goal_timeout_sec: 180.0        # 单点导航超时（秒），超时判定失败
+    continue_on_failure: false     # 单点失败是否继续下一个点（false = 失败即停）
+    publish_rate_hz: 2.0           # 状态/Marker 发布频率（Hz）
+
+    # 巡检点策略 v1：取建图蛇形路线每一段中点。
+    # 原始路线：
+    # (0.0)->(20.0)->(20.4)->(0.4)->(0.8)->(20.8)
+    # ->(20.12)->(0.12)->(0.16)->(20.16)->(20.20)->(0.20)
+    point_names:                   # 巡检点名称列表（与 point_x/y 一一对应）
+      - start_home              # (0,0)    ★起点
+      - aisle_00_start          # (10,0)   路径起点
+      - east_corner_00          # (20,0)   东南角转弯
+      - east_corner_04          # (20,4)   东侧转弯
+      - inspect_x10_y04         # (10,4)   ★巡检点
+      - west_corner_04          # (0,4)    西侧转弯
+      - west_corner_08          # (0,8)    西侧转弯
+      - inspect_x10_y08         # (10,8)   ★巡检点
+      - east_corner_08          # (20,8)   东侧转弯
+      - east_corner_12          # (20,12)  东侧转弯
+      - inspect_x10_y12         # (10,12)  ★巡检点
+      - west_corner_12          # (0,12)   西侧转弯
+      - west_corner_16          # (0,16)   西侧转弯
+      - inspect_x10_y16         # (10,16)  ★巡检点
+      - east_corner_16          # (20,16)  东侧转弯
+      - east_corner_20          # (20,20)  东北角转弯
+      - inspect_x10_y20         # (10,20)  ★巡检点
+      - west_corner_20          # (0,20)   西北角转弯
+      - return_home             # (0,0)    返回原点
+    point_x:         [    0.0,   10.0,   20.0,   20.0,   10.0,    0.0,    0.0,   10.0,   20.0,    20.0,   10.0,    0.0,    0.0,   10.0,   20.0,   20.0,   10.0,    0.0,    0.0]  # 各点 x 坐标（米）
+    point_y:         [    0.0,    0.0,    0.0,    4.0,    4.0,    4.0,    8.0,    8.0,    8.0,    12.0,   12.0,   12.0,   16.0,   16.0,   16.0,   20.0,   20.0,   20.0,    0.0]  # 各点 y 坐标（米）
+    point_yaw:       [    0.0,    0.0, 1.5708, 3.1416, 3.1416, 1.5708,    0.0,    0.0, 1.5708,  3.1416, 3.1416, 1.5708,    0.0,    0.0, 1.5708, 3.1416, 3.1416,-1.5708,-1.5708]  # 各点目标朝向（弧度，绕 z 轴）
+    point_dwell_sec: [    5.0,    2.0,    0.5,    0.5,    2.0,    0.5,    0.5,    2.0,    0.5,     0.5,    2.0,    0.5,    0.5,    2.0,    0.5,    0.5,    2.0,    0.5,  100.0]  # 各点停留时长（秒，末尾 100s 为返航后待命）

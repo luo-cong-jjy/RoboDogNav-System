@@ -11,6 +11,10 @@ closed_loop_controller:       # 闭环控制器节点参数段
     max_vx: 0.45             # 最大纵向速度（m/s）= M20 指令上限
     max_vy: 0.20             # 最大横向速度（m/s）
     max_vyaw: 0.65           # 最大偏航角速度（rad/s）
+    # Shorter preview and stronger position correction reduce the initial
+    # lag observed with the physical MuJoCo backend.
+    time_forward: 0.45       # 偏航前视时间（s）
+    kp_pos: 1.10             # 位置误差增益
     # Keep the time-parameterized reference close to measured M20 progress.
     # （让时间参数化的参考点贴近实测的 M20 移动进度。）
     trajectory_progress_sync: true   # 是否启用轨迹进度同步

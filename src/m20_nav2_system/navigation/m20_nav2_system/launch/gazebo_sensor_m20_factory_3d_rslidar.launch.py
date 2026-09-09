@@ -1,14 +1,14 @@
 # ============================================================================
 # 文件：gazebo_sensor_m20_factory_3d_rslidar.launch.py
-# 功能：启动 M20 机器人在与 MuJoCo 共用的工厂场景中的
+# 功能：启动 M20 机器人在 Gazebo 专属工厂场景中的
 #       Gazebo Classic 仿真环境，机器人装配 3D RS-LiDAR（rslidar）传感器。
 #       本 launch 负责：
-#         - 配置 Gazebo 插件/模型路径环境变量（GAZEBO_PLUGIN_PATH / GAZEBO_MODEL_PATH）
+#         - 配置 Gazebo 插件路径环境变量（GAZEBO_PLUGIN_PATH）
 #         - 启动 gzserver 服务器（可选 gzclient GUI）
 #         - 通过 spawn_entity 在指定位姿生成 M20 机器人实体
 #         - 发布机器人 TF（robot_state_publisher）与站立形态关节状态
 #         - 可选将 3D 点云（/LIDAR/POINTS）转换为 2D /scan（点云转扫描节点）
-#         - 重写目标点时间戳（goal_pose_restamper，供 Nav2 使用）
+#         - 重写目标点时间戳（goal_pose_restamper_gazebo，供 Nav2 使用）
 #         - 可选启动 RViz 可视化
 # ============================================================================
 
@@ -25,26 +25,28 @@ from launch.substitutions import LaunchConfiguration  # 运行期替换：引用
 from launch_ros.actions import Node  # ROS2 节点动作：以 ros2 run 方式启动一个节点
 
 
-def _make_gazebo_model_path(pkg_share: Path) -> str:
-    """Expose only this package as a Gazebo model path for model:// mesh URIs."""
-    # 在 /tmp 下创建以进程号命名的临时目录，作为 Gazebo 模型搜索路径的根目录
-    model_path_root = Path("/tmp") / f"m20_nav2_gazebo_model_path_{os.getpid()}"
-    model_path_root.mkdir(parents=True, exist_ok=True)  # 递归创建目录；已存在则静默跳过
-    model_link = model_path_root / "m20_nav2_system"  # 定义指向本包 share 目录的软链接路径
-    if not model_link.exists():  # 仅当软链接尚不存在时才创建，避免重复链接报错
-        model_link.symlink_to(pkg_share, target_is_directory=True)  # 建立指向包目录的符号链接（支持 model:// 引用本包资源）
-    return str(model_path_root)  # 返回模型路径根目录字符串
+def _make_gazebo_spawn_urdf(pkg_share: Path, source_urdf: Path) -> Path:
+    """Create a Gazebo-only URDF with absolute local mesh paths."""
+    mesh_uri = "package://m20_nav2_system/models/meshes/"
+    mesh_path = (pkg_share / "models" / "meshes").as_posix() + "/"
+    runtime_urdf = Path("/tmp") / f"m20_nav2_gazebo_spawn_{os.getpid()}.urdf"
+    runtime_urdf.write_text(
+        source_urdf.read_text(encoding="utf-8").replace(mesh_uri, mesh_path),
+        encoding="utf-8",
+    )
+    return runtime_urdf
 
 
 def generate_launch_description():
     # —— 路径准备：解析本包 share/prefix 目录并拼接各资源默认路径 ——
     pkg_share = Path(get_package_share_directory("m20_nav2_system"))  # 本包安装后的 share 目录（存放 launch/config/models/worlds 等）
     pkg_prefix = Path(get_package_prefix("m20_nav2_system"))  # 本包安装前缀目录（动态库 lib 目录在其下）
-    default_world = str(pkg_share / "worlds" / "factory_environment.world")  # 与 MuJoCo 共用的工厂动态场景
-    gazebo_robot_urdf = pkg_share / "models" / "m20_gazebo_combined_rslidar3d.urdf"  # Gazebo 仿真用 URDF：四轮站立形态 + 3D 雷达
-    visual_robot_urdf = pkg_share / "models" / "urdf" / "M20_nav_visual.urdf"  # RViz 可视化用 URDF（带雷达的官方外观模型）
-    pointcloud_to_scan_launch = pkg_share / "launch" / "rslidar_pointcloud_to_scan.launch.py"  # 点云转激光扫描的 launch 文件路径
-    rviz_config = str(pkg_share / "rviz" / "nav2_sandbox.rviz")  # RViz 配置文件路径
+    default_world = str(pkg_share / "worlds" / "factory_environment_gazebo.world")
+    gazebo_robot_source_urdf = pkg_share / "models" / "m20_gazebo_3d_rslidar.urdf"
+    gazebo_robot_urdf = _make_gazebo_spawn_urdf(pkg_share, gazebo_robot_source_urdf)
+    visual_robot_urdf = pkg_share / "models" / "urdf" / "M20_gazebo_visual.urdf"
+    pointcloud_to_scan_launch = pkg_share / "launch" / "rslidar_pointcloud_to_scan_gazebo.launch.py"  # Gazebo 链路专属点云转激光扫描入口
+    rviz_config = str(pkg_share / "rviz" / "nav2_sandbox_gazebo.rviz")
     plugin_path = str(pkg_prefix / "lib")  # 本包动态库（Gazebo 插件）所在目录
     existing_plugin_path = os.environ.get("GAZEBO_PLUGIN_PATH", "")  # 读取系统已有的 Gazebo 插件路径（可能为空）
     gazebo_plugin_path = (  # 合并插件路径：本包 lib 优先，后面追加已有路径
@@ -52,12 +54,12 @@ def generate_launch_description():
         if not existing_plugin_path
         else f"{plugin_path}:{existing_plugin_path}"
     )
-    gazebo_model_path = _make_gazebo_model_path(pkg_share)  # 生成 Gazebo 模型搜索路径（软链接到本包）
 
     # —— launch 参数（可被命令行 --ros-args 或 launch 参数覆盖）——
     use_sim_time = LaunchConfiguration("use_sim_time")  # 是否使用仿真时间（订阅 /clock）
     use_rviz = LaunchConfiguration("use_rviz")  # 是否启动 RViz
     use_pointcloud_to_scan = LaunchConfiguration("use_pointcloud_to_scan")  # 是否启用点云转 2D 扫描
+    enable_dynamic_tracker = LaunchConfiguration("enable_dynamic_tracker")
     use_gazebo_gui = LaunchConfiguration("use_gazebo_gui")  # 是否启动 Gazebo GUI（gzclient）
     gazebo_gui_delay = LaunchConfiguration("gazebo_gui_delay")  # gzclient 延迟启动时间（秒）
     spawn_delay = LaunchConfiguration("spawn_delay")  # 机器人生成（spawn）延迟时间（秒）
@@ -78,11 +80,12 @@ def generate_launch_description():
         DeclareLaunchArgument("use_sim_time", default_value="true"),  # 默认使用仿真时间（仿真环境必须为 true）
         DeclareLaunchArgument("use_rviz", default_value="false"),  # 默认不启动 RViz（由上层 launch 统一管理）
         DeclareLaunchArgument("use_pointcloud_to_scan", default_value="true"),  # 3D 模式默认开启点云→2D 扫描转换
+        DeclareLaunchArgument("enable_dynamic_tracker", default_value="false"),
         DeclareLaunchArgument("use_gazebo_gui", default_value="false"),  # 默认无头模式（不启动 GUI，避免 WSL/远程黑屏）
         DeclareLaunchArgument("gazebo_gui_delay", default_value="1.0"),  # gzclient 延迟 1 秒启动，等待服务端就绪
         DeclareLaunchArgument("spawn_delay", default_value="4.0"),  # 延迟 4 秒生成机器人（等 gzserver 启动完成）
         DeclareLaunchArgument("rviz_delay", default_value="5.0"),  # 延迟 5 秒启动 RViz（等 TF/点云话题就绪）
-        DeclareLaunchArgument("world", default_value=default_world),  # 世界文件默认值（与 MuJoCo 共用的 canonical 场景）
+        DeclareLaunchArgument("world", default_value=default_world),  # Gazebo 专属世界文件
         DeclareLaunchArgument("x", default_value="0.0"),  # 出生位置 X = 0
         DeclareLaunchArgument("y", default_value="0.0"),  # 出生位置 Y = 0
         DeclareLaunchArgument("z", default_value="0.59"),  # 出生高度 Z = 0.59（底盘离地高度）
@@ -92,10 +95,9 @@ def generate_launch_description():
 
         # —— 设置 Gazebo 运行时环境变量 ——
         SetEnvironmentVariable("GAZEBO_PLUGIN_PATH", gazebo_plugin_path),  # 指定 Gazebo 插件搜索路径（含本包 lib 目录）
-        SetEnvironmentVariable("GAZEBO_MODEL_PATH", gazebo_model_path),  # 指定 Gazebo 模型搜索路径（支持 model:// 引用本包模型）
 
         # —— 包含点云转扫描 launch（按条件启用）——
-        IncludeLaunchDescription(  # 包含 rslidar_pointcloud_to_scan.launch.py：把 3D 点云裁剪为 2D 扫描
+        IncludeLaunchDescription(  # 包含 Gazebo 专属点云转扫描 launch：把 3D 点云裁剪为 2D 扫描
             PythonLaunchDescriptionSource(str(pointcloud_to_scan_launch)),  # 源文件为 Python 格式的 launch
             launch_arguments={  # 向被包含 launch 传入的参数
                 "use_sim_time": use_sim_time,  # 使用仿真时间
@@ -119,10 +121,10 @@ def generate_launch_description():
         ),
 
         # —— 启动关节状态发布节点 ——
-        Node(  # m20_standing_joint_state_publisher：发布站立形态 M20 的关节状态到 /joint_states
+        Node(  # m20_standing_joint_state_publisher_gazebo：发布站立形态关节状态
             package="m20_nav2_system",  # 所属功能包
-            executable="m20_standing_joint_state_publisher",  # 可执行文件名（本包脚本）
-            name="m20_standing_joint_state_publisher",  # 节点名
+            executable="m20_standing_joint_state_publisher_gazebo",  # Gazebo 链路专属脚本
+            name="m20_standing_joint_state_publisher_gazebo",  # 节点名
             output="screen",  # 日志输出到屏幕
             parameters=[
                 {"use_sim_time": use_sim_time},  # 使用仿真时间
@@ -131,10 +133,10 @@ def generate_launch_description():
         ),
 
         # —— 启动目标点时间戳重写节点 ——
-        Node(  # goal_pose_restamper：把上游目标点话题的时间戳改写为当前时间，供 Nav2 使用
+        Node(  # goal_pose_restamper_gazebo：把上游目标点时间戳改写为当前时间
             package="m20_nav2_system",  # 所属功能包
-            executable="goal_pose_restamper",  # 可执行文件名（本包脚本）
-            name="goal_pose_restamper",  # 节点名
+            executable="goal_pose_restamper_gazebo",  # Gazebo 链路专属脚本
+            name="goal_pose_restamper_gazebo",  # 节点名
             output="screen",  # 日志输出到屏幕
             parameters=[
                 {"use_sim_time": use_sim_time},  # 使用仿真时间
@@ -142,6 +144,22 @@ def generate_launch_description():
                 {"output_topic": "/goal_pose"},  # 输出：重写时间戳后的目标点话题（Nav2 订阅）
                 {"use_zero_stamp": True},  # 是否把时间戳清零（配合仿真时钟使用）
             ],
+        ),
+
+        Node(
+            package="m20_nav2_system",
+            executable="m20_gazebo_dynamic_obstacle_tracker",
+            name="m20_gazebo_dynamic_obstacle_tracker",
+            output="screen",
+            parameters=[{
+                "use_sim_time": use_sim_time,
+                "scan_topic": scan_topic,
+                "map_topic": "/map",
+                "predicted_scan_topic": "/scan_predicted_gazebo",
+                "dynamic_marker_topic": "/m20/factory/gazebo_dynamic_obstacles",
+                "predicted_marker_topic": "/m20/factory/gazebo_predicted_obstacles",
+            }],
+            condition=IfCondition(enable_dynamic_tracker),
         ),
 
         # —— 启动 Gazebo 服务器 ——

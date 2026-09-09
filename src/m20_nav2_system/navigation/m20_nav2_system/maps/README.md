@@ -15,9 +15,9 @@ map.pgm
 
 地图按链路分开管理：
 
-- `factory_world_map.yaml/.pgm`：与 `factory_environment.world` 的静态几何同源的人工静态地图，
-  供 MuJoCo 链路加载。MuJoCo 链路不启动 `slam_toolbox`，该地图仅由 `map_server`
-  发布给 Nav2，同时作为代码雷达模拟器的环境输入。
+- `factory_world_map.yaml/.pgm`：与 `factory_environment_mujoco.world` 的静态几何同源的 MuJoCo
+  验证地图。MuJoCo 链路不启动 `slam_toolbox`，该地图仅由 `map_server` 发布给 Nav2，
+  同时作为代码雷达模拟器的环境输入。
 - `m20_factory_slam.yaml/.pgm` 及带时间戳的地图：由 Gazebo/实机运行
   `slam_toolbox` 后保存，供保存地图导航（AMCL）使用。
 

@@ -53,7 +53,7 @@ def test_complete_launch_composes_scan_sdk_and_physics():
         in launch
     )
     assert "'locomotion_capability_config'" in launch
-    assert 'm20_policy_v1_capabilities.yaml' in launch
+    assert 'm20_factory_agile_flat_capabilities.yaml' in launch
     assert 'm20_progress' in launch
 
 
@@ -133,6 +133,35 @@ def test_backend_waits_for_stable_stand_before_system_pose():
     assert 'self._standing_ready_height' in source
     assert 'if not self._ready:' in source
     assert "'/JOINTS_CMD'" in source
+
+
+def test_runtime_keeps_historical_control_defaults():
+    """恢复历史运行基线，诊断进程和动作裁剪不改变控制默认值。"""
+    scan_launch = (
+        SYSTEM_ROOT
+        / 'navigation'
+        / 'm20_scan_navigation'
+        / 'launch'
+        / 'f1_scan.launch.py'
+    ).read_text(encoding='utf-8')
+    rviz_launch = (
+        ROOT / 'launch' / 'multifloor_scan_rviz.launch.py'
+    ).read_text(encoding='utf-8')
+    policy_runner = (
+        SYSTEM_ROOT.parent
+        / 'third_party'
+        / 'sdk_deploy'
+        / 'src'
+        / 'M20_sdk_deploy'
+        / 'run_policy'
+        / 'm20_policy_runner.hpp'
+    ).read_text(encoding='utf-8')
+
+    assert "executable='pcl_render_node'" in scan_launch
+    assert "prefix='nice -n 10'" not in scan_launch
+    assert "executable='rviz2'" in rviz_launch
+    assert "prefix='nice -n 10'" not in rviz_launch
+    assert 'float action_clip_ = 100.0f;' in policy_runner
 
 
 def test_motion_envelope_bypasses_scan_and_project_adapter():

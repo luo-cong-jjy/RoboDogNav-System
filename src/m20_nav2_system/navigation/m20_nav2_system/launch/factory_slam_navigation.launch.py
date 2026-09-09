@@ -21,13 +21,13 @@ def generate_launch_description():
     nav2_launch = PathJoinSubstitution([
         FindPackageShare("nav2_bringup"), "launch", "navigation_launch.py",
     ])
-    slam_params = str(share / "config" / "slam_toolbox.yaml")
-    nav2_params = str(share / "config" / "nav2_params.yaml")
-    rviz_config = str(share / "rviz" / "nav2_sandbox.rviz")
+    slam_params = str(share / "config" / "slam_toolbox_gazebo.yaml")
+    nav2_params = str(share / "config" / "nav2_params_gazebo.yaml")
+    rviz_config = str(share / "rviz" / "nav2_sandbox_gazebo.rviz")
     use_rviz = LaunchConfiguration("use_rviz")
     use_sim_time = LaunchConfiguration("use_sim_time")
     use_keyboard = LaunchConfiguration("use_keyboard")
-    mapping_world = str(share / "worlds" / "factory_environment_mapping.world")
+    mapping_world = str(share / "worlds" / "factory_environment_gazebo_mapping.world")
 
     return LaunchDescription([
         DeclareLaunchArgument("use_sim_time", default_value="true"),
@@ -75,8 +75,8 @@ def generate_launch_description():
         ),
         Node(
             package="m20_nav2_system",
-            executable="m20_keyboard_teleop",
-            name="m20_keyboard_teleop",
+            executable="m20_keyboard_teleop_gazebo",
+            name="m20_keyboard_teleop_gazebo",
             output="screen",
             parameters=[{"use_sim_time": use_sim_time}],
             condition=IfCondition(use_keyboard),

@@ -53,6 +53,15 @@ def test_backend_owns_current_scan_pose_and_sdk_topics():
     assert "'/m20/locomotion/mode'" in source
     assert 'apply_wheel_brake(' in source
     assert 'world_vector_to_body(' in source
+    assert 'TransformStamped' in source
+    assert 'TransformBroadcaster' in source
+    assert 'self._tf_broadcaster.sendTransform(transform)' in source
+    assert "self.declare_parameter('latch_faults', True)" in source
+    assert "self.declare_parameter('pause_on_fault', True)" in source
+    assert 'if self._fault and self._latch_faults:' in source
+    assert 'Do not accept late policy output' in source
+    assert "'fault_latched'" in source
+    assert "'physics_paused_on_fault'" in source
     assert "'base_linear_velocity_world'" in source
     assert "'base_linear_velocity_body'" in source
     assert "'base_angular_velocity_body'" in source

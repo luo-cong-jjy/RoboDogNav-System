@@ -299,6 +299,36 @@ def test_local_sensing_consumes_only_active_map() -> None:
     assert '/m20/visualization/all_floors_cloud' not in launch_text
 
 
+def test_cpu_lidar_profile_is_applied_by_the_renderer() -> None:
+    """CPU 雷达降载参数必须被 renderer 读取，且默认使用优化构建。"""
+    config = yaml.safe_load(
+        (PACKAGE_ROOT / 'config' / 'scan_vendor_local_sensing.yaml').read_text(
+            encoding='utf-8'
+        )
+    )['/**']['ros__parameters']
+    renderer = (
+        UPSTREAM_SCAN_ROOT
+        / 'src'
+        / 'simulator'
+        / 'local_sensing'
+        / 'src'
+        / 'pointcloud_render_node.cpp'
+    ).read_text(encoding='utf-8')
+    renderer_cmake = (
+        UPSTREAM_SCAN_ROOT
+        / 'src'
+        / 'simulator'
+        / 'local_sensing'
+        / 'CMakeLists.txt'
+    ).read_text(encoding='utf-8')
+
+    assert config['sensing_rate'] == 10.0
+    assert config['polar_resolution'] == 0.5
+    assert config['plane_interline'] == 0
+    assert 'declare_parameter<int>("plane_interline", 1)' in renderer
+    assert 'set(CMAKE_BUILD_TYPE Release' in renderer_cmake
+
+
 def test_native_scan_is_the_only_runtime_route() -> None:
     """原生 SCAN 必须是运行时唯一路径（无网格路线规划器）。"""
     launch_text = (

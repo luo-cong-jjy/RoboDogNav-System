@@ -37,7 +37,6 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
-  <exec_depend>visualization_msgs</exec_depend>
 
   <!-- 测试依赖：pytest 与 ament 代码规范检查。 -->
   <test_depend>ament_cmake_pytest</test_depend>

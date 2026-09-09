@@ -36,7 +36,7 @@ source_dependencies:
     url: https://github.com/wuyi2121/SCAN-Planner.git
     revision: d0b921c9b05a6d291d144d60882b2e0e88d2c0e0
     patch: patches/scan_planner_humble_cpu.patch
-    patch_sha256: 8cfa3e13bfd3c7ddd0311eeaf46058ffbe61cd28e75dff633968e53cf17de974
+    patch_sha256: d52bc1411d7f09b3f81d15a2d65039d76df80de6dc0ba2ed1915cf35b69bf555
     integration_patch: patches/scan_planner_multifloor_integration.patch
     integration_patch_sha256: e5080a336087e78e74036446b16b24f1ffd47e1021396bad501f2a0f5778e4a4
   deep_robotics_model:

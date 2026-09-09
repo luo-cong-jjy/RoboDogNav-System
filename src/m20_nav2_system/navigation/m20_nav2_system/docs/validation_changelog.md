@@ -2,6 +2,17 @@
 
 本文件只记录可能影响 Gazebo、MuJoCo 或二者共享 Nav2 部分的修改。修改前必须标明影响域。
 
+### 2026-09-02 Gazebo/MuJoCo 项目资源完全隔离
+
+- `GAZEBO_ONLY`：新增 Gazebo 专属 world、2D/3D 机器人 URDF、Nav2/slam_toolbox 参数、
+  RViz 配置、巡检任务配置，以及 `*_gazebo` 的键盘、站立关节、目标点时间戳和点云转扫描脚本。
+- `MUJOCO_ONLY`：新增 `nav2_params_mujoco.yaml`、`nav2_sandbox_mujoco.rviz`、
+  MuJoCo 巡检任务配置和任务入口；原 MuJoCo 传感器桥、官方 SDK 和 MJCF 生成链保持不变。
+- `SHARED_NAV2`：只共享外部 Nav2/slam_toolbox 算法和 ROS 接口，不共享项目自有后端文件。
+- Gazebo 建图入口使用 `factory_environment_gazebo_mapping.world`（无动态障碍）；Gazebo
+  保存地图/动态避障使用 `factory_environment_gazebo.world`。MuJoCo 始终使用
+  `factory_environment_mujoco.world`。
+
 ### 2026-09-01 Gazebo 建图世界静态化
 
 - `GAZEBO_ONLY`：新增 `factory_environment_mapping.world`，保留工厂地面、
@@ -115,3 +126,28 @@
   射线结果，只额外计算未来动态障碍命中，避免每帧重复遍历占据栅格，降低
   `bt_navigator` 的偶发 `Behavior Tree tick rate exceeded` 风险；预测话题和
   代价地图连接未改变。
+
+### 2026-09-02 Gazebo 四轮掉头控制
+
+- `GAZEBO_ONLY`：`nav2_params_gazebo.yaml` 开启
+  `use_rotate_to_heading`。当路径切线与当前朝向相差超过 45° 时，RPP
+  先发布零线速度和角速度，驱动四轮差速模型原地对齐，再恢复前进跟踪。
+- 四轮插件本身支持该运动：`linear.x = 0` 时左右轮目标速度方向相反，
+  因此可绕机身中心旋转；MuJoCo 控制器参数未修改。
+- 目的：减少通道端点掉头时的大半径曲线，避免机身进入静态障碍膨胀区。
+
+### 2026-09-02 Gazebo 实测动态障碍跟踪
+
+- `GAZEBO_ONLY`：新增 `m20_gazebo_dynamic_obstacle_tracker`。它只订阅
+  Gazebo 实际发布的 `/scan`、保存地图 `/map`、`/odom` 和 TF；不读取 world/SDF
+  中的 actor、waypoint 或速度轨迹，因此没有 MuJoCo 链路的先验答案。
+- 跟踪器从实测扫描中剔除与静态地图一致的回波，对剩余聚类做数据关联和恒速估计，
+  发布 `/scan_predicted_gazebo` 及两个 Gazebo 专属 RViz 标记话题：
+  `/m20/factory/gazebo_dynamic_obstacles`、
+  `/m20/factory/gazebo_predicted_obstacles`。
+- Gazebo 保存地图导航默认启用跟踪器；全局代价地图使用实测 `/scan` 加预测扫描，
+  局部代价地图仍只使用实测 `/scan`，避免预测区域导致控制器提前停死。
+- `factory_slam_navigation.launch.py` 建图入口不启用跟踪器，建图世界不包含动态
+  worker，静态地图不会把动态障碍写入地图。
+- `MUJOCO_ONLY`：`m20_grid_lidar_simulator`、`/scan_predicted` 和原有 MuJoCo
+  标记话题保持不变；两套预测节点、话题、参数和 world 文件互不复用。

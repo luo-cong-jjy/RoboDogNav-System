@@ -88,6 +88,12 @@ ros2 topic pub --once /move_base_simple/goal geometry_msgs/msg/PoseStamped \
   "{header: {frame_id: map}, pose: {position: {x: -35.0, y: 0.0}, orientation: {w: 1.0}}}"
 ```
 
+MuJoCo 使用官方策略的 `m20_policy_v1` 能力档案：高曲率转向会保持
+`0.35--0.45 m/s` 的滚动速度，不使用实机工厂档案的原地偏航。若
+`/m20/sim/backend_fault` 报告 `EXCESSIVE_TILT`、`BASE_HEIGHT_LOW` 或
+`NONFINITE_STATE`，后端会锁存首个故障并冻结仿真现场；请先停止当前 launch，
+排查原因后重新启动以清除故障。
+
 确认自由导航和 M20 运动适配正常后，在第二个终端启动任务触发 launch。这里不要再次
 执行 `inspection_mission_mujoco.launch.py`，否则会重复启动 MuJoCo、SCAN 和运控
 节点。该 launch 只连接第一终端已经启动的任务执行器，并发送当前配置中的任务 ID：

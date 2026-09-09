@@ -43,7 +43,6 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import JointState
-from visualization_msgs.msg import MarkerArray
 
 from .dynamics import JOINT_INITIAL_POSITION, JOINT_NAMES, yaw_quaternion
 
@@ -63,10 +62,6 @@ class M20MujocoViewer(Node):
         self.declare_parameter('model_xml_path', '')
         self.declare_parameter('pose_topic', '/m20/sim/body_pose')
         self.declare_parameter('joint_states_topic', '/joint_states')
-        self.declare_parameter(
-            'dynamic_obstacles_topic',
-            '/m20/factory/dynamic_obstacles',
-        )
         self.declare_parameter('follow_body', 'base_link')
         # Keep the viewer camera free by default.  A continuously forced
         # top-down follow camera is useful for demos but makes diagnosing
@@ -152,20 +147,6 @@ class M20MujocoViewer(Node):
             raise RuntimeError(
                 'MuJoCo viewer could not resolve all official M20 joints'
             )
-        self._dynamic_mocap = {}
-        dynamic_index = 0
-        while True:
-            body_id = mujoco.mj_name2id(
-                self._model,
-                mujoco.mjtObj.mjOBJ_BODY,
-                f'm20_dynamic_obstacle_{dynamic_index}',
-            )
-            if body_id < 0:
-                break
-            mocap_id = int(self._model.body_mocapid[body_id])
-            if mocap_id >= 0:
-                self._dynamic_mocap[dynamic_index] = mocap_id
-            dynamic_index += 1
 
         # 位姿与关节话题都用 BEST_EFFORT + depth=1 的 QOS，
         # 显示进程允许丢帧，不需要可靠传输。
@@ -183,12 +164,6 @@ class M20MujocoViewer(Node):
             JointState,
             str(self.get_parameter('joint_states_topic').value),
             self._joint_callback,
-            qos,
-        )
-        self.create_subscription(
-            MarkerArray,
-            str(self.get_parameter('dynamic_obstacles_topic').value),
-            self._dynamic_obstacles_callback,
             qos,
         )
         # 帧周期：1 / max_fps（最小 1fps）。
@@ -256,9 +231,9 @@ class M20MujocoViewer(Node):
             self.get_parameter('azimuth').value
         )
         self._camera.elevation = max(
-            -89.0,
+            -75.0,
             min(
-                89.0,
+                75.0,
                 float(self.get_parameter('elevation').value),
             ),
         )
@@ -371,30 +346,6 @@ class M20MujocoViewer(Node):
             if address is not None and math.isfinite(float(position)):
                 self._data.qpos[address] = float(position)
                 self._dirty = True
-
-    def _dynamic_obstacles_callback(self, message: MarkerArray) -> None:
-        """Mirror the RViz/lidar dynamic obstacle poses into mocap bodies."""
-        for marker in message.markers:
-            mocap_id = self._dynamic_mocap.get(int(marker.id))
-            if mocap_id is None:
-                continue
-            pose = marker.pose
-            values = (
-                pose.position.x,
-                pose.position.y,
-                pose.position.z,
-                pose.orientation.x,
-                pose.orientation.y,
-                pose.orientation.z,
-                pose.orientation.w,
-            )
-            if not all(math.isfinite(float(value)) for value in values):
-                continue
-            self._data.mocap_pos[mocap_id] = values[0:3]
-            self._data.mocap_quat[mocap_id] = (
-                values[6], values[3], values[4], values[5],
-            )
-            self._dirty = True
 
     def _render(self) -> None:
         # 有更新时先 mj_forward 计算运动学（显示副本不推进物理时间）；

@@ -20,9 +20,9 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     share = Path(get_package_share_directory('m20_nav2_system'))
-    params = str(share / 'config' / 'nav2_params.yaml')
+    params = str(share / 'config' / 'nav2_params_mujoco.yaml')
     default_map = str(share / 'maps' / 'factory' / 'factory_world_map.yaml')
-    rviz = str(share / 'rviz' / 'nav2_sandbox.rviz')
+    rviz = str(share / 'rviz' / 'nav2_sandbox_mujoco.rviz')
     navigation = PathJoinSubstitution([
         FindPackageShare('nav2_bringup'), 'launch', 'navigation_launch.py',
     ])
