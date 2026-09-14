@@ -20,8 +20,12 @@
     map.x_size: 100.0                   # 全局地图 x 尺寸（米）
     map.y_size: 40.0                    # 全局地图 y 尺寸（米）
     map.z_size: 5.0                     # 全局地图 z 尺寸（米）
-    sensing_horizon: 40.0               # 感知视野距离（米）
+    # The planner only updates a 5 m local window.  Keeping a 20 m sensing
+    # horizon preserves ample look-ahead while avoiding full-map CPU renders.
+    # （规划器只更新 5 米局部窗口；20 米仍有充足前视，同时避免全图 CPU 渲染。）
+    sensing_horizon: 20.0               # 感知视野距离（米）
     sensing_rate: 10.0                  # 感知发布频率（Hz）
+    render_threads: 8                   # CPU 渲染线程数（避免过度线程争用）
     estimation_rate: 10.0               # 状态估计频率（Hz）
     # CPU RViz simulation profile: 0.5 degree keeps 360-degree/40 m sensing
     # while reducing the native polar grid from about 882k to 141k cells.

@@ -29,8 +29,9 @@ pcl_render_node:
     map.x_size: 40.0
     map.y_size: 40.0
     map.z_size: 5.0
-    sensing_horizon: 40.0
+    sensing_horizon: 20.0
     sensing_rate: 10.0
+    render_threads: 8
     estimation_rate: 10.0
     polar_resolution: 0.2
     yaw_fov: 360.0

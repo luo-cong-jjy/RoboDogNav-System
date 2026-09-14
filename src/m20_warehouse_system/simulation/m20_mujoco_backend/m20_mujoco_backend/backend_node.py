@@ -165,7 +165,9 @@ class M20MujocoBackend(Node):
         # ---------- 冷启动位姿 ----------
         self.declare_parameter('initial_x', 0.0)
         self.declare_parameter('initial_y', 0.0)
-        self.declare_parameter('initial_z', 0.20)
+        # Must match JOINT_INITIAL_POSITION.  Starting that pose at 0.20 m
+        # places the leg/wheel collision geometry below the ground plane.
+        self.declare_parameter('initial_z', 0.565)
         self.declare_parameter('initial_yaw', 0.0)
         # ---------- 控制与安全参数 ----------
         # command_timeout_sec：指令超时（超时后轮子目标清零）

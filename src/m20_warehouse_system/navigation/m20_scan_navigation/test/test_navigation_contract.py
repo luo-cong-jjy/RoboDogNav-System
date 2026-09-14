@@ -323,9 +323,13 @@ def test_cpu_lidar_profile_is_applied_by_the_renderer() -> None:
     ).read_text(encoding='utf-8')
 
     assert config['sensing_rate'] == 10.0
+    assert config['sensing_horizon'] == 20.0
+    assert config['render_threads'] == 8
     assert config['polar_resolution'] == 0.5
     assert config['plane_interline'] == 0
     assert 'declare_parameter<int>("plane_interline", 1)' in renderer
+    assert 'declare_parameter<int>("render_threads", 0)' in renderer
+    assert 'omp_set_num_threads' in renderer
     assert 'set(CMAKE_BUILD_TYPE Release' in renderer_cmake
 
 

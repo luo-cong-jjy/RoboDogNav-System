@@ -74,7 +74,9 @@ class M20MujocoViewer(Node):
         self.declare_parameter('low_cost_render', True)
         self.declare_parameter('initial_x', 0.0)
         self.declare_parameter('initial_y', 0.0)
-        self.declare_parameter('initial_z', 0.20)
+        # Keep the diagnostic viewer's cold-start pose identical to the
+        # backend; otherwise the two processes show different initial states.
+        self.declare_parameter('initial_z', 0.565)
         self.declare_parameter('initial_yaw', 0.0)
 
         # 加载世界模型（由 launch 生成的 MJCF 文件）。
